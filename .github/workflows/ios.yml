@@ -1,0 +1,76 @@
+name: Compilar Pulso (iOS)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versión de Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)" || true
+          xcodebuild -version
+
+      - name: Tests del núcleo (protocolo + algoritmos)
+        working-directory: Packages/PulsoKit
+        run: swift test 2>&1 | tail -40
+
+      - name: Compilar la app (sin firmar)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project Pulso.xcodeproj \
+            -scheme Pulso \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build 2>&1 | tee xcodebuild.log | grep -E "error:|warning: .*Pulso|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" xcodebuild.log
+
+      - name: Guardar log si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: xcodebuild.log
+
+      - name: Empaquetar Pulso.ipa
+        run: |
+          APP=build/Build/Products/Release-iphoneos/Pulso.app
+          codesign --force --sign - --entitlements App/Resources/Pulso.entitlements "$APP"
+          rm -rf Payload && mkdir Payload
+          cp -R "$APP" Payload/
+          zip -qry Pulso.ipa Payload
+          ls -la Pulso.ipa
+
+      - name: Subir artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pulso-ipa
+          path: Pulso.ipa
+          retention-days: 30
+
+      - name: Publicar en Releases (descarga directa)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete ultima -y --cleanup-tag || true
+          gh release create ultima Pulso.ipa \
+            --title "Pulso (última versión)" \
+            --notes "Compilado desde ${GITHUB_SHA::7}. Instálalo con Sideloadly (ver README)." \
+            --latest
