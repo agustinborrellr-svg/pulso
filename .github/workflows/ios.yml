@@ -19,16 +19,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Versión de Xcode
+      - name: Elegir Xcode
         run: |
-          sudo xcode-select -s "$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)" || true
-          xcodebuild -version
+          XC=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$XC" ]; then sudo xcode-select -s "$XC"; fi
+          xcodebuild -version | tee xcode-version.txt
 
       - name: Tests del núcleo (protocolo + algoritmos)
+        id: tests
         working-directory: Packages/PulsoKit
-        run: swift test 2>&1 | tail -40
+        run: |
+          set -o pipefail
+          swift test 2>&1 | tee ../../swift-test.log | tail -30
 
       - name: Compilar la app (sin firmar)
+        id: build
         run: |
           set -o pipefail
           xcodebuild \
@@ -39,17 +44,12 @@ jobs:
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            build 2>&1 | tee xcodebuild.log | grep -E "error:|warning: .*Pulso|BUILD (SUCCEEDED|FAILED)" || true
+            build > xcodebuild.log 2>&1 || true
+          grep -E "error:|BUILD (SUCCEEDED|FAILED)" xcodebuild.log | head -80
           grep -q "BUILD SUCCEEDED" xcodebuild.log
 
-      - name: Guardar log si falla
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: xcodebuild-log
-          path: xcodebuild.log
-
       - name: Empaquetar Pulso.ipa
+        id: package
         run: |
           APP=build/Build/Products/Release-iphoneos/Pulso.app
           codesign --force --sign - --entitlements App/Resources/Pulso.entitlements "$APP"
@@ -57,13 +57,6 @@ jobs:
           cp -R "$APP" Payload/
           zip -qry Pulso.ipa Payload
           ls -la Pulso.ipa
-
-      - name: Subir artefacto
-        uses: actions/upload-artifact@v4
-        with:
-          name: Pulso-ipa
-          path: Pulso.ipa
-          retention-days: 30
 
       - name: Publicar en Releases (descarga directa)
         env:
@@ -74,3 +67,32 @@ jobs:
             --title "Pulso (última versión)" \
             --notes "Compilado desde ${GITHUB_SHA::7}. Instálalo con Sideloadly (ver README)." \
             --latest
+
+      # Leaves a readable report on the `ci-status` branch so the build can be followed with plain git.
+      - name: Informe en la rama ci-status
+        if: always()
+        run: |
+          set +e
+          mkdir -p /tmp/report
+          {
+            echo "commit=${GITHUB_SHA}"
+            echo "run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "tests=${{ steps.tests.outcome }}"
+            echo "build=${{ steps.build.outcome }}"
+            echo "package=${{ steps.package.outcome }}"
+            [ -f Pulso.ipa ] && echo "ipa_bytes=$(stat -f%z Pulso.ipa)" && echo "ipa_sha256=$(shasum -a 256 Pulso.ipa | cut -d' ' -f1)"
+          } > /tmp/report/status.txt
+          cp xcode-version.txt /tmp/report/ 2>/dev/null
+          [ -f swift-test.log ] && tail -400 swift-test.log > /tmp/report/swift-test.log
+          if [ -f xcodebuild.log ]; then
+            grep -E "error:|warning:.*\.swift|BUILD (SUCCEEDED|FAILED)" xcodebuild.log | sort -u | head -400 > /tmp/report/xcodebuild-errors.txt
+            tail -300 xcodebuild.log > /tmp/report/xcodebuild-tail.log
+          fi
+          cd /tmp/report
+          git init -q -b ci-status
+          git config user.name "pulso-ci"
+          git config user.email "pulso-ci@users.noreply.github.com"
+          git add -A
+          git commit -q -m "CI ${GITHUB_SHA::7}: build=${{ steps.build.outcome }}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-status
