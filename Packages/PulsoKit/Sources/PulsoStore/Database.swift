@@ -113,6 +113,11 @@ public final class PulsoDatabase {
         return (Int(a), Int(b))
     }
 
+    /// Cheap existence check (no table scan).
+    public func hasSamples() throws -> Bool {
+        (try sql.scalarInt("SELECT EXISTS(SELECT 1 FROM samples LIMIT 1)") ?? 0) != 0
+    }
+
     public func sampleCount() throws -> Int {
         Int(try sql.scalarInt("SELECT COUNT(*) FROM samples") ?? 0)
     }

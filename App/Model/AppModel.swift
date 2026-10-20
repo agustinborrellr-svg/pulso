@@ -120,9 +120,19 @@ final class AppModel: ObservableObject {
             days = try db.days(from: from, to: "9999-12-31")
             let journal = try db.allJournal()
             insights = Insights.compute(journal: journal, days: days)
-            rawSampleCount = (try? db.sampleCount()) ?? 0
+            if rawSampleCount == 0, (try? db.hasSamples()) == true { rawSampleCount = 1 }
+            refreshSampleCount()
         } catch {
             errorMessage = "No se pudieron leer los datos: \(error)"
+        }
+    }
+
+    /// Counting every stored second scans the table, so it runs off the main thread.
+    func refreshSampleCount() {
+        let db = self.db
+        analysisQueue.async {
+            let n = (try? db.sampleCount()) ?? 0
+            Task { @MainActor in self.rawSampleCount = n }
         }
     }
 
@@ -412,7 +422,14 @@ final class AppModel: ObservableObject {
 
 extension AppModel: StrapManagerDelegate {
     nonisolated func strapStateChanged(_ state: StrapState) {
-        MainActor.assumeIsolated { self.strapState = state }
+        MainActor.assumeIsolated {
+            let wasReady = self.strapState.isConnected
+            self.strapState = state
+            // The strap's own alarm is one-shot: re-arm it for the next morning on every new session.
+            if state == .ready && !wasReady && self.alarmEnabled {
+                self.strap.setAlarm(self.nextOccurrence(of: self.alarmTime))
+            }
+        }
     }
 
     nonisolated func strapIdentityChanged(_ identity: StrapIdentity) {
@@ -447,7 +464,7 @@ extension AppModel: StrapManagerDelegate {
         MainActor.assumeIsolated {
             self.lastSync = Date()
             try? self.db.set(Date(), for: "lastSync")
-            self.rawSampleCount = (try? self.db.sampleCount()) ?? self.rawSampleCount
+            self.refreshSampleCount()
             if newRecords > 0 || self.today == nil {
                 let from = firstTs.map { DayKey.shift(DayKey.string(ts: $0), days: -1) }
                     ?? DayKey.shift(DayKey.string(Date()), days: -1)

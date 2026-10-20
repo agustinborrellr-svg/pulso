@@ -102,6 +102,9 @@ final class StrapManager: NSObject {
     /// A scan was requested before Bluetooth finished powering on.
     private var wantsScan = false
     private var liveBuffer: [HistorySample] = []
+    /// When the vendor realtime stream is flowing, the standard 0x2A37 heart-rate notifications carry
+    /// the same beats; forwarding both would double-count R-R intervals.
+    private var lastVendorRealtime: Date?
     private var identity = StrapIdentity()
 
     private(set) var state: StrapState = .noStrap {
@@ -418,6 +421,7 @@ final class StrapManager: NSObject {
             handleOffload(frame)
         case .realtime(let r):
             guard r.valid else { return }
+            lastVendorRealtime = Date()
             let hr = Int(r.heartRate), rr = r.rr.map { Int($0) }
             DispatchQueue.main.async { self.delegate?.strapLive(heartRate: hr, rr: rr, at: Date()) }
         case .event(let e):
@@ -614,6 +618,7 @@ extension StrapManager: CBPeripheralDelegate {
         let bytes = [UInt8](value)
         switch characteristic.uuid {
         case StrapUUID.heartRateMeasurement:
+            if let last = lastVendorRealtime, Date().timeIntervalSince(last) < 3 { return }
             if let m = StandardHRMeasurement.decode(bytes) {
                 DispatchQueue.main.async { self.delegate?.strapLive(heartRate: m.heartRate, rr: m.rr, at: Date()) }
             }
