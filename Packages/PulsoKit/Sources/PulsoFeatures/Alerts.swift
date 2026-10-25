@@ -136,6 +136,16 @@ public struct PlannedAlert: Equatable, Sendable, Identifiable {
     public var fireAt: Int?
     public var buzzStrap: Bool
     public var timeSensitive: Bool
+
+    public init(id: String, kind: AlertKind, title: String, body: String, fireAt: Int?, buzzStrap: Bool, timeSensitive: Bool) {
+        self.id = id
+        self.kind = kind
+        self.title = title
+        self.body = body
+        self.fireAt = fireAt
+        self.buzzStrap = buzzStrap
+        self.timeSensitive = timeSensitive
+    }
 }
 
 /// Everything the rules look at.
