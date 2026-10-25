@@ -35,3 +35,25 @@ final class DemoDataTests: XCTestCase {
         XCTAssertEqual(again.map { $0.recovery }, days.map { $0.recovery })
     }
 }
+
+extension DemoDataTests {
+    /// Sanity of the numbers the demo produces (what the screenshots showed as off).
+    func testDemoNumbersArePlausible() throws {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Madrid")!
+        let db = try PulsoDatabase(path: NSTemporaryDirectory() + "pulso-demo-\(UUID().uuidString).sqlite")
+        let now = cal.date(from: DateComponents(year: 2026, month: 10, day: 25, hour: 20))!
+        let days = try DemoData.populate(db: db, days: 21, now: now, calendar: cal)
+        for d in days {
+            print(String(format: "DEMO %@ rec=%@ sleep=%.0f need=%.0f debt=%.0f strain=%.1f", d.day,
+                         d.recovery.map { String(Int($0)) } ?? "-", d.sleepMinutes ?? -1, d.sleepNeedMinutes ?? -1,
+                         d.sleepDebtMinutes ?? -1, d.strain ?? -1))
+        }
+        for d in days {
+            if let need = d.sleepNeedMinutes { XCTAssertLessThan(need, 9 * 60, d.day) }
+            if let debt = d.sleepDebtMinutes { XCTAssertLessThan(debt, 5 * 60, d.day) }
+            if let r = d.recovery { XCTAssertGreaterThanOrEqual(r, 8, d.day) }
+            if d.workoutCount == 0, let st = d.strain, d.wornMinutes > 600 { XCTAssertGreaterThan(st, 3, "rest day strain \(d.day)") }
+        }
+    }
+}

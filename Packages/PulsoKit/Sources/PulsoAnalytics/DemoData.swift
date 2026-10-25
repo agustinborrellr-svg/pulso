@@ -48,10 +48,10 @@ public enum DemoData {
             let baseRHR = 53 + rng.normal() * 1.2
             return DayPlan(
                 bedMinute: 23 * 60 + rng.range(-35, alcohol ? 75 : 40),
-                sleepHours: alcohol ? rng.range(5.8, 6.6) : rng.range(6.8, 8.2),
-                restingHR: baseRHR + (alcohol ? 6 : 0) + (sickTail ? 7 : 0) + (hard ? 1 : 0),
-                rsa: (alcohol ? 0.035 : 0.065) * (sickTail ? 0.6 : 1) * rng.range(0.85, 1.15),
-                nightTemp: 34.5 + rng.normal() * 0.06 + (sickTail ? 0.75 : 0) + (alcohol ? 0.2 : 0),
+                sleepHours: alcohol ? rng.range(6.6, 7.3) : rng.range(7.8, 9.0),
+                restingHR: baseRHR + (alcohol ? 4 : 0) + (sickTail ? 5 : 0) + (hard ? 1 : 0),
+                rsa: (alcohol ? 0.048 : 0.065) * (sickTail ? 0.75 : 1) * rng.range(0.85, 1.15),
+                nightTemp: 34.5 + rng.normal() * 0.06 + (sickTail ? 0.6 : 0) + (alcohol ? 0.15 : 0),
                 workout: workout,
                 alcohol: alcohol,
                 lateCaffeine: i % 4 == 1,

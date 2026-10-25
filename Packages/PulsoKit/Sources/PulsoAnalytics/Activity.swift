@@ -33,9 +33,13 @@ public struct HeartRateModel: Equatable {
 
 /// Cardiovascular load → Strain on a 0–21 logarithmic scale.
 public enum Strain {
-    /// Per-minute load weight: 0 below 40 % HRR, rising linearly by 1 per 10 % HRR (Edwards-style, continuous).
+    /// Per-minute load weight. Everyday heart rate (15–40 % HRR) adds a little (up to 0.08/min) so a
+    /// rest day still lands around 5–8, like moving about all day does; from 40 % HRR it rises by 1
+    /// per 10 % HRR (Edwards-style, continuous).
     public static func weight(reserveFraction p: Double) -> Double {
-        Stats.clamp((p - 0.4) * 10, 0, 6)
+        if p < 0.15 { return 0 }
+        if p < 0.4 { return 0.08 * (p - 0.15) / 0.25 }
+        return Stats.clamp(0.08 + (p - 0.4) * 10, 0, 6)
     }
 
     /// The load (TRIMP-like) at which strain reaches 21.

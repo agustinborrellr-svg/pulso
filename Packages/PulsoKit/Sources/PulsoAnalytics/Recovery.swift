@@ -90,8 +90,9 @@ public enum Recovery {
             return Result(score: nil, calibrating: true, contributors: contributors, skinTempDeviation: tempDev)
         }
         let wsum = terms.reduce(0) { $0 + $1.weight }
-        let composite = terms.reduce(0) { $0 + $1.weight * $1.z } / wsum
-        let score = Stats.clamp(100 * Stats.logistic(1.5 * (composite + 0.25)), 1, 99)
+        let composite = Stats.clamp(terms.reduce(0) { $0 + $1.weight * $1.z } / wsum, -3, 3)
+        // Softer than before: one bad night lands in the 20s–30s, not at 1–2 %.
+        let score = Stats.clamp(100 * Stats.logistic(1.15 * (composite + 0.35)), 3, 99)
         return Result(score: score.rounded(), calibrating: false, contributors: contributors, skinTempDeviation: tempDev)
     }
 
@@ -107,8 +108,8 @@ public enum SleepCoach {
     /// Tonight's need in minutes: personal baseline + extra for today's strain + part of recent debt − naps.
     public static func need(baseHours: Double, previousStrain: Double?, recentShortfalls: [Double], napMinutes: Double) -> Double {
         let base = baseHours * 60
-        let strainExtra = max(0, (previousStrain ?? 10) - 10) * 4
-        let debtExtra = min(60, max(0, (Stats.mean(Array(recentShortfalls.suffix(3))) ?? 0)) * 0.5)
+        let strainExtra = min(45, max(0, (previousStrain ?? 10) - 10) * 3)
+        let debtExtra = min(40, max(0, (Stats.mean(Array(recentShortfalls.suffix(3))) ?? 0)) * 0.33)
         return max(base * 0.8, base + strainExtra + debtExtra - napMinutes)
     }
 

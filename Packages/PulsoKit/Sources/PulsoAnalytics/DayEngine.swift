@@ -268,11 +268,10 @@ public final class DayEngine {
                 onsetMinutes: SleepCoach.minutesAfterMidnight(ts: m.start, calendar: calendar),
                 wakeMinutes: SleepCoach.minutesAfterMidnight(ts: m.end, calendar: calendar),
                 previous: prevTimes)
-            let last7 = pastWithSleep.suffix(6).compactMap { p -> Double? in
-                guard let need = p.sleepNeedMinutes, let slept = p.sleepMinutes else { return nil }
-                return need - slept
-            } + [need - m.asleepMinutes]
-            d.sleepDebtMinutes = max(0, last7.reduce(0, +)).rounded()
+            // Debt is a decaying carry-over (half of last night's debt is kept, plus tonight's shortfall;
+            // a surplus pays it back), not a plain 7-day sum, which grows without bound.
+            let prevDebt = prevDay?.sleepDebtMinutes ?? 0
+            d.sleepDebtMinutes = Stats.clamp(prevDebt * 0.5 + (need - m.asleepMinutes), 0, 12 * 60).rounded()
         }
         d.napMinutes = naps.isEmpty ? nil : naps.reduce(0) { $0 + $1.asleepMinutes }
 
