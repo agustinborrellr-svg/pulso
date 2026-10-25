@@ -5,6 +5,9 @@ import UserNotifications
 import WhoopProtocol
 import PulsoStore
 import PulsoAnalytics
+import PulsoFeatures
+import PulsoIntegrations
+import PulsoECG
 
 struct LivePoint: Identifiable, Equatable {
     let id = UUID()
@@ -20,12 +23,18 @@ struct LiveWorkout: Equatable {
     var maxHR: Int = 0
     var hrSum: Double = 0
     var hrCount: Int = 0
+    /// Lap timestamps (unix seconds).
+    var laps: [Int] = []
+    /// Interval plan being followed, if any.
+    var planID: String?
 }
 
 /// App-wide state. All published properties live on the main actor; heavy analysis runs on a
 /// background queue and publishes the results back.
 @MainActor
 final class AppModel: ObservableObject {
+    static let shared = AppModel()
+
     // Strap
     @Published var strapState: StrapState = .noStrap
     @Published var identity = StrapIdentity()
@@ -33,6 +42,8 @@ final class AppModel: ObservableObject {
     @Published var charging: Bool?
     @Published var lastSync: Date?
     @Published var log: [String] = []
+    /// Since when the strap has been off the wrist (nil = on the wrist / unknown).
+    @Published var offWristSince: Date?
 
     // Data
     @Published var days: [DaySummary] = []
@@ -43,27 +54,56 @@ final class AppModel: ObservableObject {
     @Published var insights: [Insight] = []
     @Published var errorMessage: String?
     @Published var rawSampleCount = 0
+    @Published var trainingLoad: [TrainingLoad.Point] = []
 
     // Live
     @Published var liveHR: Int?
     @Published var liveRMSSD: Double?
     @Published var livePoints: [LivePoint] = []
     @Published var liveWorkout: LiveWorkout?
-    private var liveRR: [Double] = []
-    private var lastLiveAt: Date?
+    var liveRR: [Double] = []
+    var lastLiveAt: Date?
 
-    // Alarm
-    @Published var alarmEnabled: Bool = UserDefaults.standard.bool(forKey: "pulso.alarm.enabled")
-    @Published var alarmTime: Date = (UserDefaults.standard.object(forKey: "pulso.alarm.time") as? Date)
-        ?? Calendar.current.date(bySettingHour: 7, minute: 0, second: 0, of: Date()) ?? Date()
+    // Features
+    @Published var settings: FeatureSettings
+    @Published var alarms: [AlarmConfig]
+    @Published var alertPrefs: AlertPreferences
+    /// Human-readable state of tonight's alarm ("Vigilando sueño ligero…", "Sonando", …).
+    @Published var alarmStatus: String?
+    @Published var alarmRinging = false
+    @Published var intervalStatus: (step: String, remaining: Int, next: String?)?
+    @Published var broadcastStatus = "Apagado"
+    @Published var ecgRecordings: [ECGRecording] = []
+    @Published var ecgSession: ECGSessionBuilder?
+    @Published var ecgProgress: Double = 0
+    @Published var importStatus: String?
+    @Published var breathingGuideActive = false
 
     let db: PulsoDatabase
     let strap = StrapManager()
     let health = HealthExporter()
-    private let analysisQueue = DispatchQueue(label: "pulso.analysis", qos: .utility)
-    private lazy var engine = DayEngine(db: db)
+    let strava = StravaService()
+    let broadcaster = HRBroadcaster()
+    let alarmBackup = AlarmBackup()
+    let voice = VoiceCoach()
+    let analysisQueue = DispatchQueue(label: "pulso.analysis", qos: .utility)
+    lazy var engine = DayEngine(db: db)
+
+    // Runtime (not published)
+    var wakeSession: WakeSession?
+    var intervalRunner: IntervalRunner?
+    var hapticQueue: [(at: Date, loops: UInt8)] = []
+    var ticker: Timer?
+    var mgDecoder = MGECGDecoder()
+    var lastAlertEvaluation: Date?
+    var lastImport: Date?
+    var lastActivityUpdate: Date?
+    var ecgSimulatedSamples: [Float]?
+    var ecgSimulatedStart: Date?
+    @Published var lastFinishedECG: Int64?
 
     init() {
+        AppModel.applyPendingRestore()
         let path = (try? PulsoDatabase.defaultPath()) ?? NSTemporaryDirectory() + "pulso.sqlite"
         do {
             db = try PulsoDatabase(path: path)
@@ -72,11 +112,26 @@ final class AppModel: ObservableObject {
             db = try! PulsoDatabase(path: NSTemporaryDirectory() + "pulso-fallback.sqlite")
         }
         profile = db.profile
+        settings = db.get(FeatureSettings.self, for: "settings") ?? FeatureSettings()
+        alarms = db.get([AlarmConfig].self, for: "alarms") ?? []
+        alertPrefs = db.get(AlertPreferences.self, for: "alertPrefs") ?? AlertPreferences()
         lastSync = db.get(Date.self, for: "lastSync")
         strap.delegate = self
         let database = db
         strap.persist = { samples in try database.insert(samples) }
+        migrateLegacyAlarm()
         reload()
+        startTicker()
+        NotificationService.shared.setup()
+        NotificationService.shared.onAction = { [weak self] action, category, id in
+            self?.handleNotificationAction(action, category: category, id: id)
+        }
+        broadcaster.onState = { [weak self] s in self?.broadcastStatus = s }
+        if settings.hrBroadcast {
+            broadcaster.start()
+            setLive(true, client: "broadcast")
+        }
+        ecgRecordings = (try? db.ecgRecordings(withSamples: false)) ?? []
     }
 
     var hasOnboarded: Bool {
@@ -106,6 +161,32 @@ final class AppModel: ObservableObject {
         return HeartRateModel(restingHR: rhr, maxHR: maxHR)
     }
 
+    /// Illness / vital-signs check of the selected day against the days before it.
+    func healthAssessment(for day: DaySummary) -> HealthMonitor.Assessment {
+        HealthMonitor.assess(day, history: days.filter { $0.day < day.day })
+    }
+
+    /// Strain target and advice for the selected day.
+    func coachAdvice(for day: DaySummary) -> DailyCoach.Advice {
+        let load = trainingLoad.filter { $0.day <= day.day }
+        return DailyCoach.advice(recovery: day.recovery, load: load, health: healthAssessment(for: day),
+                                 sleepDebtMinutes: day.sleepDebtMinutes)
+    }
+
+    /// Tonight's bedtime plan for the next wake time (alarm, else the usual wake time).
+    var tonightPlan: SleepPlanner.Plan? {
+        guard let wake = nextWakeDate else { return nil }
+        let need = SleepPlanner.tonightNeed(profile: profile, today: today, recent: days)
+        return SleepPlanner.plan(wake: wake, needMinutes: need, recent: days)
+    }
+
+    var nextWakeDate: Date? {
+        if let a = AlarmPlanner.next(alarms, after: Date()) { return a.latest }
+        guard let m = SleepPlanner.typicalWakeMinutes(days) else { return nil }
+        return Calendar.current.nextDate(after: Date(), matching: DateComponents(hour: Int(m) / 60, minute: Int(m) % 60),
+                                         matchingPolicy: .nextTime)
+    }
+
     func shiftSelectedDay(_ delta: Int) {
         let next = DayKey.shift(selectedDay, days: delta)
         guard next <= DayKey.string(Date()) else { return }
@@ -120,8 +201,10 @@ final class AppModel: ObservableObject {
             days = try db.days(from: from, to: "9999-12-31")
             let journal = try db.allJournal()
             insights = Insights.compute(journal: journal, days: days)
+            trainingLoad = TrainingLoad.series(days, through: DayKey.string(Date()))
             if rawSampleCount == 0, (try? db.hasSamples()) == true { rawSampleCount = 1 }
             refreshSampleCount()
+            updateWidget()
         } catch {
             errorMessage = "No se pudieron leer los datos: \(error)"
         }
@@ -154,6 +237,15 @@ final class AppModel: ObservableObject {
 
     func samples(from: Date, to: Date) -> [Sample] {
         (try? db.samples(from: Int(from.timeIntervalSince1970), to: Int(to.timeIntervalSince1970))) ?? []
+    }
+
+    /// Markers (double tap) and laps of a day.
+    func markers(for day: DaySummary) -> [StoredEvent] {
+        guard let a = day.cycleStart else { return [] }
+        let b = day.cycleEnd ?? Int(Date().timeIntervalSince1970)
+        let m = (try? db.events(kind: EventKind.marker, since: a)) ?? []
+        let l = (try? db.events(kind: EventKind.lap, since: a)) ?? []
+        return (m + l).filter { $0.ts < b }.sorted { $0.ts < $1.ts }
     }
 
     // MARK: - Analysis
@@ -190,6 +282,7 @@ final class AppModel: ObservableObject {
                 if let message { self.errorMessage = "Error analizando: \(message)" }
                 self.reload()
                 self.exportToHealthIfEnabled()
+                self.evaluateAlerts(force: true)
                 if let next = self.pendingRecompute {
                     self.pendingRecompute = nil
                     self.recompute(fromDay: next)
@@ -206,9 +299,14 @@ final class AppModel: ObservableObject {
     func syncNow() { strap.sync(force: true) }
     func buzz() { strap.buzz() }
 
-    func setLive(_ on: Bool) {
-        strap.setLive(on)
-        if !on && liveWorkout == nil {
+    /// Screens that want the live stream (live view, workout, alarm window, breathing, broadcast).
+    private var liveClients = Set<String>()
+
+    func setLive(_ on: Bool, client: String = "view") {
+        if on { liveClients.insert(client) } else { liveClients.remove(client) }
+        let wanted = !liveClients.isEmpty || liveWorkout != nil || settings.hrBroadcast
+        strap.setLive(wanted)
+        if !wanted {
             liveHR = nil
         }
     }
@@ -222,26 +320,67 @@ final class AppModel: ObservableObject {
         if rawSampleCount > 0 && stale {
             recompute(fromDay: DayKey.shift(DayKey.string(Date()), days: -1))
         }
+        refreshAlarmSchedule()
+        evaluateAlerts(force: true)
+        importExternalIfDue()
+    }
+
+    func appEnteredBackground() {
+        refreshAlarmSchedule()
+        updateNightGuard()
+        updateWidget()
+    }
+
+    // MARK: - Ticker
+
+    /// 1 Hz in the foreground. In the background the same work is driven by Bluetooth callbacks.
+    private func startTicker() {
+        ticker?.invalidate()
+        ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.tick() }
+        }
+    }
+
+    /// Advances the alarm, the interval plan and the haptic queue. Safe to call often.
+    func tick() {
+        let now = Date()
+        alarmTick(now: now)
+        intervalTick(now: now)
+        drainHaptics(now: now)
+        ecgTick(now: now)
     }
 
     // MARK: - Live workouts
 
-    func startWorkout(sport: String) {
-        liveWorkout = LiveWorkout(start: Date(), sport: sport)
-        setLive(true)
+    func startWorkout(sport: String, plan: IntervalPlan? = nil) {
+        guard liveWorkout == nil else { return }
+        var w = LiveWorkout(start: Date(), sport: sport)
+        w.planID = plan?.id
+        liveWorkout = w
+        if let plan { intervalRunner = IntervalRunner(plan: plan, start: Int(w.start.timeIntervalSince1970)) }
+        setLive(true, client: "workout")
+        startWorkoutActivity(sport: sport, start: w.start)
     }
 
     func stopWorkout(save: Bool) {
         guard let w = liveWorkout else { return }
         liveWorkout = nil
+        intervalRunner = nil
+        intervalStatus = nil
+        voice.finish()
+        setLive(false, client: "workout")
+        endWorkoutActivity()
         guard save, Date().timeIntervalSince(w.start) >= 60 else { return }
-        let workout = Workout(start: Int(w.start.timeIntervalSince1970), end: Int(Date().timeIntervalSince1970),
+        var workout = Workout(start: Int(w.start.timeIntervalSince1970), end: Int(Date().timeIntervalSince1970),
                               sport: w.sport, source: .live,
                               strain: Strain.score(load: w.load),
                               avgHR: w.hrCount > 0 ? w.hrSum / Double(w.hrCount) : 0,
                               maxHR: Double(w.maxHR), kcal: w.kcal)
+        if let p = w.planID, let plan = IntervalPlan.presets.first(where: { $0.id == p }) { workout.notes = plan.name }
         do {
-            try db.save(workout)
+            workout.id = try db.save(workout)
+            for lap in w.laps { try? db.insertEvent(StoredEvent(ts: lap, kind: EventKind.lap, value: nil)) }
+            afterWorkoutSaved(workout, laps: w.laps)
         } catch {
             errorMessage = "No se pudo guardar el entreno"
         }
@@ -294,7 +433,7 @@ final class AppModel: ObservableObject {
         objectWillChange.send()
     }
 
-    // MARK: - Profile
+    // MARK: - Profile & settings
 
     func saveProfile(_ p: Profile) {
         let needsRecompute = p.birthYear != profile.birthYear || p.sex != profile.sex || p.weightKg != profile.weightKg
@@ -305,37 +444,25 @@ final class AppModel: ObservableObject {
         if p.healthKitEnabled { health.requestAuthorization { _ in } }
     }
 
-    // MARK: - Alarm
-
-    func saveAlarm(enabled: Bool, time: Date) {
-        alarmEnabled = enabled
-        alarmTime = time
-        UserDefaults.standard.set(enabled, forKey: "pulso.alarm.enabled")
-        UserDefaults.standard.set(time, forKey: "pulso.alarm.time")
-        let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: ["pulso.alarm"])
-        guard enabled else {
-            strap.setAlarm(nil)
-            return
-        }
-        let next = nextOccurrence(of: time)
-        strap.setAlarm(next)
-        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
-            guard granted else { return }
-            let content = UNMutableNotificationContent()
-            content.title = "Buenos días"
-            content.body = "Tu despertador de Pulso."
-            content.sound = .default
-            let comps = Calendar.current.dateComponents([.hour, .minute], from: time)
-            let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
-            center.add(UNNotificationRequest(identifier: "pulso.alarm", content: content, trigger: trigger))
+    func saveSettings(_ s: FeatureSettings) {
+        let broadcastChanged = s.hrBroadcast != settings.hrBroadcast
+        settings = s
+        try? db.set(s, for: "settings")
+        if broadcastChanged {
+            if s.hrBroadcast {
+                broadcaster.start()
+            } else {
+                broadcaster.stop()
+            }
+            setLive(s.hrBroadcast, client: "broadcast")
         }
     }
 
-    func nextOccurrence(of time: Date) -> Date {
-        let cal = Calendar.current
-        let c = cal.dateComponents([.hour, .minute], from: time)
-        return cal.nextDate(after: Date(), matching: c, matchingPolicy: .nextTime) ?? time
+    func saveAlertPrefs(_ p: AlertPreferences) {
+        alertPrefs = p
+        try? db.set(p, for: "alertPrefs")
+        NotificationService.shared.requestAuthorization()
+        evaluateAlerts(force: true)
     }
 
     // MARK: - Import / export
@@ -386,6 +513,11 @@ final class AppModel: ObservableObject {
         try? db.eraseAll()
         profile = db.profile
         lastSync = nil
+        alarms = []
+        settings = FeatureSettings()
+        alertPrefs = AlertPreferences()
+        ecgRecordings = []
+        refreshAlarmSchedule()
         reload()
     }
 
@@ -410,12 +542,18 @@ final class AppModel: ObservableObject {
         }
     }
 
-    fileprivate func appendLog(_ line: String) {
+    func appendLog(_ line: String) {
         let f = DateFormatter()
         f.dateFormat = "HH:mm:ss"
         log.append("\(f.string(from: Date()))  \(line)")
         if log.count > 300 { log.removeFirst(log.count - 300) }
     }
+}
+
+/// Kinds used in the `events` table for app-generated events.
+enum EventKind {
+    static let marker = 1000
+    static let lap = 1001
 }
 
 // MARK: - StrapManagerDelegate
@@ -425,9 +563,10 @@ extension AppModel: StrapManagerDelegate {
         MainActor.assumeIsolated {
             let wasReady = self.strapState.isConnected
             self.strapState = state
-            // The strap's own alarm is one-shot: re-arm it for the next morning on every new session.
-            if state == .ready && !wasReady && self.alarmEnabled {
-                self.strap.setAlarm(self.nextOccurrence(of: self.alarmTime))
+            if state == .ready && !wasReady {
+                // The strap's own alarm is one-shot: re-arm it for the next alarm on every new session.
+                self.armStrapAlarm()
+                self.updateNightGuard()
             }
         }
     }
@@ -440,6 +579,7 @@ extension AppModel: StrapManagerDelegate {
         MainActor.assumeIsolated {
             self.battery = percent
             if let charging { self.charging = charging }
+            self.updateWidget()
         }
     }
 
@@ -452,11 +592,22 @@ extension AppModel: StrapManagerDelegate {
             switch event.kind {
             case .chargingOn: self.charging = true
             case .chargingOff: self.charging = false
-            case .wristOff: self.appendLog("Pulsera fuera de la muñeca")
-            case .wristOn: self.appendLog("Pulsera en la muñeca")
-            case .doubleTap: self.appendLog("Doble toque en la pulsera")
+            case .wristOff:
+                self.appendLog("Pulsera fuera de la muñeca")
+                self.offWristSince = Date()
+                self.evaluateAlerts(force: true)
+            case .wristOn:
+                self.appendLog("Pulsera en la muñeca")
+                self.offWristSince = nil
+                NotificationService.shared.cancelPending(prefix: "offwrist.")
+            case .doubleTap:
+                self.appendLog("Doble toque en la pulsera")
+                self.handleDoubleTap()
+            case .strapAlarmExecuted:
+                self.appendLog("La pulsera ha hecho sonar su alarma")
             default: break
             }
+            self.tick()
         }
     }
 
@@ -464,11 +615,15 @@ extension AppModel: StrapManagerDelegate {
         MainActor.assumeIsolated {
             self.lastSync = Date()
             try? self.db.set(Date(), for: "lastSync")
+            NotificationService.shared.cancelPending(prefix: "stale.")
             self.refreshSampleCount()
+            self.alarmSyncFinished()
             if newRecords > 0 || self.today == nil {
                 let from = firstTs.map { DayKey.shift(DayKey.string(ts: $0), days: -1) }
                     ?? DayKey.shift(DayKey.string(Date()), days: -1)
                 self.recompute(fromDay: from)
+            } else {
+                self.evaluateAlerts(force: false)
             }
         }
     }
@@ -477,7 +632,11 @@ extension AppModel: StrapManagerDelegate {
         MainActor.assumeIsolated { self.appendLog(line) }
     }
 
-    private func handleLive(heartRate: Int, rr: [Int], at date: Date) {
+    nonisolated func strapUnhandledFrame(_ frame: Frame) {
+        DispatchQueue.main.async { self.handleECGFrame(frame) }
+    }
+
+    func handleLive(heartRate: Int, rr: [Int], at date: Date) {
         guard heartRate > 25 && heartRate < 240 else { return }
         liveHR = heartRate
         livePoints.append(LivePoint(date: date, hr: heartRate))
@@ -490,6 +649,7 @@ extension AppModel: StrapManagerDelegate {
         let runs = HRV.clean([Array(liveRR.suffix(60))])
         liveRMSSD = HRV.rmssd(runs, minPairs: 20)
         try? db.insertLive(ts: Int(date.timeIntervalSince1970), hr: heartRate, rr: rr)
+        broadcaster.send(heartRate: heartRate, rr: rr)
 
         if var w = liveWorkout {
             let dt = min(5, lastLiveAt.map { date.timeIntervalSince($0) } ?? 1)
@@ -500,7 +660,10 @@ extension AppModel: StrapManagerDelegate {
             w.hrSum += Double(heartRate)
             w.hrCount += 1
             liveWorkout = w
+            updateWorkoutActivity()
         }
         lastLiveAt = date
+        // Live notifications arrive ~1 Hz and keep the app running in the background: drive timers from them.
+        tick()
     }
 }

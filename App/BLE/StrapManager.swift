@@ -63,6 +63,8 @@ protocol StrapManagerDelegate: AnyObject {
     func strapEvent(_ event: StrapEvent)
     func strapSyncFinished(newRecords: Int, firstTs: Int?, lastTs: Int?)
     func strapLog(_ line: String)
+    /// Raw frame the app didn't route (ECG decoders / Laboratorio). Called on the BLE queue.
+    func strapUnhandledFrame(_ frame: Frame)
 }
 
 /// CoreBluetooth engine for the WHOOP 5.0 / MG.
@@ -106,6 +108,9 @@ final class StrapManager: NSObject {
     /// the same beats; forwarding both would double-count R-R intervals.
     private var lastVendorRealtime: Date?
     private var identity = StrapIdentity()
+
+    /// Raw capture for the Laboratorio screen (accessed on the BLE queue).
+    let recorder = FrameRecorder()
 
     private(set) var state: StrapState = .noStrap {
         didSet {
@@ -170,8 +175,38 @@ final class StrapManager: NSObject {
         }
     }
 
-    func buzz() {
-        queue.async { self.send(self.commands.buzz(loops: 2)) }
+    func buzz(loops: UInt8 = 2) {
+        queue.async { self.send(self.commands.buzz(loops: loops)) }
+    }
+
+    /// Plays specific haptic waveform ids (Laboratorio tester).
+    func haptic(effects: [UInt8], loops: UInt8) {
+        queue.async { self.send(self.commands.haptic(effects: effects, loops: loops)) }
+    }
+
+    func stopHaptics() {
+        queue.async { self.send(self.commands.stopHaptics()) }
+    }
+
+    /// Starts / stops recording raw frames.
+    func setCapture(_ on: Bool, all: Bool) {
+        queue.async {
+            self.recorder.isRecording = on
+            self.recorder.recordAll = all
+        }
+    }
+
+    /// Text dump of the capture and the per-type counters.
+    func exportCapture(_ done: @escaping (String, [UInt8: Int]) -> Void) {
+        queue.async {
+            let text = self.recorder.export()
+            let counts = self.recorder.typeCounts
+            DispatchQueue.main.async { done(text, counts) }
+        }
+    }
+
+    func clearCapture() {
+        queue.async { self.recorder.clear() }
     }
 
     /// Arms the strap's own vibrating alarm (experimental on 5.0 firmware; the app also schedules a
@@ -399,9 +434,16 @@ final class StrapManager: NSObject {
 
     // MARK: - Frame routing
 
-    private func route(_ frame: Frame) {
-        guard frame.crcOK else { return }
+    private func route(_ frame: Frame, channel: CBUUID) {
         let message = StrapMessage.decode(frame)
+        var handled = frame.crcOK
+        if case .ignored = message { handled = false }
+        recorder.record(frame, channel: channel.uuidString.prefix(8).lowercased(), handled: handled)
+        guard frame.crcOK else { return }
+        if !handled {
+            delegate?.strapUnhandledFrame(frame)
+            return
+        }
         switch message {
         case .history(let sample):
             if offload != nil {
@@ -639,7 +681,7 @@ extension StrapManager: CBPeripheralDelegate {
         default:
             guard let deframer = deframers[characteristic.uuid] else { return }
             for frame in deframer.push(bytes) {
-                route(frame)
+                route(frame, channel: characteristic.uuid)
             }
         }
     }

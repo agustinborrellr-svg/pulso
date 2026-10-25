@@ -95,6 +95,13 @@ enum Fmt {
         return f.string(from: Date(timeIntervalSince1970: TimeInterval(ts)))
     }
 
+    static func clock(_ date: Date?) -> String {
+        guard let date else { return "–" }
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: date)
+    }
+
     static func dayTitle(_ key: String) -> String {
         let today = DayKey.string(Date())
         if key == today { return "Hoy" }

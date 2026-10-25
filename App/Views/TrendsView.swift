@@ -30,6 +30,7 @@ struct TrendsView: View {
                     TrendChart(title: "VFC", unit: "ms", days: window, color: Theme.hrv, style: .line, value: { $0.hrv })
                     TrendChart(title: "FC en reposo", unit: "lpm", days: window, color: Theme.red, style: .line, value: { $0.rhr })
                     TrendChart(title: "Esfuerzo", unit: "", days: window, color: Theme.strain, style: .bars, value: { $0.strain }, domain: 0...21)
+                    TrainingLoadCard(points: model.trainingLoad.filter { p in window.first.map { p.day >= $0.day } ?? false })
                     TrendChart(title: "Horas de sueño", unit: "h", days: window, color: Theme.sleep, style: .bars,
                                value: { $0.sleepMinutes.map { $0 / 60 } }, reference: { $0.sleepNeedMinutes.map { $0 / 60 } })
                     TrendChart(title: "Respiración", unit: "rpm", days: window, color: Theme.hrv, style: .line, value: { $0.respRate })
@@ -38,6 +39,8 @@ struct TrendsView: View {
                     TrendChart(title: "Estrés medio", unit: "", days: window, color: Theme.stress, style: .bars, value: { $0.stressAvg },
                                colorFor: { Theme.stressColor($0) }, domain: 0...3)
                     TrendChart(title: "VO₂máx estimado", unit: "", days: window, color: Theme.strain, style: .line, value: { $0.vo2max })
+                    if model.profile.cycleTracking { CycleCard(days: model.days) }
+                    WeeklyCard(days: model.days)
                     insightsCard
                 }
                 .padding(.horizontal, 16)
@@ -189,6 +192,98 @@ struct TrendChart: View {
             base.chartYScale(domain: domain)
         } else {
             base.chartYScale(domain: .automatic(includesZero: false))
+        }
+    }
+}
+
+/// Acute (7 d) vs chronic (42 d) load and their ratio.
+struct TrainingLoadCard: View {
+    let points: [TrainingLoad.Point]
+
+    var body: some View {
+        if points.count >= 7 {
+            let status = TrainingLoad.status(points)
+            Card {
+                HStack {
+                    SectionTitle(title: "Carga de entrenamiento", subtitle: "Aguda 7 días · crónica 42 días")
+                    Spacer()
+                    if let r = points.last?.acwr {
+                        Text(String(format: "%.2f", r)).font(.title3.bold().monospacedDigit()).foregroundStyle(color(status))
+                    }
+                }
+                Chart {
+                    ForEach(points, id: \.day) { p in
+                        if let d = DayKey.date(p.day) {
+                            LineMark(x: .value("Día", d, unit: .day), y: .value("Carga", p.atl), series: .value("Serie", "Aguda"))
+                                .foregroundStyle(Theme.stress)
+                            LineMark(x: .value("Día", d, unit: .day), y: .value("Carga", p.ctl), series: .value("Serie", "Crónica"))
+                                .foregroundStyle(Theme.strain)
+                        }
+                    }
+                }
+                .chartLegend(.hidden)
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) { _ in
+                        AxisGridLine().foregroundStyle(Color.white.opacity(0.06))
+                        AxisValueLabel(format: .dateTime.day().month(.abbreviated))
+                    }
+                }
+                .frame(height: 130)
+                HStack(spacing: 14) {
+                    Label("Aguda (fatiga)", systemImage: "circle.fill").foregroundStyle(Theme.stress)
+                    Label("Crónica (forma)", systemImage: "circle.fill").foregroundStyle(Theme.strain)
+                }
+                .font(.caption2)
+                Text("\(status.label). \(status.advice)").font(.caption).foregroundStyle(Theme.secondary)
+            }
+        }
+    }
+
+    private func color(_ s: TrainingLoad.Status) -> Color {
+        switch s {
+        case .optimal: return Theme.green
+        case .overreaching: return Theme.yellow
+        case .risk: return Theme.red
+        default: return Theme.secondary
+        }
+    }
+}
+
+/// Estimated cycle phase from the nightly skin temperature (opt-in).
+struct CycleCard: View {
+    let days: [DaySummary]
+
+    var body: some View {
+        let e = CycleTracker.estimate(days)
+        Card {
+            SectionTitle(title: "Ciclo (estimado)", subtitle: "Temperatura de la piel por la noche")
+            Text(e.phase.label).font(.headline).foregroundStyle(.white)
+            if let next = e.nextPeriod {
+                Text("Próximo periodo estimado: \(Fmt.dayTitle(next).lowercased())").font(.subheadline).foregroundStyle(Theme.secondary)
+            }
+            if let avg = e.averageCycleDays {
+                Text("Duración media: \(Int(avg.rounded())) días").font(.caption).foregroundStyle(Theme.secondary)
+            }
+            if e.phase == .luteal {
+                Text("En la fase lútea es normal que suban la FC en reposo y la temperatura y baje algo la VFC.")
+                    .font(.caption).foregroundStyle(Theme.tertiary)
+            }
+            Text("Orientativo. No sirve como método anticonceptivo.").font(.caption2).foregroundStyle(Theme.tertiary)
+        }
+    }
+}
+
+/// This week vs last week.
+struct WeeklyCard: View {
+    let days: [DaySummary]
+
+    var body: some View {
+        let s = WeeklySummary.compute(days, endDay: DayKey.string(Date()))
+        if s.recovery != nil || s.sleepMinutes != nil {
+            Card {
+                SectionTitle(title: "Últimos 7 días", subtitle: "Comparado con los 7 anteriores")
+                Text(s.text.prefix(1).uppercased() + s.text.dropFirst()).font(.subheadline).foregroundStyle(.white)
+            }
         }
     }
 }

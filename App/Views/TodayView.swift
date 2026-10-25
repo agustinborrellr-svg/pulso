@@ -2,6 +2,7 @@ import SwiftUI
 import Charts
 import PulsoStore
 import PulsoAnalytics
+import PulsoFeatures
 
 struct TodayView: View {
     @EnvironmentObject var model: AppModel
@@ -12,12 +13,15 @@ struct TodayView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     DayHeader()
+                    AlarmBanner()
                     if let day = model.selected {
                         rings(day)
+                        CoachCard(day: day)
                         RecoveryBreakdown(day: day)
                         vitals(day)
                         StrainCard(day: day)
                         if let hourly = nonEmptyHourly(day) { StressCard(day: day, hourly: hourly) }
+                        MarkersCard(day: day)
                         JournalCard(day: model.selectedDay)
                     } else if model.days.isEmpty {
                         emptyState
@@ -79,28 +83,12 @@ struct TodayView: View {
                           label: "Sueño", unit: d.sleepPerformance == nil ? "" : "%")
             }
             .frame(maxWidth: .infinity)
-            if let rec = d.recovery {
-                Text(recoveryMessage(rec, strainTarget: strainTarget(rec)))
+            if d.recovery != nil {
+                let advice = model.coachAdvice(for: d)
+                Text("\(advice.headline) Esfuerzo recomendado: \(Int(advice.strainTarget.lowerBound))–\(Int(advice.strainTarget.upperBound)).")
                     .font(.footnote)
                     .foregroundStyle(Theme.secondary)
             }
-        }
-    }
-
-    private func strainTarget(_ recovery: Double) -> ClosedRange<Double> {
-        switch recovery {
-        case 67...: return 14...18
-        case 34..<67: return 10...14
-        default: return 4...10
-        }
-    }
-
-    private func recoveryMessage(_ rec: Double, strainTarget: ClosedRange<Double>) -> String {
-        let target = "Esfuerzo recomendado: \(Int(strainTarget.lowerBound))–\(Int(strainTarget.upperBound))."
-        switch Recovery.band(rec) {
-        case .green: return "Tu cuerpo está listo para rendir. " + target
-        case .yellow: return "Recuperación moderada: mantén un esfuerzo razonable. " + target
-        case .red: return "Prioriza descansar y dormir bien hoy. " + target
         }
     }
 
@@ -350,6 +338,115 @@ struct FlowChips: View {
                     .background(on ? Theme.green : Theme.cardHighlight, in: RoundedRectangle(cornerRadius: 10))
                 }
                 .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+/// Tonight's alarm, and big snooze / stop buttons while it rings.
+struct AlarmBanner: View {
+    @EnvironmentObject var model: AppModel
+
+    var body: some View {
+        if let status = model.alarmStatus {
+            Card(padding: 14) {
+                HStack(spacing: 10) {
+                    Image(systemName: model.alarmRinging ? "alarm.waves.left.and.right.fill" : "alarm")
+                        .font(.title3)
+                        .foregroundStyle(model.alarmRinging ? Theme.yellow : Theme.sleep)
+                        .symbolEffect(.pulse, isActive: model.alarmRinging)
+                    Text(status).font(.footnote).foregroundStyle(.white)
+                    Spacer(minLength: 0)
+                }
+                if model.alarmRinging {
+                    HStack {
+                        Button {
+                            model.alarmSnooze()
+                        } label: {
+                            Label("Posponer", systemImage: "zzz").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        Button {
+                            model.alarmStop()
+                        } label: {
+                            Label("Apagar", systemImage: "stop.fill").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Theme.green)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Coach: strain target, illness warning, training load and tonight's bedtime.
+struct CoachCard: View {
+    @EnvironmentObject var model: AppModel
+    let day: DaySummary
+
+    var body: some View {
+        let advice = model.coachAdvice(for: day)
+        let health = model.healthAssessment(for: day)
+        let isToday = day.day == DayKey.string(Date())
+        let status = TrainingLoad.status(model.trainingLoad.filter { $0.day <= day.day })
+        Card {
+            SectionTitle(title: "Tu plan de hoy",
+                         subtitle: "Esfuerzo objetivo \(Int(advice.strainTarget.lowerBound))–\(Int(advice.strainTarget.upperBound))")
+            if health.level != .normal {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "thermometer.medium")
+                        .foregroundStyle(health.level == .alert ? Theme.red : Theme.yellow)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(health.title).font(.subheadline.bold()).foregroundStyle(.white)
+                        Text(health.message).font(.caption).foregroundStyle(Theme.secondary)
+                    }
+                }
+            }
+            ForEach(advice.notes, id: \.self) { note in
+                Label(note, systemImage: "lightbulb").font(.caption).foregroundStyle(Theme.secondary)
+            }
+            HStack(spacing: 10) {
+                Image(systemName: "chart.line.uptrend.xyaxis").foregroundStyle(Theme.strain)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Carga: \(status.label)").font(.subheadline).foregroundStyle(.white)
+                    Text(status.advice).font(.caption).foregroundStyle(Theme.secondary)
+                }
+            }
+            if isToday, let plan = model.tonightPlan {
+                Divider().overlay(Color.white.opacity(0.1))
+                HStack(spacing: 10) {
+                    Image(systemName: "bed.double.fill").foregroundStyle(Theme.sleep)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Acuéstate a las \(Fmt.clock(plan.bedtime))").font(.subheadline.bold()).foregroundStyle(.white)
+                        Text("Necesitas \(Fmt.hm(plan.needMinutes)) para despertar a las \(Fmt.clock(plan.wake)). Última cafeína: \(Fmt.clock(plan.caffeineCutoff)).")
+                            .font(.caption).foregroundStyle(Theme.secondary)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Moments saved with a double tap on the strap, and laps.
+struct MarkersCard: View {
+    @EnvironmentObject var model: AppModel
+    let day: DaySummary
+
+    var body: some View {
+        let list = model.markers(for: day)
+        if !list.isEmpty {
+            Card {
+                SectionTitle(title: "Marcas", subtitle: "Doble toque en la pulsera")
+                ForEach(list, id: \.ts) { m in
+                    HStack {
+                        Image(systemName: m.kind == EventKind.lap ? "flag.checkered" : "mappin")
+                            .foregroundStyle(m.kind == EventKind.lap ? Theme.strain : Theme.yellow)
+                        Text(m.kind == EventKind.lap ? "Vuelta" : "Marca").font(.subheadline).foregroundStyle(.white)
+                        Spacer()
+                        Text(Fmt.time(m.ts)).font(.subheadline.monospacedDigit()).foregroundStyle(Theme.secondary)
+                    }
+                }
             }
         }
     }

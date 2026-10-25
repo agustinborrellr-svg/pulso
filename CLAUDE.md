@@ -31,16 +31,22 @@ Pulso.xcodeproj         generado con XcodeGen desde project.yml (no editar a man
 docs/PROTOCOLO.md       referencia del protocolo BLE de la WHOOP 5.0
 ```
 
-## Estado
+## Estado (2026-10-25)
 
-- Los 24 tests del núcleo pasan, incluidas tramas **reales** de una WHOOP 5.0 y una semana sintética
-  de punta a punta. Se ejecutaron en Linux con Swift 5.10.
-- La app iOS se ha verificado en tipos contra imitaciones de los frameworks de Apple, pero **nunca se
-  ha compilado con Xcode real ni probado en un iPhone**. La primera compilación en GitHub Actions
-  puede dar errores de API: corrígelos.
-- El código **nunca se ha subido** a GitHub. Desde la nube el proxy lo bloqueaba.
+- Versión 1.1 en marcha: despertador inteligente, avisos, Strava, Apple Salud bidireccional, pulsómetro
+  para otras apps, intervalos con vibración y voz, carga de entrenamiento, aviso de enfermedad, ciclo,
+  widgets, Live Activity, Siri/Atajos, copia de seguridad, laboratorio y ECG preparado para la MG.
+- Núcleo: 75 tests en verde con Swift 6.2 en Linux (WSL Ubuntu 24.04 en el PC de Gus:
+  `wsl -d Ubuntu-24.04 -u root -- bash -c "cd /mnt/c/Users/agust/Pulso/Packages/PulsoKit && swift test --scratch-path /root/pk-build"`).
+  FIT validado con `fitdecode`, TCX con un parser XML, PDF del ECG renderizado y revisado.
+- Toda la lógica nueva vive en PulsoKit (probada). La capa iOS (App/, Widgets/) solo orquesta y
+  pinta; se compila en GitHub Actions (macOS) y la primera pasada puede tener errores de API.
+- Gus se va a comprar **otra pulsera para el piloto** (miedo a que le baneen la cuenta de WHOOP con
+  la principal). No le pidas emparejar su pulsera principal.
+- `Pulso.xcodeproj` se regenera en CI con XcodeGen (artefacto `xcodeproj`); tras un build verde,
+  bájalo con `gh run download -n xcodeproj` y súbelo al repo para que abra directo en Xcode.
 
-## Tu primera tarea: subir, compilar y dejarlo verde
+## Compilar y dejarlo verde
 
 1. Comprueba que hay Git (`git --version`). Si no hay historial (`git log` falla): `git init -b main`, `git add -A` y un commit.
 2. `git remote add origin https://github.com/agustinborrellr-svg/pulso.git` (o `set-url` si ya existe).
@@ -54,9 +60,7 @@ docs/PROTOCOLO.md       referencia del protocolo BLE de la WHOOP 5.0
    No toques la lógica de protocolo sin motivo; los errores esperables son de firmas de API de
    SwiftUI, Charts o HealthKit, o de concurrencia con el compilador Swift 6 de Xcode 16. El proyecto
    está en modo Swift 5 con `SWIFT_STRICT_CONCURRENCY: minimal`.
-6. Si cambias la lista de archivos de `App/`, regenera el proyecto: `xcodegen generate` (necesita
-   macOS). Alternativa: añade al workflow un paso `brew install xcodegen && xcodegen generate` antes
-   de compilar.
+6. El workflow ya ejecuta `xcodegen generate` antes de compilar: no edites el `.pbxproj` a mano.
 7. Cuando esté verde, `Pulso.ipa` queda en **Releases → ultima**. Dile a Gus que lo instale con Sideloadly (pasos abajo).
 
 Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. No lances compilaciones a lo loco.

@@ -4,7 +4,7 @@ import BackgroundTasks
 
 @main
 struct PulsoApp: App {
-    @StateObject private var model = AppModel()
+    @StateObject private var model = AppModel.shared
     @Environment(\.scenePhase) private var scenePhase
 
     static let refreshTaskID = "es.gusborrell.pulso.refresh"
@@ -25,6 +25,7 @@ struct PulsoApp: App {
                     case .active:
                         model.appBecameActive()
                     case .background:
+                        model.appEnteredBackground()
                         PulsoApp.scheduleRefresh()
                     default:
                         break
@@ -93,6 +94,9 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .pulsoBackgroundRefresh)) { _ in
             model.connect()
             model.syncNow()
+            model.refreshAlarmSchedule()
+            model.evaluateAlerts(force: false)
+            model.importExternalIfDue()
         }
         .alert("Pulso", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             Button("OK", role: .cancel) { model.errorMessage = nil }

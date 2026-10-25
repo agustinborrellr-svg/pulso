@@ -27,12 +27,29 @@
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Pulso se conecta por Bluetooth a tu pulsera WHOOP para descargar tus datos de frecuencia cardiaca, sueño y actividad.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Pulso puede leer datos de Salud para complementar tus métricas.</string>
+	<string>Pulso lee los entrenos de otras apps (Garmin, Strava, Nike…) y los ECG del Apple Watch para sumarlos a tu historial.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Pulso guarda en Salud tu frecuencia cardiaca, VFC, respiración, SpO₂ y fases de sueño medidas por tu pulsera.</string>
+	<string>Pulso guarda en Salud tu frecuencia cardiaca, VFC, respiración, SpO₂, fases de sueño y entrenos medidos por tu pulsera.</string>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>Pulso usa una alarma del iPhone como respaldo por si la vibración de la pulsera no te despierta.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>es.gusborrell.pulso</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>pulso</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
+		<string>audio</string>
 		<string>fetch</string>
 	</array>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>

@@ -2,15 +2,17 @@ import SwiftUI
 import UniformTypeIdentifiers
 import PulsoStore
 import PulsoAnalytics
+import PulsoFeatures
+import PulsoIntegrations
 
 struct MoreView: View {
     @EnvironmentObject var model: AppModel
     @State private var importing = false
+    @State private var restoring = false
     @State private var exportURLs: [URL] = []
+    @State private var backupURL: URL?
     @State private var confirmErase = false
     @State private var confirmForget = false
-    @State private var alarmOn = false
-    @State private var alarmTime = Date()
 
     var body: some View {
         NavigationStack {
@@ -29,36 +31,78 @@ struct MoreView: View {
                     }
                 }
                 Section {
-                    Toggle(isOn: $alarmOn) { Label("Despertador por vibración", systemImage: "alarm") }
-                    if alarmOn {
-                        DatePicker("Hora", selection: $alarmTime, displayedComponents: .hourAndMinute)
+                    NavigationLink {
+                        AlarmsView()
+                    } label: {
+                        LabeledContent {
+                            Text(model.nextAlarm.map { Fmt.clock($0.latest) } ?? "Ninguna")
+                        } label: {
+                            Label("Despertador", systemImage: "alarm")
+                        }
                     }
-                } header: {
-                    Text("Despertador")
-                } footer: {
-                    Text("La pulsera vibra a la hora indicada (función experimental en 5.0) y el iPhone te avisa también como respaldo.")
-                }
-                .onChange(of: alarmOn) { _, v in model.saveAlarm(enabled: v, time: alarmTime) }
-                .onChange(of: alarmTime) { _, t in if alarmOn { model.saveAlarm(enabled: true, time: t) } }
-
-                Section {
-                    Toggle(isOn: Binding(get: { model.profile.healthKitEnabled }, set: { v in
-                        var p = model.profile
-                        p.healthKitEnabled = v
-                        model.saveProfile(p)
+                    NavigationLink {
+                        NotificationsView()
+                    } label: {
+                        Label("Avisos", systemImage: "bell.badge")
+                    }
+                    NavigationLink {
+                        IntegrationsView(strava: model.strava)
+                    } label: {
+                        Label("Conexiones: Salud, Strava y más", systemImage: "point.3.connected.trianglepath.dotted")
+                    }
+                    NavigationLink {
+                        ECGListView()
+                    } label: {
+                        Label("Electrocardiograma", systemImage: "waveform.path.ecg.rectangle")
+                    }
+                    Picker(selection: Binding(get: { model.settings.doubleTap }, set: { v in
+                        var s = model.settings
+                        s.doubleTap = v
+                        model.saveSettings(s)
                     })) {
-                        Label("Enviar a Apple Salud", systemImage: "heart.text.square")
+                        ForEach(DoubleTapAction.allCases, id: \.self) { Text($0.label).tag($0) }
+                    } label: {
+                        Label("Doble toque en la pulsera", systemImage: "hand.tap")
                     }
-                    if model.profile.healthKitEnabled {
-                        Button("Exportar ahora") { model.exportToHealthIfEnabled() }
+                    if model.settings.doubleTap == .toggleWorkout {
+                        Picker(selection: Binding(get: { model.settings.quickSport }, set: { v in
+                            var s = model.settings
+                            s.quickSport = v
+                            model.saveSettings(s)
+                        })) {
+                            ForEach(SportCatalog.names, id: \.self) { Text($0).tag($0) }
+                        } label: {
+                            Label("Deporte del doble toque", systemImage: "figure.run")
+                        }
                     }
                 } header: {
-                    Text("Apple Salud")
+                    Text("Funciones")
                 } footer: {
-                    Text("FC, FC en reposo, VFC (SDNN), respiración, SpO₂, fases de sueño y energía de entrenos.")
+                    Text("Si suena una alarma, el doble toque la pospone o la apaga.")
                 }
 
                 dataSection
+
+                Section {
+                    Toggle(isOn: Binding(get: { model.settings.labEnabled }, set: { v in
+                        var s = model.settings
+                        s.labEnabled = v
+                        model.saveSettings(s)
+                    })) {
+                        Label("Herramientas de laboratorio", systemImage: "flask")
+                    }
+                    if model.settings.labEnabled {
+                        NavigationLink {
+                            LabView()
+                        } label: {
+                            Label("Laboratorio", systemImage: "testtube.2")
+                        }
+                    }
+                } header: {
+                    Text("Avanzado")
+                } footer: {
+                    Text("Para la pulsera de pruebas: captura de tramas, probador de vibraciones y detalles de conexión.")
+                }
 
                 Section("Información") {
                     NavigationLink {
@@ -74,13 +118,10 @@ struct MoreView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background.ignoresSafeArea())
             .navigationTitle("Más")
-            .onAppear {
-                alarmOn = model.alarmEnabled
-                alarmTime = model.alarmTime
-            }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
                 if case .success(let url) = result { model.importWhoopCSV(from: url) }
             }
+
         }
     }
 
@@ -176,6 +217,25 @@ struct MoreView: View {
                 }
             }
             Button {
+                backupURL = model.makeBackup()
+            } label: {
+                Label("Crear copia de seguridad", systemImage: "externaldrive.badge.plus")
+            }
+            if let url = backupURL {
+                ShareLink(item: url) {
+                    Label("Guardar copia (Archivos, iCloud Drive…)", systemImage: "square.and.arrow.up")
+                }
+            }
+            Button {
+                restoring = true
+            } label: {
+                Label("Restaurar una copia", systemImage: "arrow.counterclockwise")
+            }
+            // Its own importer: SwiftUI only honours one .fileImporter per view.
+            .fileImporter(isPresented: $restoring, allowedContentTypes: [.data, .item]) { result in
+                if case .success(let url) = result { _ = model.stageRestore(from: url) }
+            }
+            Button {
                 model.recompute(fromDay: nil)
             } label: {
                 Label(model.analyzing ? "Analizando… \(Int(model.analysisProgress * 100))%" : "Recalcular todo", systemImage: "wand.and.stars")
@@ -204,7 +264,7 @@ struct MoreView: View {
         } header: {
             Text("Datos")
         } footer: {
-            Text("Todo se guarda solo en tu iPhone. Para importar, exporta tus datos desde la app de WHOOP y elige physiological_cycles.csv: sirve para que tus líneas base estén listas desde el primer día.")
+            Text("Todo se guarda solo en tu iPhone. La copia de seguridad incluye todo (también cada segundo de datos); guárdala en Archivos o iCloud Drive. Para importar de WHOOP, exporta tus datos desde su app y elige physiological_cycles.csv: tus líneas base estarán listas desde el primer día.")
         }
     }
 }
@@ -239,6 +299,13 @@ struct ProfileEditor: View {
                 Text("Zonas cardiacas")
             } footer: {
                 Text("Si no la fijas, se estima con la fórmula de Tanaka (208 − 0,7 × edad) y sube automáticamente si registras un pico mayor.")
+            }
+            Section {
+                Toggle("Estimar el ciclo menstrual", isOn: $profile.cycleTracking)
+            } header: {
+                Text("Ciclo")
+            } footer: {
+                Text("Usa el cambio de temperatura de la piel por la noche para estimar la fase y el próximo periodo. Es orientativo: no sirve como anticonceptivo.")
             }
             Section {
                 Stepper(String(format: "Necesidad base: %.1f h", profile.sleepNeedHours), value: $profile.sleepNeedHours, in: 6...10, step: 0.25)
@@ -355,7 +422,12 @@ struct MethodologyView: View {
             item("Estrés (0–3)", "Ventanas de 5 minutos en reposo y despierto, fuera de entrenos: FC y VFC frente a tu referencia de calma de las últimas 2 semanas.")
             item("Necesidad de sueño", "Tu base (8 h por defecto) + minutos extra por esfuerzo alto + la mitad de la deuda reciente − siestas.")
             item("VO₂máx", "Estimación de Uth (15,3 × FC máx / FC reposo). Orientativa.")
-            item("Privacidad", "Sin cuentas, sin servidores, sin analítica. Tus datos no salen del iPhone salvo que los exportes tú.")
+            item("Carga de entrenamiento", "Cada día se convierte el esfuerzo en carga cardiovascular. La carga aguda es la media ponderada de 7 días (fatiga) y la crónica la de 42 días (forma). Su cociente indica si subes carga a buen ritmo (0,8–1,3) o demasiado deprisa (más de 1,5).")
+            item("Posible enfermedad", "Se avisa cuando varias constantes de la noche se salen a la vez de tu línea base: temperatura +0,5 °C o más, FC en reposo +4 lpm o más, respiración +0,8 rpm, VFC muy baja o SpO₂ 2 puntos por debajo. Suele adelantarse 1–2 días a los síntomas.")
+            item("Alarma inteligente", "En la ventana elegida, Pulso descarga cada 2–3 minutos lo último de la pulsera y despierta cuando detecta sueño ligero: movimiento, la pulsera te marca despierto, el pulso sube sobre el mínimo de la noche o se vuelve irregular (REM).")
+            item("Hora de acostarse", "Tu necesidad de esta noche dividida entre tu eficiencia de sueño habitual, más 15 minutos para dormirte, contada hacia atrás desde tu próxima alarma (o tu hora habitual de despertar).")
+            item("ECG", "Detección de latidos tipo Pan-Tompkins, latido medio para medir la calidad de la señal y buscar la onda P, e irregularidad de los intervalos R-R. Ritmo irregular = intervalos caóticos y sin onda P. Es orientativo y no sustituye a un médico.")
+            item("Privacidad", "Sin cuentas, sin servidores, sin analítica. Tus datos no salen del iPhone salvo que los exportes tú o conectes Strava (solo se envían los entrenos).")
         }
         .navigationTitle("Metodología")
     }

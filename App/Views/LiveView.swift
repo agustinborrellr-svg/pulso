@@ -2,13 +2,16 @@ import SwiftUI
 import Charts
 import PulsoStore
 import PulsoAnalytics
+import PulsoFeatures
+import PulsoIntegrations
 
 struct LiveView: View {
     @EnvironmentObject var model: AppModel
     @State private var sport = "Carrera"
+    @State private var planID = ""
     @State private var confirmStop = false
 
-    static let sports = ["Carrera", "Ciclismo", "Fuerza", "Caminata", "Natación", "HIIT", "Yoga", "Pádel", "Tenis", "Fútbol", "Remo", "Senderismo", "Actividad"]
+    static var sports: [String] { SportCatalog.names }
 
     var body: some View {
         NavigationStack {
@@ -92,8 +95,19 @@ struct LiveView: View {
             }
             .pickerStyle(.menu)
             .tint(.white)
+            Picker("Plan", selection: $planID) {
+                Text("Libre").tag("")
+                ForEach(IntervalPlan.presets) { p in Text(p.name).tag(p.id) }
+            }
+            .pickerStyle(.menu)
+            .tint(.white)
+            if let plan = IntervalPlan.presets.first(where: { $0.id == planID }) {
+                Text("\(plan.detail) · \(plan.totalSeconds / 60) min. La pulsera vibra en cada cambio y si te sales de la zona\(model.settings.voiceCues ? ", y una voz te guía" : "").")
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondary)
+            }
             Button {
-                model.startWorkout(sport: sport)
+                model.startWorkout(sport: sport, plan: IntervalPlan.presets.first { $0.id == planID })
             } label: {
                 Label("Empezar", systemImage: "play.fill").frame(maxWidth: .infinity)
             }
@@ -115,12 +129,35 @@ struct LiveView: View {
                             .foregroundStyle(.white)
                     }
                 }
+                if let st = model.intervalStatus {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(st.step).font(.headline).foregroundStyle(Theme.yellow)
+                            Spacer()
+                            Text(Self.duration(TimeInterval(st.remaining))).font(.title2.bold().monospacedDigit()).foregroundStyle(.white)
+                        }
+                        if let next = st.next {
+                            Text("Después: \(next)").font(.caption).foregroundStyle(Theme.secondary)
+                        }
+                    }
+                    .padding(12)
+                    .background(Theme.cardHighlight, in: RoundedRectangle(cornerRadius: 12))
+                }
                 HStack {
                     liveStat("Esfuerzo", Fmt.one(Strain.score(load: w.load)), Theme.strain)
                     liveStat("kcal", Fmt.int(w.kcal), Theme.stress)
                     liveStat("FC media", w.hrCount > 0 ? "\(Int(w.hrSum / Double(w.hrCount)))" : "–", Theme.red)
                     liveStat("FC máx", w.maxHR > 0 ? "\(w.maxHR)" : "–", Theme.red)
                 }
+                if !w.laps.isEmpty {
+                    Text("\(w.laps.count) vuelta\(w.laps.count == 1 ? "" : "s")").font(.caption).foregroundStyle(Theme.secondary)
+                }
+                Button {
+                    model.markLap()
+                } label: {
+                    Label("Vuelta", systemImage: "flag.checkered").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
                 Button(role: .destructive) {
                     confirmStop = true
                 } label: {
@@ -214,9 +251,10 @@ struct BreathingView: View {
         .padding()
         .background(Theme.background.ignoresSafeArea())
         .navigationTitle("Respiración")
+        .onDisappear { model.setLive(false, client: "breathing-view") }
         .onAppear {
             start = Date()
-            model.setLive(true)
+            model.setLive(true, client: "breathing-view")
             Task {
                 try? await Task.sleep(nanoseconds: 20_000_000_000)
                 startRMSSD = model.liveRMSSD
@@ -233,21 +271,10 @@ struct WorkoutDetailView: View {
     @State private var confirmDelete = false
 
     static func icon(_ sport: String) -> String {
-        switch sport {
-        case "Carrera": return "figure.run"
-        case "Ciclismo": return "figure.outdoor.cycle"
-        case "Fuerza": return "figure.strengthtraining.traditional"
-        case "Caminata": return "figure.walk"
-        case "Natación": return "figure.pool.swim"
-        case "HIIT": return "figure.highintensity.intervaltraining"
-        case "Yoga": return "figure.yoga"
-        case "Pádel", "Tenis": return "figure.tennis"
-        case "Fútbol": return "figure.soccer"
-        case "Remo": return "figure.rower"
-        case "Senderismo": return "figure.hiking"
-        default: return "figure.mixed.cardio"
-        }
+        SportCatalog.named(sport).symbol
     }
+
+    @State private var files: [URL] = []
 
     var body: some View {
         ScrollView {
@@ -294,6 +321,48 @@ struct WorkoutDetailView: View {
                             Text(Fmt.hm(workout.zoneMinutes[i])).foregroundStyle(.white)
                         }
                         .font(.subheadline)
+                    }
+                }
+                Card {
+                    SectionTitle(title: "Compartir")
+                    if let app = workout.externalApp {
+                        Label("Registrado con \(app)", systemImage: "app.connected.to.app.below.fill").font(.caption).foregroundStyle(Theme.secondary)
+                    }
+                    if let d = workout.distanceMeters {
+                        Label(String(format: "%.2f km", d / 1000), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                            .font(.caption).foregroundStyle(Theme.secondary)
+                    }
+                    if workout.externalID("strava") != nil {
+                        Label("En Strava", systemImage: "checkmark.circle.fill").font(.subheadline).foregroundStyle(Theme.green)
+                    } else if workout.source != .strava {
+                        Button {
+                            model.uploadToStrava(workout)
+                        } label: {
+                            Label("Subir a Strava", systemImage: "arrow.up.circle")
+                        }
+                        .disabled(!model.strava.connected)
+                    }
+                    if workout.externalID("health") != nil {
+                        Label("En Apple Salud", systemImage: "checkmark.circle.fill").font(.subheadline).foregroundStyle(Theme.green)
+                    } else if workout.source != .health && model.profile.healthKitEnabled {
+                        Button {
+                            model.saveWorkoutToHealth(workout)
+                        } label: {
+                            Label("Guardar en Apple Salud", systemImage: "heart.text.square")
+                        }
+                    }
+                    Button {
+                        files = model.exportWorkoutFiles(workout)
+                    } label: {
+                        Label("Exportar FIT / TCX", systemImage: "doc.badge.arrow.up")
+                    }
+                    if !files.isEmpty {
+                        ShareLink(items: files) {
+                            Label("Compartir \(files.count) archivos", systemImage: "square.and.arrow.up")
+                        }
+                    }
+                    if let status = model.importStatus {
+                        Text(status).font(.caption).foregroundStyle(Theme.secondary)
                     }
                 }
                 Button("Eliminar entreno", role: .destructive) { confirmDelete = true }
