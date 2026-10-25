@@ -6,6 +6,7 @@ import PulsoAnalytics
 struct TrendsView: View {
     @EnvironmentObject var model: AppModel
     @State private var range = 30
+    @State private var mode = 1
 
     private var window: [DaySummary] {
         let from = DayKey.shift(DayKey.string(Date()), days: -(range - 1))
@@ -16,6 +17,14 @@ struct TrendsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    Picker("Vista", selection: $mode) {
+                        Text("Inteligencia").tag(1)
+                        Text("Tendencias").tag(0)
+                    }
+                    .pickerStyle(.segmented)
+                    if mode == 1 {
+                        IntelligenceContent()
+                    } else {
                     Picker("Periodo", selection: $range) {
                         Text("7 días").tag(7)
                         Text("30 días").tag(30)
@@ -42,12 +51,13 @@ struct TrendsView: View {
                     if model.profile.cycleTracking { CycleCard(days: model.days) }
                     WeeklyCard(days: model.days)
                     insightsCard
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
             .background(Theme.background.ignoresSafeArea())
-            .navigationTitle("Tendencias")
+            .navigationTitle(mode == 1 ? "Inteligencia" : "Tendencias")
         }
     }
 

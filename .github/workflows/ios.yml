@@ -172,7 +172,7 @@ jobs:
           ls "$DATA/Documents" || true
           sleep 4
           n=1
-          for S in today sleep trends live more alarms alarmEditor notifications integrations ecg ecgDetail bedtime lab workout onboarding; do
+          for S in today sleep trends live more alarms alarmEditor notifications integrations ecg ecgDetail bedtime lab workout onboarding whatif intelDetail; do
             xcrun simctl terminate "$UDID" $BID || true
             sleep 1
             xcrun simctl launch "$UDID" $BID -PulsoScreenshots YES -PulsoScreen $S

@@ -47,6 +47,8 @@ targets:
         product: PulsoIntegrations
       - package: PulsoKit
         product: PulsoECG
+      - package: PulsoKit
+        product: PulsoIntelligence
       - sdk: CoreBluetooth.framework
       - sdk: HealthKit.framework
     settings:

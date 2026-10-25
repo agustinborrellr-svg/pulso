@@ -3,6 +3,7 @@ import Charts
 import PulsoStore
 import PulsoAnalytics
 import PulsoFeatures
+import PulsoIntelligence
 
 struct TodayView: View {
     @EnvironmentObject var model: AppModel
@@ -408,6 +409,17 @@ struct CoachCard: View {
             }
             ForEach(advice.notes, id: \.self) { note in
                 Label(note, systemImage: "lightbulb").font(.caption).foregroundStyle(Theme.secondary)
+            }
+            if isToday, let f = model.intelligence?.metric("forecast"), f.isAvailable, let v = f.value {
+                HStack(spacing: 10) {
+                    Image(systemName: "sparkles").foregroundStyle(Theme.red)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Mañana, si duermes lo habitual: ~\(Int(v)) %").font(.subheadline).foregroundStyle(.white)
+                        if let i = f.interval {
+                            Text("Entre \(Int(i.lowerBound)) y \(Int(i.upperBound)) %. Simúlalo en Análisis.").font(.caption).foregroundStyle(Theme.secondary)
+                        }
+                    }
+                }
             }
             HStack(spacing: 10) {
                 Image(systemName: "chart.line.uptrend.xyaxis").foregroundStyle(Theme.strain)

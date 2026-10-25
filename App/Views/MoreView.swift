@@ -343,7 +343,7 @@ struct MoreView: View {
         } header: {
             Text("Datos")
         } footer: {
-            Text("La demo genera tres semanas simuladas (noches buenas y malas, entrenos, unos días de «incubar algo») para probar todo sin pulsera. Todo se guarda solo en tu iPhone. La copia de seguridad incluye todo (también cada segundo de datos); guárdala en Archivos o iCloud Drive. Para importar de WHOOP, exporta tus datos desde su app y elige physiological_cycles.csv: tus líneas base estarán listas desde el primer día.")
+            Text("La demo genera cinco semanas simuladas (noches buenas y malas, entrenos, unos días de «incubar algo») para probar todo sin pulsera. Todo se guarda solo en tu iPhone. La copia de seguridad incluye todo (también cada segundo de datos); guárdala en Archivos o iCloud Drive. Para importar de WHOOP, exporta tus datos desde su app y elige physiological_cycles.csv: tus líneas base estarán listas desde el primer día.")
         }
     }
 }

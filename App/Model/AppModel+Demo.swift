@@ -7,7 +7,7 @@ extension AppModel {
     var demoActive: Bool { DemoData.isActive(db) }
 
     /// Fills the app with three weeks of realistic simulated data (no strap needed).
-    func loadDemo(days: Int = 21, completion: (() -> Void)? = nil) {
+    func loadDemo(days: Int = 35, completion: (() -> Void)? = nil) {
         guard !analyzing else { return }
         analyzing = true
         analysisProgress = 0
@@ -38,6 +38,7 @@ extension AppModel {
                 self.ecgRecordings = (try? self.db.ecgRecordings(withSamples: false)) ?? []
                 self.selectedDay = DayKey.string(Date())
                 self.reload()
+                self.refreshIntelligence()
                 completion?()
             }
         }

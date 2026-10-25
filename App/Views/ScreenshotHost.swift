@@ -1,11 +1,12 @@
 import SwiftUI
 import PulsoStore
 import PulsoFeatures
+import PulsoIntelligence
 
 /// Screens the CI screenshot run can open with `-PulsoScreen <name>`.
 enum ShotScreen: String, Identifiable {
     case today, sleep, trends, live, more
-    case alarms, alarmEditor, notifications, integrations, ecg, ecgDetail, bedtime, lab, workout, onboarding
+    case alarms, alarmEditor, notifications, integrations, ecg, ecgDetail, bedtime, lab, workout, onboarding, whatif, intelDetail
 
     var id: String { rawValue }
 
@@ -44,7 +45,7 @@ extension AppModel {
             reload()
             finish()
         } else {
-            loadDemo(days: 21) { finish() }
+            loadDemo(days: 35) { finish() }
         }
     }
 
@@ -88,6 +89,9 @@ struct ShotDestination: View {
                         Text("Sin entrenos")
                     }
                 case .onboarding: OnboardingView {}
+                case .whatif: WhatIfView()
+                case .intelDetail:
+                    if let m = model.intelligence?.metric("forecast") { MetricDetailView(metric: m) } else { Text("Calculando…") }
                 default: EmptyView()
                 }
             }

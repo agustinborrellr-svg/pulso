@@ -8,6 +8,7 @@ import PulsoAnalytics
 import PulsoFeatures
 import PulsoIntegrations
 import PulsoECG
+import PulsoIntelligence
 
 struct LivePoint: Identifiable, Equatable {
     let id = UUID()
@@ -78,6 +79,8 @@ final class AppModel: ObservableObject {
     @Published var ecgProgress: Double = 0
     @Published var importStatus: String?
     @Published var breathingGuideActive = false
+    /// Derived metrics, patterns and forecast (recomputed after each analysis).
+    @Published var intelligence: IntelligenceReport?
     /// Straps found by the last scan (nothing connects until one is chosen).
     @Published var discoveredStraps: [DiscoveredStrap] = []
 
@@ -134,6 +137,7 @@ final class AppModel: ObservableObject {
             setLive(true, client: "broadcast")
         }
         ecgRecordings = (try? db.ecgRecordings(withSamples: false)) ?? []
+        refreshIntelligence()
     }
 
     var hasOnboarded: Bool {
@@ -283,6 +287,7 @@ final class AppModel: ObservableObject {
                 self.analyzing = false
                 if let message { self.errorMessage = "Error analizando: \(message)" }
                 self.reload()
+                self.refreshIntelligence()
                 self.exportToHealthIfEnabled()
                 self.evaluateAlerts(force: true)
                 if let next = self.pendingRecompute {

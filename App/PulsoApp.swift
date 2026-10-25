@@ -74,7 +74,7 @@ struct RootView: View {
                 .tabItem { Label("Sueño", systemImage: "moon.zzz") }
                 .tag(1)
             TrendsView()
-                .tabItem { Label("Tendencias", systemImage: "chart.xyaxis.line") }
+                .tabItem { Label("Análisis", systemImage: "brain.head.profile") }
                 .tag(2)
             LiveView()
                 .tabItem { Label("En vivo", systemImage: "heart.text.square") }

@@ -323,6 +323,7 @@ struct WorkoutDetailView: View {
                         .font(.subheadline)
                     }
                 }
+                WorkoutCardiacCard(workout: workout)
                 Card {
                     SectionTitle(title: "Compartir")
                     if let app = workout.externalApp {
