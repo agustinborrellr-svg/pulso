@@ -3,43 +3,115 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		00F995BBEA85C71B9FA89358 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11087717362B58950669102A /* AppModel.swift */; };
+		06380F20CB314170E9DAB681 /* AppModel+Alerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D97BD4A2354F19625BDB43B /* AppModel+Alerts.swift */; };
+		0707BDEF53D685EFA8648B60 /* PulsoECG in Frameworks */ = {isa = PBXBuildFile; productRef = 185C8E5A28A7E4926B549F45 /* PulsoECG */; };
+		0F3C3F668476BA605BBF1B50 /* VoiceCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 922F90409F3846A9F3965840 /* VoiceCoach.swift */; };
 		12B4AD8F077B841DEC5540AA /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7123F2EF70734D23961A4F2C /* TodayView.swift */; };
+		1635FD0137264C861147A992 /* AppModel+Workouts.swift in Sources */ = {isa = PBXBuildFile; fileRef = E939C87F93579B4FB3C7B491 /* AppModel+Workouts.swift */; };
+		168B5D31F86DE726CB4DC749 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB7ACF6CD2CDD29DC59CA80 /* Keychain.swift */; };
+		1E3FAE6A1EA4A54D2681F14C /* AppModel+ECG.swift in Sources */ = {isa = PBXBuildFile; fileRef = 759E973D6AB94AEE832D905E /* AppModel+ECG.swift */; };
 		218166DCE7B27B0A2DD4BF15 /* HealthExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049D6A771E25C447562AEB4C /* HealthExporter.swift */; };
 		2902879EC6B28E9A313EB1A7 /* PulsoAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = BC439BBC127CE8F349C0E7BA /* PulsoAnalytics */; };
+		378E2EF8B819B2F13C93435F /* PulsoWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 147066976F825EC37E180D8B /* PulsoWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3898325454148FFC9C09DEB8 /* AppModel+Integrations.swift in Sources */ = {isa = PBXBuildFile; fileRef = C503C8997F985D7830590883 /* AppModel+Integrations.swift */; };
+		409D00D09EB3F215AB48191C /* IntegrationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B571906E4B79EDFE8EFB1F3 /* IntegrationsView.swift */; };
+		5B0563BEB7EE31E961B58C58 /* HRBroadcaster.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9A002EB2D84AB65695CF9E /* HRBroadcaster.swift */; };
+		61427AC7E98B199BA7AF8A8D /* ECGView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A64EAE06663BC70D64B2C18E /* ECGView.swift */; };
 		62FD95142A7E085B0EF09FA6 /* PulsoStore in Frameworks */ = {isa = PBXBuildFile; productRef = 43231A16108D8EBC60E48635 /* PulsoStore */; };
+		633AB00BAA23E7FCC48C54E3 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 365C60DF1EDF99A64A3F77F5 /* NotificationService.swift */; };
 		6F195E39758A4453DF420C8B /* PulsoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8F240068FFF7ABA402A8CE /* PulsoApp.swift */; };
+		728820718DDCB5140420B423 /* PulsoWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1A2041694349751380A8956 /* PulsoWidgets.swift */; };
 		72C4FDA58821B05CC57D2BAC /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F5307F0B496F78D6CEE4C3 /* MoreView.swift */; };
 		7534AB1B677AAB47BFF9E7C7 /* LiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 673D2D69F4A2BA0DF7310097 /* LiveView.swift */; };
 		7891AEA7B2BB7A8F1CB34B99 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9837A227D7FF959A2E228C4F /* Theme.swift */; };
+		8083260824C6E4DF1E6A80F1 /* AppModel+Alarms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058E282DF080510D9A019857 /* AppModel+Alarms.swift */; };
 		8110FAF9E2330C591FEE29DF /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 161B85AAB6D9A641FEAD08D1 /* HealthKit.framework */; };
+		8BA0AB154FC2582FB1B31783 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2392A2F04BF40C64240F84A4 /* WidgetKit.framework */; };
+		8DBE1C6BB50DC3274C07E853 /* PulsoFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = 7C50D970881B2336E0D252C3 /* PulsoFeatures */; };
 		9A67114F66AB01B5E7C44392 /* SleepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB407F8648481A39B5E40EF5 /* SleepView.swift */; };
 		A0C504DC34A0BC013711B01F /* StrapManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF38BA3BF430C3D8648D340B /* StrapManager.swift */; };
 		A5A092E7EF1F7B04D2637CD7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1E7C1A9FFD218203A2C9FCC /* Assets.xcassets */; };
+		A97CA0EA67BAA203FDB808ED /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3898427913C7120A8F0272D8 /* SwiftUI.framework */; };
+		AB661223A19D4FFADEE983B8 /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BAA35F53258C2512C5C5A25 /* NotificationsView.swift */; };
 		AF3072DF908ED3B41F3A1610 /* TrendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913CBA0C9CE5BBEDDB8EAF0D /* TrendsView.swift */; };
+		B0894DB123E4C4E900C1C312 /* PulsoIntegrations in Frameworks */ = {isa = PBXBuildFile; productRef = F27CCBA593CCFC24B47F1F0B /* PulsoIntegrations */; };
+		B22EA2E3DFFA78E36B248934 /* AlarmsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CF0170FEA524F8ADCD58BC9 /* AlarmsView.swift */; };
+		B403711C24898DF698088AB4 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E5384FA2761D1942BA03E99 /* SharedModels.swift */; };
+		B9F8E0400D91BC45D0890F2B /* StravaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 307D9B110CF3B0638ABB3DBA /* StravaService.swift */; };
+		CABF4FBFA4AC9B0523EE2E93 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E5384FA2761D1942BA03E99 /* SharedModels.swift */; };
+		D24A55204E1ADC4E25064FC9 /* LabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56920E1410B972C2828F9517 /* LabView.swift */; };
+		E3758F568EB87A93FF370950 /* PulsoIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0AC139972E0094CB92A056 /* PulsoIntents.swift */; };
 		F10593404FC9F928B23D4502 /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD0D8A552052C57922C0CD0B /* CoreBluetooth.framework */; };
 		F94AE4647E8E4B7E058EA998 /* WhoopProtocol in Frameworks */ = {isa = PBXBuildFile; productRef = 41AE67655D3A76D964A31976 /* WhoopProtocol */; };
+		FBC1DAF6A25D6FAD52B629B4 /* AlarmBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FF91A8F4F1FF8E1C89FB6C0 /* AlarmBackup.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		80DD8BA6E6B087979D0CB949 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 76D95B2858E9E9604B709626 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0E609EB414DC80A3A122E3E1;
+			remoteInfo = PulsoWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4B2CDE1DF1F2C417F03802F8 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				378E2EF8B819B2F13C93435F /* PulsoWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		049D6A771E25C447562AEB4C /* HealthExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthExporter.swift; sourceTree = "<group>"; };
+		058E282DF080510D9A019857 /* AppModel+Alarms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Alarms.swift"; sourceTree = "<group>"; };
 		11087717362B58950669102A /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		1443BEDDB403CC475550F874 /* Pulso.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Pulso.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		147066976F825EC37E180D8B /* PulsoWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PulsoWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		161B85AAB6D9A641FEAD08D1 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		1BAA35F53258C2512C5C5A25 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
+		1CF0170FEA524F8ADCD58BC9 /* AlarmsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmsView.swift; sourceTree = "<group>"; };
+		2392A2F04BF40C64240F84A4 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		307D9B110CF3B0638ABB3DBA /* StravaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StravaService.swift; sourceTree = "<group>"; };
+		365C60DF1EDF99A64A3F77F5 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		3898427913C7120A8F0272D8 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		56920E1410B972C2828F9517 /* LabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabView.swift; sourceTree = "<group>"; };
+		5E9A002EB2D84AB65695CF9E /* HRBroadcaster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HRBroadcaster.swift; sourceTree = "<group>"; };
 		673D2D69F4A2BA0DF7310097 /* LiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveView.swift; sourceTree = "<group>"; };
+		6E5384FA2761D1942BA03E99 /* SharedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
 		7123F2EF70734D23961A4F2C /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		759E973D6AB94AEE832D905E /* AppModel+ECG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+ECG.swift"; sourceTree = "<group>"; };
+		7B571906E4B79EDFE8EFB1F3 /* IntegrationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationsView.swift; sourceTree = "<group>"; };
+		7FF91A8F4F1FF8E1C89FB6C0 /* AlarmBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmBackup.swift; sourceTree = "<group>"; };
+		8CB7ACF6CD2CDD29DC59CA80 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		913CBA0C9CE5BBEDDB8EAF0D /* TrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsView.swift; sourceTree = "<group>"; };
+		922F90409F3846A9F3965840 /* VoiceCoach.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCoach.swift; sourceTree = "<group>"; };
 		9837A227D7FF959A2E228C4F /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		9D97BD4A2354F19625BDB43B /* AppModel+Alerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Alerts.swift"; sourceTree = "<group>"; };
+		A64EAE06663BC70D64B2C18E /* ECGView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ECGView.swift; sourceTree = "<group>"; };
+		B1A2041694349751380A8956 /* PulsoWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulsoWidgets.swift; sourceTree = "<group>"; };
 		B1E7C1A9FFD218203A2C9FCC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C46DE8E45CB470E5130FE5D6 /* PulsoKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PulsoKit; path = Packages/PulsoKit; sourceTree = SOURCE_ROOT; };
+		C503C8997F985D7830590883 /* AppModel+Integrations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Integrations.swift"; sourceTree = "<group>"; };
 		CB407F8648481A39B5E40EF5 /* SleepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepView.swift; sourceTree = "<group>"; };
 		CD8F240068FFF7ABA402A8CE /* PulsoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulsoApp.swift; sourceTree = "<group>"; };
+		E939C87F93579B4FB3C7B491 /* AppModel+Workouts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Workouts.swift"; sourceTree = "<group>"; };
 		F0F5307F0B496F78D6CEE4C3 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
 		FD0D8A552052C57922C0CD0B /* CoreBluetooth.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreBluetooth.framework; path = System/Library/Frameworks/CoreBluetooth.framework; sourceTree = SDKROOT; };
+		FE0AC139972E0094CB92A056 /* PulsoIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulsoIntents.swift; sourceTree = "<group>"; };
 		FF38BA3BF430C3D8648D340B /* StrapManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrapManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -51,19 +123,41 @@
 				F94AE4647E8E4B7E058EA998 /* WhoopProtocol in Frameworks */,
 				62FD95142A7E085B0EF09FA6 /* PulsoStore in Frameworks */,
 				2902879EC6B28E9A313EB1A7 /* PulsoAnalytics in Frameworks */,
+				8DBE1C6BB50DC3274C07E853 /* PulsoFeatures in Frameworks */,
+				B0894DB123E4C4E900C1C312 /* PulsoIntegrations in Frameworks */,
+				0707BDEF53D685EFA8648B60 /* PulsoECG in Frameworks */,
 				F10593404FC9F928B23D4502 /* CoreBluetooth.framework in Frameworks */,
 				8110FAF9E2330C591FEE29DF /* HealthKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C5DC20BD489E8CDDC35E3E32 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8BA0AB154FC2582FB1B31783 /* WidgetKit.framework in Frameworks */,
+				A97CA0EA67BAA203FDB808ED /* SwiftUI.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		02362A8495BE857707EE39A9 /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				B1A2041694349751380A8956 /* PulsoWidgets.swift */,
+			);
+			path = Widgets;
+			sourceTree = "<group>";
+		};
 		13A5A59CD73DA3313E33C0B7 = {
 			isa = PBXGroup;
 			children = (
 				99A8F2E998A64DBB1EADC178 /* App */,
 				32841D16C30FD4DF09BD9D2B /* Packages */,
+				57BF7B5663AA990F5D92147D /* Shared */,
+				02362A8495BE857707EE39A9 /* Widgets */,
 				36F5E27000A9240D00977BD0 /* Frameworks */,
 				9C4804EBB9E374383A5BB6E3 /* Products */,
 			);
@@ -90,6 +184,8 @@
 			children = (
 				FD0D8A552052C57922C0CD0B /* CoreBluetooth.framework */,
 				161B85AAB6D9A641FEAD08D1 /* HealthKit.framework */,
+				3898427913C7120A8F0272D8 /* SwiftUI.framework */,
+				2392A2F04BF40C64240F84A4 /* WidgetKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -100,6 +196,34 @@
 				049D6A771E25C447562AEB4C /* HealthExporter.swift */,
 			);
 			path = Health;
+			sourceTree = "<group>";
+		};
+		57BF7B5663AA990F5D92147D /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				6E5384FA2761D1942BA03E99 /* SharedModels.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		66833C2EAD5993A5A6DFEB50 /* Intents */ = {
+			isa = PBXGroup;
+			children = (
+				FE0AC139972E0094CB92A056 /* PulsoIntents.swift */,
+			);
+			path = Intents;
+			sourceTree = "<group>";
+		};
+		71A86854946D61A0F65B7A9F /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				7FF91A8F4F1FF8E1C89FB6C0 /* AlarmBackup.swift */,
+				8CB7ACF6CD2CDD29DC59CA80 /* Keychain.swift */,
+				365C60DF1EDF99A64A3F77F5 /* NotificationService.swift */,
+				307D9B110CF3B0638ABB3DBA /* StravaService.swift */,
+				922F90409F3846A9F3965840 /* VoiceCoach.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 		7C54D9C30F29FA1843367647 /* Resources */ = {
@@ -113,8 +237,13 @@
 		8C8E0ADC12008FD5CEB39945 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				1CF0170FEA524F8ADCD58BC9 /* AlarmsView.swift */,
+				A64EAE06663BC70D64B2C18E /* ECGView.swift */,
+				7B571906E4B79EDFE8EFB1F3 /* IntegrationsView.swift */,
+				56920E1410B972C2828F9517 /* LabView.swift */,
 				673D2D69F4A2BA0DF7310097 /* LiveView.swift */,
 				F0F5307F0B496F78D6CEE4C3 /* MoreView.swift */,
+				1BAA35F53258C2512C5C5A25 /* NotificationsView.swift */,
 				CB407F8648481A39B5E40EF5 /* SleepView.swift */,
 				7123F2EF70734D23961A4F2C /* TodayView.swift */,
 				913CBA0C9CE5BBEDDB8EAF0D /* TrendsView.swift */,
@@ -129,8 +258,10 @@
 				BB173469A6F157F82011374F /* BLE */,
 				2D919795CFAA2A5F6048B26F /* Design */,
 				57442AC255022EF5E9C21C87 /* Health */,
+				66833C2EAD5993A5A6DFEB50 /* Intents */,
 				D413710727986EDD62551F69 /* Model */,
 				7C54D9C30F29FA1843367647 /* Resources */,
+				71A86854946D61A0F65B7A9F /* Services */,
 				8C8E0ADC12008FD5CEB39945 /* Views */,
 			);
 			path = App;
@@ -140,6 +271,7 @@
 			isa = PBXGroup;
 			children = (
 				1443BEDDB403CC475550F874 /* Pulso.app */,
+				147066976F825EC37E180D8B /* PulsoWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -147,6 +279,7 @@
 		BB173469A6F157F82011374F /* BLE */ = {
 			isa = PBXGroup;
 			children = (
+				5E9A002EB2D84AB65695CF9E /* HRBroadcaster.swift */,
 				FF38BA3BF430C3D8648D340B /* StrapManager.swift */,
 			);
 			path = BLE;
@@ -156,6 +289,11 @@
 			isa = PBXGroup;
 			children = (
 				11087717362B58950669102A /* AppModel.swift */,
+				058E282DF080510D9A019857 /* AppModel+Alarms.swift */,
+				9D97BD4A2354F19625BDB43B /* AppModel+Alerts.swift */,
+				759E973D6AB94AEE832D905E /* AppModel+ECG.swift */,
+				C503C8997F985D7830590883 /* AppModel+Integrations.swift */,
+				E939C87F93579B4FB3C7B491 /* AppModel+Workouts.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -163,6 +301,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		0E609EB414DC80A3A122E3E1 /* PulsoWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A0113D563F1B5362D4505343 /* Build configuration list for PBXNativeTarget "PulsoWidgets" */;
+			buildPhases = (
+				32E439F8F3B61A81AF5CF2EB /* Sources */,
+				C5DC20BD489E8CDDC35E3E32 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PulsoWidgets;
+			packageProductDependencies = (
+			);
+			productName = PulsoWidgets;
+			productReference = 147066976F825EC37E180D8B /* PulsoWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		B8C516CC1EF620B59BF88948 /* Pulso */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 4CF9A827B14582B22C9B55C6 /* Build configuration list for PBXNativeTarget "Pulso" */;
@@ -170,16 +326,21 @@
 				12BF8D4349CAF1B94AEE62DE /* Sources */,
 				C4F979861050DFD0F5D10F38 /* Resources */,
 				78F3C8E9B87328BCBE2465FD /* Frameworks */,
+				4B2CDE1DF1F2C417F03802F8 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				20EC3523A6A87AA3486BDDF5 /* PBXTargetDependency */,
 			);
 			name = Pulso;
 			packageProductDependencies = (
 				41AE67655D3A76D964A31976 /* WhoopProtocol */,
 				43231A16108D8EBC60E48635 /* PulsoStore */,
 				BC439BBC127CE8F349C0E7BA /* PulsoAnalytics */,
+				7C50D970881B2336E0D252C3 /* PulsoFeatures */,
+				F27CCBA593CCFC24B47F1F0B /* PulsoIntegrations */,
+				185C8E5A28A7E4926B549F45 /* PulsoECG */,
 			);
 			productName = Pulso;
 			productReference = 1443BEDDB403CC475550F874 /* Pulso.app */;
@@ -194,6 +355,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					0E609EB414DC80A3A122E3E1 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
 					B8C516CC1EF620B59BF88948 = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
@@ -201,7 +366,6 @@
 				};
 			};
 			buildConfigurationList = CBB98D37B96C920B95742879 /* Build configuration list for PBXProject "Pulso" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = es;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -209,13 +373,17 @@
 				es,
 			);
 			mainGroup = 13A5A59CD73DA3313E33C0B7;
+			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				8C814A283770C75225B1A239 /* XCLocalSwiftPackageReference "Packages/PulsoKit" */,
 			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 9C4804EBB9E374383A5BB6E3 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				B8C516CC1EF620B59BF88948 /* Pulso */,
+				0E609EB414DC80A3A122E3E1 /* PulsoWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -236,20 +404,55 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FBC1DAF6A25D6FAD52B629B4 /* AlarmBackup.swift in Sources */,
+				B22EA2E3DFFA78E36B248934 /* AlarmsView.swift in Sources */,
+				8083260824C6E4DF1E6A80F1 /* AppModel+Alarms.swift in Sources */,
+				06380F20CB314170E9DAB681 /* AppModel+Alerts.swift in Sources */,
+				1E3FAE6A1EA4A54D2681F14C /* AppModel+ECG.swift in Sources */,
+				3898325454148FFC9C09DEB8 /* AppModel+Integrations.swift in Sources */,
+				1635FD0137264C861147A992 /* AppModel+Workouts.swift in Sources */,
 				00F995BBEA85C71B9FA89358 /* AppModel.swift in Sources */,
+				61427AC7E98B199BA7AF8A8D /* ECGView.swift in Sources */,
+				5B0563BEB7EE31E961B58C58 /* HRBroadcaster.swift in Sources */,
 				218166DCE7B27B0A2DD4BF15 /* HealthExporter.swift in Sources */,
+				409D00D09EB3F215AB48191C /* IntegrationsView.swift in Sources */,
+				168B5D31F86DE726CB4DC749 /* Keychain.swift in Sources */,
+				D24A55204E1ADC4E25064FC9 /* LabView.swift in Sources */,
 				7534AB1B677AAB47BFF9E7C7 /* LiveView.swift in Sources */,
 				72C4FDA58821B05CC57D2BAC /* MoreView.swift in Sources */,
+				633AB00BAA23E7FCC48C54E3 /* NotificationService.swift in Sources */,
+				AB661223A19D4FFADEE983B8 /* NotificationsView.swift in Sources */,
 				6F195E39758A4453DF420C8B /* PulsoApp.swift in Sources */,
+				E3758F568EB87A93FF370950 /* PulsoIntents.swift in Sources */,
+				B403711C24898DF698088AB4 /* SharedModels.swift in Sources */,
 				9A67114F66AB01B5E7C44392 /* SleepView.swift in Sources */,
 				A0C504DC34A0BC013711B01F /* StrapManager.swift in Sources */,
+				B9F8E0400D91BC45D0890F2B /* StravaService.swift in Sources */,
 				7891AEA7B2BB7A8F1CB34B99 /* Theme.swift in Sources */,
 				12B4AD8F077B841DEC5540AA /* TodayView.swift in Sources */,
 				AF3072DF908ED3B41F3A1610 /* TrendsView.swift in Sources */,
+				0F3C3F668476BA605BBF1B50 /* VoiceCoach.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		32E439F8F3B61A81AF5CF2EB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				728820718DDCB5140420B423 /* PulsoWidgets.swift in Sources */,
+				CABF4FBFA4AC9B0523EE2E93 /* SharedModels.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		20EC3523A6A87AA3486BDDF5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0E609EB414DC80A3A122E3E1 /* PulsoWidgets */;
+			targetProxy = 80DD8BA6E6B087979D0CB949 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		55D3AE61F0CE5B068079A44E /* Debug */ = {
@@ -287,7 +490,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -308,7 +511,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -320,6 +523,27 @@
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
+		};
+		702E570E4FDA756BB4FB8E5C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = Widgets/PulsoWidgets.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Widgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = es.gusborrell.pulso.widgets;
+				PRODUCT_NAME = PulsoWidgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
 		};
 		832A94C4C98454FAD893116E /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -379,7 +603,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -394,7 +618,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -405,6 +629,27 @@
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
+		};
+		DBDF9646B1231D2906FD197D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = Widgets/PulsoWidgets.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Widgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = es.gusborrell.pulso.widgets;
+				PRODUCT_NAME = PulsoWidgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
 		};
 		F72A6B6DFB87068E4EAF677B /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -441,6 +686,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		A0113D563F1B5362D4505343 /* Build configuration list for PBXNativeTarget "PulsoWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DBDF9646B1231D2906FD197D /* Debug */,
+				702E570E4FDA756BB4FB8E5C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		CBB98D37B96C920B95742879 /* Build configuration list for PBXProject "Pulso" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -460,6 +714,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		185C8E5A28A7E4926B549F45 /* PulsoECG */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PulsoECG;
+		};
 		41AE67655D3A76D964A31976 /* WhoopProtocol */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = WhoopProtocol;
@@ -468,9 +726,17 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = PulsoStore;
 		};
+		7C50D970881B2336E0D252C3 /* PulsoFeatures */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PulsoFeatures;
+		};
 		BC439BBC127CE8F349C0E7BA /* PulsoAnalytics */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PulsoAnalytics;
+		};
+		F27CCBA593CCFC24B47F1F0B /* PulsoIntegrations */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PulsoIntegrations;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
