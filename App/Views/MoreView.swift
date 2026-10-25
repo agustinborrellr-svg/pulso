@@ -531,7 +531,11 @@ struct OnboardingView: View {
     private var welcome: some View {
         VStack(spacing: 18) {
             Spacer()
-            Image(systemName: "waveform.path.ecg.rectangle.fill").font(.system(size: 72)).foregroundStyle(Theme.green)
+            Image("Logo")
+                .resizable()
+                .frame(width: 120, height: 120)
+                .clipShape(RoundedRectangle(cornerRadius: 27, style: .continuous))
+                .shadow(color: Theme.red.opacity(0.4), radius: 20)
             Text("Pulso").font(.largeTitle.bold())
             Text("Tu WHOOP 5.0, sin la nube. Recuperación, esfuerzo, sueño y estrés calculados en tu iPhone, con cada fórmula a la vista.")
                 .multilineTextAlignment(.center)
