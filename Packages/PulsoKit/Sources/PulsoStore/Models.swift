@@ -294,6 +294,9 @@ public struct DaySummary: Codable, Equatable, Identifiable, Sendable {
     public var calmHR: Double?
     public var calmHRV: Double?
 
+    /// Heart beats above resting while awake, outside workouts and naps (cardiac cost of daily life).
+    public var extraBeats: Double?
+
     // Fitness
     public var vo2max: Double?
     public var wornMinutes: Double = 0

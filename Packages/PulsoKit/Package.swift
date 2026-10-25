@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "PulsoFeatures", targets: ["PulsoFeatures"]),
         .library(name: "PulsoIntegrations", targets: ["PulsoIntegrations"]),
         .library(name: "PulsoECG", targets: ["PulsoECG"]),
+        .library(name: "PulsoIntelligence", targets: ["PulsoIntelligence"]),
     ],
     targets: [
         // On Apple platforms SQLite3 ships with the SDK; on Linux (CI / tests) we link the system lib.
@@ -27,11 +28,13 @@ let package = Package(
         .target(name: "PulsoFeatures", dependencies: ["PulsoAnalytics", "PulsoStore"]),
         .target(name: "PulsoIntegrations", dependencies: ["PulsoStore"]),
         .target(name: "PulsoECG", dependencies: ["PulsoStore", "WhoopProtocol"]),
+        .target(name: "PulsoIntelligence", dependencies: ["PulsoAnalytics", "PulsoStore"]),
         .testTarget(name: "WhoopProtocolTests", dependencies: ["WhoopProtocol"]),
         .testTarget(name: "PulsoStoreTests", dependencies: ["PulsoStore"]),
         .testTarget(name: "PulsoAnalyticsTests", dependencies: ["PulsoAnalytics", "PulsoStore"]),
         .testTarget(name: "PulsoFeaturesTests", dependencies: ["PulsoFeatures", "PulsoAnalytics", "PulsoStore", "WhoopProtocol"]),
         .testTarget(name: "PulsoIntegrationsTests", dependencies: ["PulsoIntegrations", "PulsoStore", "WhoopProtocol"]),
         .testTarget(name: "PulsoECGTests", dependencies: ["PulsoECG", "PulsoStore"]),
+        .testTarget(name: "PulsoIntelligenceTests", dependencies: ["PulsoIntelligence", "PulsoAnalytics", "PulsoStore"]),
     ]
 )

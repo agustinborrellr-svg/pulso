@@ -284,6 +284,17 @@ public final class DayEngine {
         d.contributors = rec.contributors
         d.skinTempDeviation = rec.skinTempDeviation
 
+        // Cardiac cost of daily life: beats above resting while awake, outside workouts and naps.
+        let busy = workoutWindows + naps.map { $0.start...$0.end }
+        var extra = 0.0
+        var counted = 0
+        for e in cycleEpochs where e.worn {
+            guard let hr = e.hr, !busy.contains(where: { $0.contains(e.ts) }) else { continue }
+            extra += max(0, hr - model.restingHR)
+            counted += 1
+        }
+        d.extraBeats = counted >= 120 ? extra.rounded() : nil
+
         // Stress while awake and still, outside workouts and naps, against a two-week calm baseline.
         let excluding = workoutWindows + naps.map { $0.start...$0.end }
         let still = Stress.stillWindows(samples: samples, epochs: cycleEpochs, from: cycleStart, to: d.cycleEnd!,
