@@ -199,7 +199,19 @@ final class StrapManager: NSObject {
         guard active else { return }
         queue.async {
             self.central.stopScan()
-            if self.state == .scanning { self.state = self.hasSavedStrap ? .connecting : .noStrap }
+            if self.state == .scanning { self.restoreStateAfterScan() }
+        }
+    }
+
+    /// After a scan: back to "ready" if still connected, reconnect to the paired strap, or idle.
+    private func restoreStateAfterScan() {
+        if bonded && sessionStarted, peripheral?.state == .connected {
+            state = .ready
+        } else if hasSavedStrap {
+            state = .connecting
+            connectLocked()
+        } else {
+            state = .noStrap
         }
     }
 
@@ -370,8 +382,7 @@ final class StrapManager: NSObject {
         queue.asyncAfter(deadline: .now() + 45) { [weak self] in
             guard let self, self.state == .scanning else { return }
             self.central.stopScan()
-            self.state = self.hasSavedStrap ? .connecting : .noStrap
-            if self.hasSavedStrap { self.connectLocked() }
+            self.restoreStateAfterScan()
         }
     }
 
@@ -747,7 +758,8 @@ extension StrapManager: CBCentralManagerDelegate {
         if wasSyncing { finishOffload() }
         log("Desconectado\(error.map { ": \($0.localizedDescription)" } ?? "")")
         guard hasSavedStrap, self.peripheral?.identifier == peripheral.identifier else {
-            if !hasSavedStrap { state = .noStrap }
+            // A strap being replaced (or forgotten) went away: only idle if nothing else is in progress.
+            if !hasSavedStrap && self.peripheral == nil { state = .noStrap }
             return
         }
         if state != .pairingRefused { state = .connecting }
@@ -794,6 +806,8 @@ extension StrapManager: CBPeripheralDelegate {
                 deframers[c.uuid] = Deframer(family: .gen5)
             }
         }
+        // Standard services discovered after the bond would otherwise never be read / subscribed.
+        if bonded && service.uuid != StrapUUID.service { subscribeStandardChars(peripheral) }
         if service.uuid == StrapUUID.service, let cmd = chars[StrapUUID.cmdWrite] {
             // The confirmed CLIENT_HELLO write is what makes iOS run the (just-works) bond.
             log("Enviando saludo de emparejamiento")

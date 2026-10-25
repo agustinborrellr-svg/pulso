@@ -118,7 +118,8 @@ public enum DemoData {
     /// `progress` goes 0…1 (generation is the first half, analysis the second).
     @discardableResult
     public static func populate(db: PulsoDatabase, days: Int = 21, now: Date = Date(), calendar: Calendar = .current,
-                                seed: UInt64 = 2026, progress: ((Double) -> Void)? = nil) throws -> [DaySummary] {
+                                seed: UInt64 = 2026, keepRawDays: Int? = 4,
+                                progress: ((Double) -> Void)? = nil) throws -> [DaySummary] {
         var rng = RNG(state: seed)
         let plans = plans(days: days, rng: &rng)
         var strap = Strap(rng: RNG(state: seed &+ 1))
@@ -178,7 +179,14 @@ public enum DemoData {
         }
         try db.set(true, for: flagKey)
         let engine = DayEngine(db: db, calendar: calendar)
-        return try engine.recompute(fromDay: nil, now: now, progress: { p in progress?(0.5 + p * 0.5) })
+        let days = try engine.recompute(fromDay: nil, now: now, progress: { p in progress?(0.5 + p * 0.5) })
+        // Keep only the last few days of per-second data (summaries, sleeps and workouts stay): three
+        // million demo rows would otherwise take hundreds of MB on the phone.
+        if let keep = keepRawDays {
+            try db.pruneSamples(olderThan: Int(now.timeIntervalSince1970) - keep * 86400)
+            try db.sql.execute("VACUUM;")
+        }
+        return days
     }
 
     public static func isActive(_ db: PulsoDatabase) -> Bool { db.get(Bool.self, for: flagKey) ?? false }

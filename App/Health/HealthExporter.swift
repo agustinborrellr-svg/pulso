@@ -46,8 +46,12 @@ final class HealthExporter {
         }
     }
 
+    /// Version of the current export: a higher version makes Health replace the sample with the same
+    /// sync identifier (recomputed nights / edited sleep update instead of being ignored).
+    private var exportVersion = 1
+
     private func meta(_ id: String) -> [String: Any] {
-        [HKMetadataKeySyncIdentifier: "pulso.\(id)", HKMetadataKeySyncVersion: 1]
+        [HKMetadataKeySyncIdentifier: "pulso.\(id)", HKMetadataKeySyncVersion: exportVersion]
     }
 
     private func quantity(_ id: HKQuantityTypeIdentifier, _ value: Double, _ unit: HKUnit, at date: Date, key: String) -> HKQuantitySample? {
@@ -58,6 +62,7 @@ final class HealthExporter {
 
     func export(days: [DaySummary], sleeps: [SleepSession], samples: [Sample], workouts: [Workout]) {
         guard isAvailable else { return }
+        exportVersion = Int(Date().timeIntervalSince1970)
         var objects: [HKObject] = []
         let bpm = HKUnit.count().unitDivided(by: .minute())
 

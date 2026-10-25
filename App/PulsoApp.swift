@@ -92,6 +92,12 @@ struct RootView: View {
             showOnboarding = !model.hasOnboarded
             if model.hasOnboarded { model.connect() }
         }
+        .onOpenURL { url in
+            // Fallback for the Strava OAuth redirect if it arrives outside the auth session.
+            if url.scheme == "pulso", url.path.contains("strava") {
+                Task { await model.strava.complete(callback: url) }
+            }
+        }
         .fullScreenCover(item: $shot) { screen in
             ShotDestination(screen: screen).environmentObject(model)
         }

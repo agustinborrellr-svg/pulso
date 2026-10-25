@@ -304,8 +304,16 @@ public final class WakeSession {
         }
     }
 
+    /// After this long past the set time, an alarm that never rang counts as missed (the app was
+    /// asleep): it must not start vibrating hours late.
+    public var missedAfter = 30 * 60
+
     public func tick(now: Int) -> [Action] {
         var out: [Action] = []
+        if state == .waiting || state == .monitoring, now >= latest + missedAfter {
+            state = .finished
+            return [.stopLiveStream, .finished(reason: "Perdida (la app estaba dormida)")]
+        }
         switch state {
         case .waiting:
             if planned.isSmart, !streamStarted, now >= earliest - streamLead {

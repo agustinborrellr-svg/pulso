@@ -302,7 +302,8 @@ public enum AlertEngine {
             if strain >= advice.strainTarget.upperBound + 1.5, let r = d.recovery, r < 67 {
                 add(.overreaching, "over.\(d.day)", "Te estás pasando hoy",
                     String(format: "Esfuerzo %.1f con una recuperación del %d %%. Mejor parar aquí.", strain, Int(r)))
-            } else if strain >= advice.strainTarget.lowerBound {
+            } else if strain >= advice.strainTarget.lowerBound, advice.strainTarget.lowerBound >= 8 {
+                // Only for a real training target: a rest-day target (4–10) is reached just by living.
                 add(.strainReached, "strain.\(d.day)", "Objetivo de esfuerzo conseguido",
                     String(format: "Llevas %.1f (objetivo %d–%d).", strain, Int(advice.strainTarget.lowerBound), Int(advice.strainTarget.upperBound)))
             }

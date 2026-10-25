@@ -90,6 +90,12 @@ extension AppModel {
         // iPhone backup a little after the latest time (only rescheduled when it changes).
         let backupAt = next.latest.addingTimeInterval(Double(next.alarm.phoneBackupDelay) * 60)
         let stored = UserDefaults.standard.object(forKey: "pulso.backup.at") as? Date
+        // A backup about to ring belongs to an alarm nobody answered: leave it alone.
+        if let st = stored, st != backupAt, st > Date(), st.timeIntervalSinceNow < 20 * 60 {
+            updateAlarmStatus()
+            updateNightGuard()
+            return
+        }
         if next.alarm.phoneBackup {
             if stored != backupAt {
                 alarmBackup.schedule(at: backupAt, title: next.alarm.label)

@@ -584,8 +584,9 @@ extension AppModel: StrapManagerDelegate {
             let wasReady = self.strapState.isConnected
             self.strapState = state
             if state == .ready && !wasReady {
-                // The strap's own alarm is one-shot: re-arm it for the next alarm on every new session.
-                self.armStrapAlarm()
+                // The strap's own alarm is one-shot: re-arm it on every new session, once the clock
+                // has been set (a few seconds after "ready").
+                DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in self?.armStrapAlarm() }
                 self.updateNightGuard()
             }
         }

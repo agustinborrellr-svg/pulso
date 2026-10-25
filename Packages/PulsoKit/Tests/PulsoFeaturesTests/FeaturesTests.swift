@@ -177,6 +177,19 @@ final class FeaturesTests: XCTestCase {
         XCTAssertEqual(stopTap.doubleTap(now: t + 5).last, .finished(reason: "Apagada"))
     }
 
+    func testMissedAlarmNeverRingsLate() {
+        let p = planned(.fixed)
+        let s = WakeSession(planned: p)
+        let t = Int(p.latest.timeIntervalSince1970)
+        // The app wakes up three hours after the alarm time: no buzz, just finished.
+        let actions = s.tick(now: t + 3 * 3600)
+        XCTAssertFalse(actions.contains { if case .buzz = $0 { return true }; return false })
+        XCTAssertEqual(s.state, .finished)
+        // A few minutes late still rings (the app was just slow to tick).
+        let s2 = WakeSession(planned: p)
+        XCTAssertEqual(s2.tick(now: t + 120).first, .buzz(loops: 2))
+    }
+
     // MARK: Alerts
 
     func baseDays(_ n: Int = 20) -> [DaySummary] {

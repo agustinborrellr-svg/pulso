@@ -29,6 +29,9 @@ final class DemoDataTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(a.level, .watch, "signals: \(a.signals.map { $0.key })")
         }
         XCTAssertFalse(try db.allJournal().isEmpty)
+        // Old raw seconds are pruned, recent ones kept.
+        let bounds = try db.sampleBounds()!
+        XCTAssertGreaterThanOrEqual(bounds.first, Int(now.timeIntervalSince1970) - 4 * 86400)
         // Same seed → same data.
         let db2 = try PulsoDatabase(path: NSTemporaryDirectory() + "pulso-demo-\(UUID().uuidString).sqlite")
         let again = try DemoData.populate(db: db2, days: 14, now: now, calendar: cal)

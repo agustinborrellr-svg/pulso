@@ -151,7 +151,7 @@ final class IntegrationsTests: XCTestCase {
     func testAuthorizeURLAndCallback() {
         let c = StravaClient(credentials: StravaCredentials(clientID: " 12345 ", clientSecret: "s"), tokens: nil, transport: MockTransport([]))
         let url = c.authorizeURL().absoluteString
-        XCTAssertTrue(url.hasPrefix("https://www.strava.com/oauth/mobile/authorize?"))
+        XCTAssertTrue(url.hasPrefix("https://www.strava.com/oauth/authorize?"))
         XCTAssertTrue(url.contains("client_id=12345"))
         XCTAssertTrue(url.contains("redirect_uri=pulso://localhost/strava"))
         XCTAssertTrue(url.contains("activity:write"))
