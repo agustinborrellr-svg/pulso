@@ -83,7 +83,7 @@ struct SleepView: View {
                     row("Dormido", Fmt.hm(d.sleepMinutes))
                     row("Necesitabas", Fmt.hm(d.sleepNeedMinutes))
                     row("En cama", "\(Fmt.time(d.sleepStart)) – \(Fmt.time(d.sleepEnd))")
-                    row("Deuda (7 días)", Fmt.hm(d.sleepDebtMinutes))
+                    row("Deuda de sueño", Fmt.hm(d.sleepDebtMinutes))
                 }
             }
             HStack {

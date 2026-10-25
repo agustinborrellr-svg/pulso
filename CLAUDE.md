@@ -46,6 +46,22 @@ docs/PROTOCOLO.md       referencia del protocolo BLE de la WHOOP 5.0
 - `Pulso.xcodeproj` se regenera en CI con XcodeGen (artefacto `xcodeproj`); tras un build verde,
   bájalo con `gh run download -n xcodeproj` y súbelo al repo para que abra directo en Xcode.
 
+## Estado (2026-10-26)
+
+- Instalar en el iPhone está **bloqueado por Apple**: desde el 12–13 oct rechaza los inicios de sesión
+  de los instaladores gratuitos (Sideloadly, AltStore, Impactor: SRP -80045/-80046/403). Gus tiene
+  instalados iTunes (web), iCloud 7.21 (se cierra al abrir), Sideloadly e Impactor 2.7.2. Opciones:
+  esperar a que Impactor/Sideloadly lo arreglen, un Mac con Xcode, o cuenta de desarrollador + TestFlight.
+- Nuevo: modo demo (35 días), capturas automáticas en CI (commit con `[capturas]` → rama `ci-shots`),
+  plan B de emparejamiento (modo secuencial OpenStrap + cambio automático), diagnóstico, «Me voy a dormir»,
+  intents de hábitos, icono rojo (`docs/design/make_icon.py`).
+- **PulsoIntelligence** (`docs/INTELIGENCIA.md`): desviación (Mahalanobis, coherencia, deuda), respuesta a
+  la carga, análisis por entreno (FCR, deriva, reserva), ritmo (SRI), hábitos con IC y modelo predictivo
+  con validación cronológica y simulador. Pestaña «Análisis».
+- Modelo ajustado: deuda de sueño como arrastre decreciente, necesidad acotada, recuperación más suave,
+  esfuerzo cotidiano en días de descanso. 87 tests en verde.
+- Seguridad: la app **nunca** se conecta sola a una pulsera; buscar lista y pide confirmación.
+
 ## Compilar y dejarlo verde
 
 1. Comprueba que hay Git (`git --version`). Si no hay historial (`git log` falla): `git init -b main`, `git add -A` y un commit.
