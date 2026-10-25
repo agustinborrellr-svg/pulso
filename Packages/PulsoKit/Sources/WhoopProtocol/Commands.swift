@@ -93,6 +93,17 @@ public final class CommandBuilder {
         frame(Opcode.runHapticPatternMaverick, [0x01, 47, 152, 0, 0, 0, 0, 0, 0, 0, 0, max(1, loops)])
     }
 
+    /// RUN_HAPTIC_PATTERN_MAVERICK with up to 8 waveform ids (used by the Laboratorio tester to find
+    /// stronger / softer effects on a given firmware). Non-persistent: it only vibrates.
+    public func haptic(effects: [UInt8], loops: UInt8 = 1) -> (seq: UInt8, bytes: [UInt8])? {
+        let fx = Array(effects.prefix(8)) + [UInt8](repeating: 0, count: max(0, 8 - effects.count))
+        guard fx.contains(where: { $0 != 0 }) else { return nil }
+        return frame(Opcode.runHapticPatternMaverick, [0x01] + fx + [0, 0, max(1, loops)])
+    }
+
+    /// STOP_HAPTICS(122): cuts a running vibration short.
+    public func stopHaptics() -> (seq: UInt8, bytes: [UInt8])? { frame(Opcode.stopHaptics, [0x00]) }
+
     /// Gen5 on-strap alarm, REVISION_4 body (20 bytes). Experimental on 5.0 firmware.
     /// `[0]=4 [1]=id(1…6) [2..6]=u32 epoch s [6..8]=u16 subsec [8..16]=effects [16..18]=0 [18]=loops [19]=duration s`
     public func setAlarm(at date: Date, id: UInt8 = 1) -> (seq: UInt8, bytes: [UInt8])? {

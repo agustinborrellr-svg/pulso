@@ -37,13 +37,17 @@ public final class SQLiteConnection {
     private let lock = NSRecursiveLock()
     public let path: String
 
-    public init(path: String) throws {
+    public init(path: String, readOnly: Bool = false) throws {
         self.path = path
-        let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
+        let flags = readOnly ? (SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX)
+            : (SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX)
         if sqlite3_open_v2(path, &db, flags, nil) != SQLITE_OK {
             let msg = db.map { String(cString: sqlite3_errmsg($0)) } ?? "unknown"
+            sqlite3_close(db)
+            db = nil
             throw SQLiteError.open(msg)
         }
+        if readOnly { return }
         try execute("PRAGMA journal_mode=WAL;")
         try execute("PRAGMA synchronous=NORMAL;")
         try execute("PRAGMA foreign_keys=ON;")
@@ -175,6 +179,14 @@ public final class SQLiteConnection {
                 out.append(Int(bytes[2 * k]) | (Int(bytes[2 * k + 1]) << 8))
             }
             return out
+        }
+
+        /// Reads a BLOB column as raw bytes.
+        public func bytes(_ i: Int) -> [UInt8] {
+            guard !isNull(i), let p = sqlite3_column_blob(stmt, Int32(i)) else { return [] }
+            let n = Int(sqlite3_column_bytes(stmt, Int32(i)))
+            guard n > 0 else { return [] }
+            return Array(UnsafeBufferPointer(start: p.assumingMemoryBound(to: UInt8.self), count: n))
         }
 
         public func text(_ i: Int) -> String? {

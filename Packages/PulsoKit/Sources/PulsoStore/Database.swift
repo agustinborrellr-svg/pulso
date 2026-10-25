@@ -52,6 +52,12 @@ public final class PulsoDatabase {
         CREATE INDEX IF NOT EXISTS events_ts ON events(ts);
         CREATE TABLE IF NOT EXISTS imported_days(day TEXT PRIMARY KEY, json TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS kv(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS ecg(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            start INTEGER NOT NULL, source TEXT NOT NULL, external_id TEXT,
+            rate REAL NOT NULL, samples BLOB NOT NULL, json TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS ecg_start ON ecg(start);
         """)
     }
 
@@ -257,6 +263,91 @@ public final class PulsoDatabase {
         try sql.run("DELETE FROM workouts WHERE source = 'auto' AND end > ? AND start < ?", [.int(Int64(from)), .int(Int64(to))])
     }
 
+    /// The workout already linked to `id` in `service` (e.g. a Strava activity), if any.
+    public func workout(externalID id: String, service: String) throws -> Workout? {
+        let needle = "%\"\(service)\":\"\(id)\"%"
+        return try sql.query("SELECT id,json FROM workouts WHERE json LIKE ?", [.text(needle)]) { r -> Workout? in
+            guard let json = r.text(1), var w = try? decoder.decode(Workout.self, from: Data(json.utf8)) else { return nil }
+            w.id = r.int(0)
+            return w
+        }.compactMap { $0 }.first { $0.externalID(service) == id }
+    }
+
+    // MARK: - ECG
+
+    private struct ECGMeta: Codable {
+        var rhythm: String?
+        var avgHR: Double?
+        var notes: String
+    }
+
+    @discardableResult
+    public func save(_ e: ECGRecording) throws -> Int64 {
+        let meta = String(decoding: try encoder.encode(ECGMeta(rhythm: e.rhythm, avgHR: e.avgHR, notes: e.notes)), as: UTF8.self)
+        var blob = [UInt8]()
+        blob.reserveCapacity(e.samples.count * 4)
+        for v in e.samples { blob += LE.bytes(v.bitPattern) }
+        if let id = e.id {
+            try sql.run("UPDATE ecg SET start=?, source=?, external_id=?, rate=?, samples=?, json=? WHERE id=?",
+                        [.int(Int64(e.start)), .text(e.source.rawValue), .from(e.externalID), .double(e.sampleRate),
+                         .blob(blob), .text(meta), .int(id)])
+            return id
+        }
+        return try sql.transaction {
+            try sql.run("INSERT INTO ecg(start,source,external_id,rate,samples,json) VALUES(?,?,?,?,?,?)",
+                        [.int(Int64(e.start)), .text(e.source.rawValue), .from(e.externalID), .double(e.sampleRate),
+                         .blob(blob), .text(meta)])
+            return try sql.scalarInt("SELECT last_insert_rowid()") ?? 0
+        }
+    }
+
+    /// Recordings newest first. `withSamples: false` skips the waveform (cheap list view).
+    public func ecgRecordings(withSamples: Bool = true) throws -> [ECGRecording] {
+        let cols = withSamples ? "samples" : "NULL"
+        return try sql.query("SELECT id,start,source,external_id,rate,\(cols),json FROM ecg ORDER BY start DESC") { r -> ECGRecording? in
+            guard let source = ECGSource(rawValue: r.text(2) ?? "") else { return nil }
+            let meta = r.text(6).flatMap { try? decoder.decode(ECGMeta.self, from: Data($0.utf8)) }
+            let raw = r.bytes(5)
+            var samples = [Float]()
+            samples.reserveCapacity(raw.count / 4)
+            var i = 0
+            while i + 4 <= raw.count {
+                if let bits = LE.u32(raw, i) { samples.append(Float(bitPattern: bits)) }
+                i += 4
+            }
+            return ECGRecording(id: r.int(0), start: Int(r.int(1) ?? 0), sampleRate: r.double(4) ?? 0, samples: samples,
+                                source: source, rhythm: meta?.rhythm, avgHR: meta?.avgHR, notes: meta?.notes ?? "",
+                                externalID: r.text(3))
+        }.compactMap { $0 }
+    }
+
+    public func ecgRecording(id: Int64) throws -> ECGRecording? {
+        try ecgRecordings().first { $0.id == id }
+    }
+
+    public func hasECG(externalID: String) throws -> Bool {
+        (try sql.scalarInt("SELECT COUNT(*) FROM ecg WHERE external_id = ?", [.text(externalID)]) ?? 0) > 0
+    }
+
+    public func deleteECG(id: Int64) throws {
+        try sql.run("DELETE FROM ecg WHERE id = ?", [.int(id)])
+    }
+
+    // MARK: - Backup
+
+    /// Writes a consistent, compacted copy of the whole database to `path` (overwrites it).
+    public func backup(to path: String) throws {
+        if FileManager.default.fileExists(atPath: path) { try FileManager.default.removeItem(atPath: path) }
+        try sql.run("VACUUM INTO ?", [.text(path)])
+    }
+
+    /// True if `path` is a readable Pulso database (used before restoring a backup over the live one).
+    public static func isValidBackup(path: String) -> Bool {
+        guard let c = try? SQLiteConnection(path: path, readOnly: true) else { return false }
+        let tables = (try? c.query("SELECT name FROM sqlite_master WHERE type='table'") { $0.text(0) ?? "" }) ?? []
+        return ["samples", "days", "sleeps", "workouts", "kv"].allSatisfy(tables.contains)
+    }
+
     // MARK: - Journal
 
     public func setJournal(day: String, key: String, value: Double?) throws {
@@ -316,6 +407,7 @@ public final class PulsoDatabase {
         try sql.execute("""
         DELETE FROM samples; DELETE FROM live_hr; DELETE FROM sleeps; DELETE FROM days;
         DELETE FROM workouts; DELETE FROM journal; DELETE FROM events; DELETE FROM imported_days; DELETE FROM kv;
+        DELETE FROM ecg;
         """)
         try sql.execute("VACUUM;")
     }

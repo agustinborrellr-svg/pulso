@@ -7,3 +7,4 @@ xcuserdata/
 Payload/
 *.ipa
 Packages/PulsoKit/.swiftpm/
+build-artifacts/

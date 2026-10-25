@@ -209,6 +209,10 @@ public final class DayEngine {
         for i in workouts.indices {
             let w = workouts[i]
             let we = cycleEpochs.filter { $0.ts >= w.start && $0.ts < w.end }
+            // An imported workout the strap barely saw keeps the other app's numbers.
+            if w.source.isExternal && Double(we.filter { $0.worn }.count) < max(5, w.durationMinutes * 0.5) {
+                continue
+            }
             let ws = Strain.compute(we, model: model)
             workouts[i].strain = (ws.strain * 10).rounded() / 10
             workouts[i].zoneMinutes = ws.zoneMinutes
