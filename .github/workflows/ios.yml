@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      capturas:
+        description: "Sacar capturas de pantalla en el simulador"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -117,3 +122,88 @@ jobs:
           git add -A
           git commit -q -m "CI ${GITHUB_SHA::7}: build=${{ steps.build.outcome }}"
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-status
+
+  screenshots:
+    # Only when asked: commit message with [capturas], or a manual run.
+    if: contains(github.event.head_commit.message, '[capturas]') || (github.event_name == 'workflow_dispatch' && inputs.capturas)
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Elegir Xcode
+        run: |
+          XC=$(ls -d /Applications/Xcode_[0-9]*.app 2>/dev/null | grep -vi -e beta -e rc | sort -V | tail -1)
+          if [ -n "$XC" ]; then sudo xcode-select -s "$XC"; fi
+          xcodebuild -version
+
+      - name: Generar el proyecto
+        run: |
+          brew install xcodegen >/dev/null
+          xcodegen generate
+
+      - name: Compilar para el simulador
+        run: |
+          set -o pipefail
+          xcodebuild -project Pulso.xcodeproj -scheme Pulso -configuration Release             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator'             -derivedDataPath build-sim CODE_SIGNING_ALLOWED=NO build > sim-build.log 2>&1 || (grep -E "error:" sim-build.log | head -40; exit 1)
+          grep -q "BUILD SUCCEEDED" sim-build.log
+
+      - name: Sacar capturas
+        run: |
+          set -x
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          c=[x for r,l in d.items() if 'iOS' in r for x in l if x['name'].startswith('iPhone') and 'Pro' in x['name'] and 'Max' not in x['name']]
+          c=c or [x for r,l in d.items() if 'iOS' in r for x in l if x['name'].startswith('iPhone')]
+          print(c[-1]['udid'])")
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
+          xcrun simctl ui "$UDID" appearance dark || true
+          APP=build-sim/Build/Products/Release-iphonesimulator/Pulso.app
+          BID=es.gusborrell.pulso
+          xcrun simctl install "$UDID" "$APP"
+          mkdir -p shots
+          # First launch builds three weeks of demo data; wait for the ready flag.
+          xcrun simctl launch "$UDID" $BID -PulsoScreenshots YES -PulsoScreen today
+          DATA=$(xcrun simctl get_app_container "$UDID" $BID data)
+          for i in $(seq 1 180); do [ -f "$DATA/Documents/screenshots-ready" ] && break; sleep 2; done
+          ls "$DATA/Documents" || true
+          sleep 4
+          n=1
+          for S in today sleep trends live more alarms alarmEditor notifications integrations ecg ecgDetail bedtime lab workout onboarding; do
+            xcrun simctl terminate "$UDID" $BID || true
+            sleep 1
+            xcrun simctl launch "$UDID" $BID -PulsoScreenshots YES -PulsoScreen $S
+            sleep 6
+            xcrun simctl io "$UDID" screenshot "shots/$(printf %02d $n)-$S.png"
+            n=$((n+1))
+          done
+          ls -la shots
+
+      - name: Guardar capturas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas
+          path: |
+            shots/
+            sim-build.log
+          retention-days: 7
+
+      - name: Publicar capturas en la rama ci-shots
+        if: always()
+        run: |
+          set +e
+          mkdir -p /tmp/shots && cp -R shots/. /tmp/shots/ 2>/dev/null
+          cp sim-build.log /tmp/shots/ 2>/dev/null
+          grep -E "error:" sim-build.log | sort -u > /tmp/shots/sim-errors.txt 2>/dev/null
+          echo "commit=${GITHUB_SHA}" > /tmp/shots/status.txt
+          cd /tmp/shots
+          git init -q -b ci-shots
+          git config user.name "pulso-ci"
+          git config user.email "pulso-ci@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Capturas ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-shots

@@ -64,6 +64,21 @@ struct LabView: View {
                 Text("Prueba otras formas de onda de la pulsera. La pareja 47/152 es la de las notificaciones de WHOOP. Solo hace vibrar: no cambia nada en la pulsera.")
             }
 
+            Section {
+                Picker("Modo de conexión", selection: Binding(get: { model.strap.forcedMode?.rawValue ?? "auto" }, set: { v in
+                    model.strap.setForcedMode(HandshakeMode(rawValue: v))
+                })) {
+                    Text("Automático").tag("auto")
+                    ForEach(HandshakeMode.allCases, id: \.rawValue) { Text($0.label).tag($0.rawValue) }
+                }
+                LabeledContent("En uso", value: model.strap.mode.label)
+                LabeledContent("Último que funcionó", value: model.strap.workedMode?.label ?? "ninguno aún")
+            } header: {
+                Text("Emparejamiento")
+            } footer: {
+                Text("En automático, si un modo falla Pulso prueba el otro solo. Secuencial sigue el orden de OpenStrap: suscripciones de una en una, con esperas.")
+            }
+
             Section("Pulsera") {
                 LabeledContent("Estado", value: "\(model.strapState)")
                 LabeledContent("Modelo", value: model.identity.isMG ? "MG" : "5.0")

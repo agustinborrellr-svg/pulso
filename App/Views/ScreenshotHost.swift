@@ -1,0 +1,97 @@
+import SwiftUI
+import PulsoStore
+import PulsoFeatures
+
+/// Screens the CI screenshot run can open with `-PulsoScreen <name>`.
+enum ShotScreen: String, Identifiable {
+    case today, sleep, trends, live, more
+    case alarms, alarmEditor, notifications, integrations, ecg, ecgDetail, bedtime, lab, workout, onboarding
+
+    var id: String { rawValue }
+
+    var tab: Int? {
+        switch self {
+        case .today: return 0
+        case .sleep: return 1
+        case .trends: return 2
+        case .live: return 3
+        case .more: return 4
+        default: return nil
+        }
+    }
+}
+
+extension AppModel {
+    /// Demo data, sample alarms and a ready flag for the screenshot script.
+    func prepareScreenshots(_ done: @escaping () -> Void) {
+        hasOnboarded = true
+        if alarms.isEmpty {
+            alarms = [
+                AlarmConfig(id: "shot-1", label: "Trabajo", hour: 7, minute: 15, weekdays: [2, 3, 4, 5, 6], mode: .smart, windowMinutes: 30),
+                AlarmConfig(id: "shot-2", enabled: false, label: "Fin de semana", hour: 9, minute: 30, weekdays: [1, 7], mode: .sleepGoal,
+                            windowMinutes: 45, vibration: .gentle),
+            ]
+            try? db.set(alarms, for: "alarms")
+            refreshAlarmSchedule()
+        }
+        battery = 72
+        charging = false
+        let finish = {
+            try? Data("ok".utf8).write(to: AppMode.readyFlagURL)
+            done()
+        }
+        if (try? db.hasSamples()) == true {
+            reload()
+            finish()
+        } else {
+            loadDemo(days: 21) { finish() }
+        }
+    }
+
+    /// Feeds a plausible live heart rate (for the live-screen screenshot).
+    func startDemoLiveFeed() {
+        var t = 0.0
+        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                t += 1
+                let hr = Int(152 + 12 * sin(t / 25) + Double.random(in: -3...3))
+                let rr = [Int(60000 / Double(hr))]
+                self.handleLive(heartRate: hr, rr: rr, at: Date())
+            }
+        }
+    }
+}
+
+/// Sub-screens opened full-screen in screenshot mode.
+struct ShotDestination: View {
+    @EnvironmentObject var model: AppModel
+    let screen: ShotScreen
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                switch screen {
+                case .alarms: AlarmsView()
+                case .alarmEditor: AlarmEditor(alarm: model.alarms.first ?? AlarmConfig())
+                case .notifications: NotificationsView()
+                case .integrations: IntegrationsView(strava: model.strava)
+                case .ecg: ECGListView()
+                case .ecgDetail:
+                    if let r = model.ecgRecordings.first { ECGDetailView(recording: r) } else { ECGListView() }
+                case .bedtime: BedtimeView()
+                case .lab: LabView()
+                case .workout:
+                    if let w = model.days.reversed().lazy.flatMap({ self.model.workouts(for: $0) }).first {
+                        WorkoutDetailView(workout: w)
+                    } else {
+                        Text("Sin entrenos")
+                    }
+                case .onboarding: OnboardingView {}
+                default: EmptyView()
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+}

@@ -14,6 +14,8 @@ struct MoreView: View {
     @State private var confirmErase = false
     @State private var confirmForget = false
     @State private var pendingStrap: DiscoveredStrap?
+    @State private var confirmDemo = false
+    @State private var diagnosticsURL: URL?
 
     var body: some View {
         NavigationStack {
@@ -210,6 +212,16 @@ struct MoreView: View {
             } label: {
                 Label("Registro de conexión", systemImage: "list.bullet.rectangle")
             }
+            Button {
+                model.diagnosticsReport { diagnosticsURL = $0 }
+            } label: {
+                Label("Preparar diagnóstico", systemImage: "stethoscope")
+            }
+            if let url = diagnosticsURL {
+                ShareLink(item: url) {
+                    Label("Enviar diagnóstico", systemImage: "square.and.arrow.up")
+                }
+            }
             if model.strap.hasSavedStrap {
                 Button(role: .destructive) {
                     confirmForget = true
@@ -248,6 +260,26 @@ struct MoreView: View {
 
     private var dataSection: some View {
         Section {
+            if model.demoActive {
+                Button(role: .destructive) {
+                    model.clearDemo()
+                } label: {
+                    Label("Quitar datos de demostración", systemImage: "sparkles")
+                }
+            } else {
+                Button {
+                    if model.rawSampleCount > 0 { confirmDemo = true } else { model.loadDemo() }
+                } label: {
+                    Label(model.analyzing ? "Preparando demo… \(Int(model.analysisProgress * 100))%" : "Cargar datos de demostración",
+                          systemImage: "sparkles")
+                }
+                .disabled(model.analyzing)
+                .confirmationDialog("Ya tienes datos reales. La demo se mezclaría con ellos y para quitarla hay que borrar todo.",
+                                    isPresented: $confirmDemo, titleVisibility: .visible) {
+                    Button("Cargar igualmente") { model.loadDemo() }
+                    Button("Cancelar", role: .cancel) {}
+                }
+            }
             Button {
                 importing = true
             } label: {
@@ -311,7 +343,7 @@ struct MoreView: View {
         } header: {
             Text("Datos")
         } footer: {
-            Text("Todo se guarda solo en tu iPhone. La copia de seguridad incluye todo (también cada segundo de datos); guárdala en Archivos o iCloud Drive. Para importar de WHOOP, exporta tus datos desde su app y elige physiological_cycles.csv: tus líneas base estarán listas desde el primer día.")
+            Text("La demo genera tres semanas simuladas (noches buenas y malas, entrenos, unos días de «incubar algo») para probar todo sin pulsera. Todo se guarda solo en tu iPhone. La copia de seguridad incluye todo (también cada segundo de datos); guárdala en Archivos o iCloud Drive. Para importar de WHOOP, exporta tus datos desde su app y elige physiological_cycles.csv: tus líneas base estarán listas desde el primer día.")
         }
     }
 }

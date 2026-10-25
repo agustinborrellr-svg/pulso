@@ -110,6 +110,48 @@ struct BreatheIntent: AppIntent {
     }
 }
 
+enum HabitOption: String, AppEnum {
+    case alcohol, late_caffeine, late_meal, screens_bed, high_stress, hard_training, meditation, reading, sick, travel, magnesium, sauna, sunlight, shared_bed
+
+    static var typeDisplayRepresentation: TypeDisplayRepresentation = "Hábito"
+    static var caseDisplayRepresentations: [HabitOption: DisplayRepresentation] = [
+        .alcohol: "Alcohol", .late_caffeine: "Cafeína por la tarde", .late_meal: "Cena tarde", .screens_bed: "Pantallas en la cama",
+        .high_stress: "Día estresante", .hard_training: "Entreno duro", .meditation: "Meditación", .reading: "Lectura",
+        .sick: "Me siento enfermo", .travel: "Viaje", .magnesium: "Magnesio", .sauna: "Sauna", .sunlight: "Luz solar por la mañana",
+        .shared_bed: "Cama compartida",
+    ]
+}
+
+struct LogHabitIntent: AppIntent {
+    static var title: LocalizedStringResource = "Apuntar hábito"
+    static var description = IntentDescription("Apunta en el diario de hoy algo que puede afectar a tu recuperación (café, alcohol…).")
+
+    @Parameter(title: "Hábito", default: .late_caffeine)
+    var habit: HabitOption
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        AppModel.shared.setJournal(day: DayKey.string(Date()), key: habit.rawValue, on: true)
+        let name = HabitOption.caseDisplayRepresentations[habit].map { String(localized: $0.title) } ?? habit.rawValue
+        return .result(dialog: IntentDialog(stringLiteral: "Apuntado: \(name.lowercased())."))
+    }
+}
+
+struct GoToSleepIntent: AppIntent {
+    static var title: LocalizedStringResource = "Me voy a dormir"
+    static var description = IntentDescription("Deja lista la alarma de mañana y apunta la hora de acostarte.")
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let model = AppModel.shared
+        model.goToSleep()
+        if let next = model.nextAlarm {
+            return .result(dialog: IntentDialog(stringLiteral: "Buenas noches. Te despierto \(next.isSmart ? "entre las \(Fmt.clock(next.earliest)) y las \(Fmt.clock(next.latest))" : "a las \(Fmt.clock(next.latest))")."))
+        }
+        return .result(dialog: "Buenas noches. No tienes alarma para mañana.")
+    }
+}
+
 struct PulsoShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: RecoveryIntent(), phrases: ["¿Cómo está mi recuperación en \(.applicationName)?",
@@ -124,5 +166,9 @@ struct PulsoShortcuts: AppShortcutsProvider {
                     shortTitle: "Respirar", systemImageName: "wind")
         AppShortcut(intent: SyncIntent(), phrases: ["Sincroniza \(.applicationName)"],
                     shortTitle: "Sincronizar", systemImageName: "arrow.triangle.2.circlepath")
+        AppShortcut(intent: GoToSleepIntent(), phrases: ["Me voy a dormir con \(.applicationName)", "Buenas noches \(.applicationName)"],
+                    shortTitle: "Me voy a dormir", systemImageName: "moon.zzz")
+        AppShortcut(intent: LogHabitIntent(), phrases: ["Apunta \(\.$habit) en \(.applicationName)", "Apunta un hábito en \(.applicationName)"],
+                    shortTitle: "Apuntar hábito", systemImageName: "book.closed")
     }
 }

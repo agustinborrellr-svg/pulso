@@ -18,6 +18,7 @@ final class AlarmBackup {
     }
 
     func requestAuthorization() {
+        if AppMode.screenshots { return }
         #if canImport(AlarmKit)
         if #available(iOS 26.0, *) {
             Task { _ = await SystemAlarm.authorize() }
@@ -29,6 +30,7 @@ final class AlarmBackup {
 
     /// Replaces any previous backup with one at `date`.
     func schedule(at date: Date, title: String) {
+        if AppMode.screenshots { return }
         cancel()
         guard date > Date() else { return }
         #if canImport(AlarmKit)
@@ -53,6 +55,7 @@ final class AlarmBackup {
     }
 
     func cancel() {
+        if AppMode.screenshots { return }
         #if canImport(AlarmKit)
         if #available(iOS 26.0, *), let s = UserDefaults.standard.string(forKey: Self.idKey), let id = UUID(uuidString: s) {
             SystemAlarm.cancel(id: id)

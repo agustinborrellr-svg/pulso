@@ -37,6 +37,7 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func requestAuthorization(_ done: ((Bool) -> Void)? = nil) {
+        if AppMode.screenshots { return }
         center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
             DispatchQueue.main.async { done?(granted) }
         }

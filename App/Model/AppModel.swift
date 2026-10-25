@@ -568,6 +568,7 @@ final class AppModel: ObservableObject {
 enum EventKind {
     static let marker = 1000
     static let lap = 1001
+    static let bedtime = 1002
 }
 
 // MARK: - StrapManagerDelegate

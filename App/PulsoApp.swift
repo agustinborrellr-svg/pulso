@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import BackgroundTasks
+import PulsoFeatures
 
 @main
 struct PulsoApp: App {
@@ -62,6 +63,7 @@ struct RootView: View {
     @EnvironmentObject var model: AppModel
     @State private var tab = 0
     @State private var showOnboarding = false
+    @State private var shot: ShotScreen?
 
     var body: some View {
         TabView(selection: $tab) {
@@ -83,8 +85,15 @@ struct RootView: View {
         }
         .tint(.white)
         .onAppear {
+            if AppMode.screenshots {
+                startScreenshots()
+                return
+            }
             showOnboarding = !model.hasOnboarded
             if model.hasOnboarded { model.connect() }
+        }
+        .fullScreenCover(item: $shot) { screen in
+            ShotDestination(screen: screen).environmentObject(model)
         }
         .sheet(isPresented: $showOnboarding) {
             OnboardingView { showOnboarding = false }
@@ -98,10 +107,27 @@ struct RootView: View {
             model.evaluateAlerts(force: false)
             model.importExternalIfDue()
         }
-        .alert("Pulso", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
+        .alert("Pulso", isPresented: Binding(get: { model.errorMessage != nil && !AppMode.screenshots },
+                                             set: { if !$0 { model.errorMessage = nil } })) {
             Button("OK", role: .cancel) { model.errorMessage = nil }
         } message: {
             Text(model.errorMessage ?? "")
+        }
+    }
+
+    /// CI screenshot run: demo data, then open the requested screen.
+    private func startScreenshots() {
+        let screen = AppMode.screen.flatMap(ShotScreen.init(rawValue:)) ?? .today
+        model.prepareScreenshots {
+            if let t = screen.tab {
+                tab = t
+            } else {
+                shot = screen
+            }
+            if screen == .live {
+                model.startWorkout(sport: "Carrera", plan: IntervalPlan.presets.first)
+                model.startDemoLiveFeed()
+            }
         }
     }
 }

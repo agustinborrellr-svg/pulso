@@ -45,6 +45,16 @@ enum StrapState: Equatable {
     }
 }
 
+/// How the session is opened after connecting. `standard` subscribes everything at once (NOOP style);
+/// `sequential` follows OpenStrap Edge's documented order (600 ms after the bond, one subscription at a
+/// time, 500 ms, GET_HELLO with retry, clock, GET_ADVERTISING_NAME). Pulso falls back automatically.
+enum HandshakeMode: String, CaseIterable {
+    case standard, sequential
+
+    var label: String { self == .standard ? "Estándar" : "Secuencial (OpenStrap)" }
+    var other: HandshakeMode { self == .standard ? .sequential : .standard }
+}
+
 /// A strap seen while scanning. Nothing connects until the user picks one.
 struct DiscoveredStrap: Identifiable, Equatable {
     let id: UUID
@@ -101,6 +111,26 @@ final class StrapManager: NSObject {
     private var sessionStarted = false
     private var pendingSubscriptions = Set<CBUUID>()
     private var helloTimeout: DispatchWorkItem?
+    private var helloReceived = false
+    private var helloRetried = false
+    private var subscribeQueue: [CBUUID] = []
+    private var subscriptionErrors = 0
+    /// Automatic mode switches made since the app started (capped so it never loops).
+    private var autoSwitches = 0
+
+    private static let modeKey = "pulso.handshake.mode"
+    private static let forcedKey = "pulso.handshake.forced"
+    private static let workedKey = "pulso.handshake.worked"
+
+    /// Mode used for the next session (forced > last that worked > current choice).
+    private(set) var mode: HandshakeMode = HandshakeMode(rawValue: UserDefaults.standard.string(forKey: "pulso.handshake.forced") ?? "")
+        ?? HandshakeMode(rawValue: UserDefaults.standard.string(forKey: "pulso.handshake.worked") ?? "")
+        ?? HandshakeMode(rawValue: UserDefaults.standard.string(forKey: "pulso.handshake.mode") ?? "")
+        ?? .standard
+
+    var forcedMode: HandshakeMode? { HandshakeMode(rawValue: UserDefaults.standard.string(forKey: Self.forcedKey) ?? "") }
+    var workedMode: HandshakeMode? { HandshakeMode(rawValue: UserDefaults.standard.string(forKey: Self.workedKey) ?? "") }
+    private var negotiatedMTU = 0
     private var clockChecked = false
 
     private var offload: OffloadSession?
@@ -135,8 +165,12 @@ final class StrapManager: NSObject {
 
     var hasSavedStrap: Bool { UserDefaults.standard.string(forKey: Self.savedPeripheralKey) != nil }
 
+    /// False in screenshot mode (simulator, no Bluetooth): nothing touches CoreBluetooth then.
+    private let active = !AppMode.screenshots
+
     override init() {
         super.init()
+        guard active else { return }
         central = CBCentralManager(delegate: self, queue: queue, options: [
             CBCentralManagerOptionRestoreIdentifierKey: Self.restoreID,
             CBCentralManagerOptionShowPowerAlertKey: true,
@@ -147,11 +181,13 @@ final class StrapManager: NSObject {
 
     /// Reconnects to the strap the user paired. Never scans and never touches another strap.
     func connect() {
+        guard active else { return }
         queue.async { self.connectLocked() }
     }
 
     /// Looks for nearby straps and lists them. It does NOT connect: the user picks one with `choose`.
     func scan() {
+        guard active else { return }
         queue.async {
             self.discovered.removeAll()
             self.publishDiscovered()
@@ -160,6 +196,7 @@ final class StrapManager: NSObject {
     }
 
     func stopScan() {
+        guard active else { return }
         queue.async {
             self.central.stopScan()
             if self.state == .scanning { self.state = self.hasSavedStrap ? .connecting : .noStrap }
@@ -168,6 +205,7 @@ final class StrapManager: NSObject {
 
     /// Pairs with the strap the user picked from the scan list (forgetting any previous one).
     func choose(_ id: UUID) {
+        guard active else { return }
         queue.async {
             guard let found = self.discovered[id] else { return }
             self.central.stopScan()
@@ -189,6 +227,7 @@ final class StrapManager: NSObject {
     }
 
     func forget() {
+        guard active else { return }
         queue.async {
             UserDefaults.standard.removeObject(forKey: Self.savedPeripheralKey)
             if let p = self.peripheral { self.central.cancelPeripheralConnection(p) }
@@ -201,10 +240,12 @@ final class StrapManager: NSObject {
 
     /// Pulls every banked second off the strap. `force` ignores the 10-minute floor.
     func sync(force: Bool = false) {
+        guard active else { return }
         queue.async { self.startOffload(force: force) }
     }
 
     func setLive(_ on: Bool) {
+        guard active else { return }
         queue.async {
             self.wantsLive = on
             guard self.bonded, self.sessionStarted else { return }
@@ -213,16 +254,48 @@ final class StrapManager: NSObject {
     }
 
     func buzz(loops: UInt8 = 2) {
+        guard active else { return }
         queue.async { self.send(self.commands.buzz(loops: loops)) }
     }
 
     /// Plays specific haptic waveform ids (Laboratorio tester).
     func haptic(effects: [UInt8], loops: UInt8) {
+        guard active else { return }
         queue.async { self.send(self.commands.haptic(effects: effects, loops: loops)) }
     }
 
     func stopHaptics() {
+        guard active else { return }
         queue.async { self.send(self.commands.stopHaptics()) }
+    }
+
+    /// Forces a handshake mode (nil = automatic) and reconnects to apply it.
+    func setForcedMode(_ m: HandshakeMode?) {
+        UserDefaults.standard.set(m?.rawValue, forKey: Self.forcedKey)
+        queue.async {
+            if let m { self.mode = m }
+            self.log("Modo de conexión: \(m?.label ?? "automático")")
+            if let p = self.peripheral, p.state == .connected { self.central.cancelPeripheralConnection(p) }
+        }
+    }
+
+    /// Text block for the diagnostics report.
+    func diagnostics(_ done: @escaping (String) -> Void) {
+        queue.async {
+            let lines = [
+                "Estado: \(self.state)",
+                "Modo de conexión: \(self.mode.label) (forzado: \(self.forcedMode?.label ?? "no"), funcionó: \(self.workedMode?.label ?? "aún ninguno"))",
+                "Cambios automáticos de modo: \(self.autoSwitches)",
+                "Emparejada: \(self.bonded) · sesión: \(self.sessionStarted) · hello: \(self.helloReceived)",
+                "Errores de suscripción: \(self.subscriptionErrors)",
+                "MTU de escritura: \(self.negotiatedMTU)",
+                "Pulsera guardada: \(self.hasSavedStrap)",
+                "Identidad: \(self.identity.name) · serie \(self.identity.serial) · fw \(self.identity.firmware) · hw \(self.identity.hardware) · modelo \(self.identity.model)",
+                "Tramas por tipo: " + self.recorder.typeCounts.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: " "),
+            ]
+            let text = lines.joined(separator: "\n")
+            DispatchQueue.main.async { done(text) }
+        }
     }
 
     /// Starts / stops recording raw frames.
@@ -249,6 +322,7 @@ final class StrapManager: NSObject {
     /// Arms the strap's own vibrating alarm (experimental on 5.0 firmware; the app also schedules a
     /// phone notification as a backup).
     func setAlarm(_ date: Date?) {
+        guard active else { return }
         queue.async {
             if let date {
                 self.send(self.commands.setAlarm(at: date))
@@ -317,9 +391,30 @@ final class StrapManager: NSObject {
         sessionStarted = false
         clockChecked = false
         pendingSubscriptions.removeAll()
+        subscribeQueue.removeAll()
+        subscriptionErrors = 0
+        helloReceived = false
+        helloRetried = false
         helloTimeout?.cancel()
         offloadIdle?.cancel()
         offload = nil
+    }
+
+    /// The current mode didn't get a working session: try the other one on a fresh link.
+    private func handshakeFailed(_ reason: String) {
+        log("Fallo en modo \(mode.label): \(reason)")
+        guard forcedMode == nil, workedMode == nil, autoSwitches < 2, let p = peripheral else { return }
+        autoSwitches += 1
+        mode = mode.other
+        UserDefaults.standard.set(mode.rawValue, forKey: Self.modeKey)
+        log("Probando el modo \(mode.label)…")
+        central.cancelPeripheralConnection(p) // didDisconnect re-arms the connection
+    }
+
+    private func handshakeSucceeded() {
+        guard workedMode != mode else { return }
+        UserDefaults.standard.set(mode.rawValue, forKey: Self.workedKey)
+        log("Conexión correcta en modo \(mode.label); lo recuerdo para la próxima vez")
     }
 
     private func log(_ s: String) {
@@ -344,12 +439,39 @@ final class StrapManager: NSObject {
     private func onBonded() {
         guard !bonded else { return }
         bonded = true
-        log("Pulsera emparejada; suscribiendo canales")
         guard let p = peripheral else { return }
+        negotiatedMTU = p.maximumWriteValueLength(for: .withResponse)
+        log("Pulsera emparejada (MTU \(negotiatedMTU)); suscribiendo canales en modo \(mode.label)")
+        if mode == .sequential {
+            // OpenStrap order: let the bond settle, then one subscription at a time.
+            subscribeQueue = StrapUUID.notifyChars.filter { chars[$0] != nil }
+            pendingSubscriptions = Set(subscribeQueue)
+            queue.asyncAfter(deadline: .now() + 0.6) { [weak self] in self?.subscribeNext() }
+            queue.asyncAfter(deadline: .now() + 8) { [weak self] in self?.beginSession() }
+            return
+        }
         pendingSubscriptions = Set(StrapUUID.notifyChars.filter { chars[$0] != nil })
         for uuid in StrapUUID.notifyChars {
             if let c = chars[uuid] { p.setNotifyValue(true, for: c) }
         }
+        subscribeStandardChars(p)
+        // Continue even if a subscription confirmation never arrives.
+        queue.asyncAfter(deadline: .now() + 2.0) { [weak self] in self?.beginSession() }
+    }
+
+    /// Next vendor channel in sequential mode; standard GATT services come after them.
+    private func subscribeNext() {
+        guard let p = peripheral, p.state == .connected else { return }
+        guard !subscribeQueue.isEmpty else {
+            subscribeStandardChars(p)
+            queue.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.beginSession() }
+            return
+        }
+        let uuid = subscribeQueue.removeFirst()
+        if let c = chars[uuid] { p.setNotifyValue(true, for: c) } else { subscribeNext() }
+    }
+
+    private func subscribeStandardChars(_ p: CBPeripheral) {
         if let hr = chars[StrapUUID.heartRateMeasurement] { p.setNotifyValue(true, for: hr) }
         if let b = chars[StrapUUID.batteryLevel] {
             if b.properties.contains(.notify) { p.setNotifyValue(true, for: b) }
@@ -358,8 +480,6 @@ final class StrapManager: NSObject {
         for uuid in [StrapUUID.serialNumber, StrapUUID.firmwareRevision, StrapUUID.hardwareRevision, StrapUUID.modelNumber] {
             if let c = chars[uuid] { p.readValue(for: c) }
         }
-        // Continue even if a subscription confirmation never arrives.
-        queue.asyncAfter(deadline: .now() + 2.0) { [weak self] in self?.beginSession() }
     }
 
     private func beginSession() {
@@ -369,13 +489,29 @@ final class StrapManager: NSObject {
         queue.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self else { return }
             self.send(self.commands.getHello())
-            let timeout = DispatchWorkItem { [weak self] in
-                // No hello: set the clock anyway so the strap keeps banking data.
-                self?.ensureClock(strapUnix: nil)
-            }
-            self.helloTimeout = timeout
-            self.queue.asyncAfter(deadline: .now() + 4, execute: timeout)
+            self.armHelloTimeout()
         }
+    }
+
+    private func armHelloTimeout() {
+        let timeout = DispatchWorkItem { [weak self] in
+            guard let self, !self.helloReceived else { return }
+            if !self.helloRetried {
+                self.helloRetried = true
+                self.log("Sin respuesta al saludo; lo repito")
+                self.send(self.commands.getHello())
+                self.armHelloTimeout()
+                return
+            }
+            // No hello at all: set the clock anyway so the strap keeps banking data, and if this mode
+            // never got a reply (nor subscriptions), try the other one.
+            self.ensureClock(strapUnix: nil)
+            if self.subscriptionErrors > 0 || self.recorder.typeCounts.isEmpty {
+                self.handshakeFailed("la pulsera no responde")
+            }
+        }
+        helloTimeout = timeout
+        queue.asyncAfter(deadline: .now() + 4, execute: timeout)
     }
 
     private func ensureClock(strapUnix: UInt32?) {
@@ -390,6 +526,7 @@ final class StrapManager: NSObject {
             log("Reloj de la pulsera ajustado")
         }
         send(commands.getBattery())
+        if mode == .sequential { send(commands.getAdvertisingName()) }
         if wantsLive { send(commands.toggleRealtimeHR(true)) }
         queue.asyncAfter(deadline: .now() + 1.2) { [weak self] in self?.startOffload(force: true) }
     }
@@ -480,6 +617,7 @@ final class StrapManager: NSObject {
         }
         switch message {
         case .history(let sample):
+            if !helloReceived { handshakeSucceeded() }
             if offload != nil {
                 handleOffload(frame)
             } else {
@@ -518,6 +656,8 @@ final class StrapManager: NSObject {
         switch r.cmd {
         case Opcode.getHello:
             if r.status == .pending { return }
+            helloReceived = true
+            handshakeSucceeded()
             if let h = HelloInfo.decode(r) {
                 if !h.serial.isEmpty { identity.serial = h.serial }
                 if !h.firmware.isEmpty { identity.firmware = h.firmware }
@@ -671,6 +811,7 @@ extension StrapManager: CBPeripheralDelegate {
                 if insufficient {
                     state = .pairingRefused
                     log("La pulsera rechaza el emparejamiento (probablemente sigue vinculada a la app de WHOOP)")
+                    handshakeFailed("emparejamiento rechazado")
                 } else {
                     log("Escritura fallida: \(error.localizedDescription)")
                 }
@@ -682,9 +823,14 @@ extension StrapManager: CBPeripheralDelegate {
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
         if let error {
+            subscriptionErrors += 1
             log("Suscripción \(characteristic.uuid.uuidString) falló: \(error.localizedDescription)")
         }
-        pendingSubscriptions.remove(characteristic.uuid)
+        let wasPending = pendingSubscriptions.remove(characteristic.uuid) != nil
+        if mode == .sequential {
+            if wasPending { queue.asyncAfter(deadline: .now() + 0.15) { [weak self] in self?.subscribeNext() } }
+            return
+        }
         if bonded && pendingSubscriptions.isEmpty { beginSession() }
     }
 
