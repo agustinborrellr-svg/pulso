@@ -45,6 +45,13 @@ enum StrapState: Equatable {
     }
 }
 
+/// A strap seen while scanning. Nothing connects until the user picks one.
+struct DiscoveredStrap: Identifiable, Equatable {
+    let id: UUID
+    var name: String
+    var rssi: Int
+}
+
 struct StrapIdentity: Equatable {
     var name: String = ""
     var serial: String = ""
@@ -65,6 +72,8 @@ protocol StrapManagerDelegate: AnyObject {
     func strapLog(_ line: String)
     /// Raw frame the app didn't route (ECG decoders / Laboratorio). Called on the BLE queue.
     func strapUnhandledFrame(_ frame: Frame)
+    /// Straps found during a scan (main queue).
+    func strapDiscovered(_ straps: [DiscoveredStrap])
 }
 
 /// CoreBluetooth engine for the WHOOP 5.0 / MG.
@@ -108,6 +117,7 @@ final class StrapManager: NSObject {
     /// the same beats; forwarding both would double-count R-R intervals.
     private var lastVendorRealtime: Date?
     private var identity = StrapIdentity()
+    private var discovered: [UUID: (peripheral: CBPeripheral, strap: DiscoveredStrap)] = [:]
 
     /// Raw capture for the Laboratorio screen (accessed on the BLE queue).
     let recorder = FrameRecorder()
@@ -135,20 +145,47 @@ final class StrapManager: NSObject {
 
     // MARK: - Public API (any thread)
 
-    /// Reconnects to the known strap, or scans for one.
+    /// Reconnects to the strap the user paired. Never scans and never touches another strap.
     func connect() {
         queue.async { self.connectLocked() }
     }
 
-    /// Starts a scan for a new strap even if one is remembered.
-    func pairNew() {
+    /// Looks for nearby straps and lists them. It does NOT connect: the user picks one with `choose`.
+    func scan() {
         queue.async {
-            UserDefaults.standard.removeObject(forKey: Self.savedPeripheralKey)
-            if let p = self.peripheral { self.central.cancelPeripheralConnection(p) }
-            self.peripheral = nil
-            self.resetSession()
+            self.discovered.removeAll()
+            self.publishDiscovered()
             self.startScan()
         }
+    }
+
+    func stopScan() {
+        queue.async {
+            self.central.stopScan()
+            if self.state == .scanning { self.state = self.hasSavedStrap ? .connecting : .noStrap }
+        }
+    }
+
+    /// Pairs with the strap the user picked from the scan list (forgetting any previous one).
+    func choose(_ id: UUID) {
+        queue.async {
+            guard let found = self.discovered[id] else { return }
+            self.central.stopScan()
+            UserDefaults.standard.removeObject(forKey: Self.savedPeripheralKey)
+            if let p = self.peripheral, p.identifier != id { self.central.cancelPeripheralConnection(p) }
+            self.resetSession()
+            self.identity = StrapIdentity()
+            self.identity.name = found.strap.name
+            self.attach(found.peripheral)
+            self.state = .connecting
+            self.central.connect(found.peripheral, options: nil)
+            self.log("Emparejando con \(found.strap.name)")
+        }
+    }
+
+    private func publishDiscovered() {
+        let list = discovered.values.map { $0.strap }.sorted { $0.rssi > $1.rssi }
+        DispatchQueue.main.async { self.delegate?.strapDiscovered(list) }
     }
 
     func forget() {
@@ -242,13 +279,9 @@ final class StrapManager: NSObject {
             central.connect(p, options: nil)
             return
         }
-        if let p = central.retrieveConnectedPeripherals(withServices: [StrapUUID.service]).first {
-            attach(p)
-            state = .connecting
-            central.connect(p, options: nil)
-            return
-        }
-        startScan()
+        // No paired strap: stay idle. Scanning only happens when the user asks for it, and even
+        // then nothing connects until they pick a strap from the list.
+        state = .noStrap
     }
 
     private func startScan() {
@@ -260,10 +293,11 @@ final class StrapManager: NSObject {
         state = .scanning
         central.scanForPeripherals(withServices: [StrapUUID.service, StrapUUID.gen4Service],
                                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
-        queue.asyncAfter(deadline: .now() + 30) { [weak self] in
+        queue.asyncAfter(deadline: .now() + 45) { [weak self] in
             guard let self, self.state == .scanning else { return }
             self.central.stopScan()
-            self.state = .noStrap
+            self.state = self.hasSavedStrap ? .connecting : .noStrap
+            if self.hasSavedStrap { self.connectLocked() }
         }
     }
 
@@ -545,12 +579,11 @@ extension StrapManager: CBCentralManagerDelegate {
             state = .unsupported("Esta app es para WHOOP 5.0 / MG. Se ha encontrado una WHOOP 4.0.")
             return
         }
-        central.stopScan()
-        identity.name = peripheral.name ?? (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? "WHOOP"
-        attach(peripheral)
-        state = .connecting
-        central.connect(peripheral, options: nil)
-        log("Pulsera encontrada: \(identity.name)")
+        let name = (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? peripheral.name ?? "WHOOP"
+        let isNew = discovered[peripheral.identifier] == nil
+        discovered[peripheral.identifier] = (peripheral, DiscoveredStrap(id: peripheral.identifier, name: name, rssi: RSSI.intValue))
+        if isNew { log("Pulsera encontrada: \(name) (no se conecta hasta que la elijas)") }
+        publishDiscovered()
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {

@@ -78,6 +78,8 @@ final class AppModel: ObservableObject {
     @Published var ecgProgress: Double = 0
     @Published var importStatus: String?
     @Published var breathingGuideActive = false
+    /// Straps found by the last scan (nothing connects until one is chosen).
+    @Published var discoveredStraps: [DiscoveredStrap] = []
 
     let db: PulsoDatabase
     let strap = StrapManager()
@@ -294,7 +296,19 @@ final class AppModel: ObservableObject {
     // MARK: - Strap actions
 
     func connect() { strap.connect() }
-    func pairNew() { strap.pairNew() }
+    /// Lists nearby straps. Never connects by itself.
+    func scanForStraps() {
+        discoveredStraps = []
+        strap.scan()
+    }
+
+    func stopScan() { strap.stopScan() }
+
+    /// Pairs with the strap the user picked.
+    func chooseStrap(_ s: DiscoveredStrap) {
+        strap.choose(s.id)
+        discoveredStraps = []
+    }
     func forgetStrap() { strap.forget() }
     func syncNow() { strap.sync(force: true) }
     func buzz() { strap.buzz() }
@@ -630,6 +644,10 @@ extension AppModel: StrapManagerDelegate {
 
     nonisolated func strapLog(_ line: String) {
         MainActor.assumeIsolated { self.appendLog(line) }
+    }
+
+    nonisolated func strapDiscovered(_ straps: [DiscoveredStrap]) {
+        MainActor.assumeIsolated { self.discoveredStraps = straps }
     }
 
     nonisolated func strapUnhandledFrame(_ frame: Frame) {

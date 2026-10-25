@@ -13,6 +13,7 @@ struct MoreView: View {
     @State private var backupURL: URL?
     @State private var confirmErase = false
     @State private var confirmForget = false
+    @State private var pendingStrap: DiscoveredStrap?
 
     var body: some View {
         NavigationStack {
@@ -160,10 +161,37 @@ struct MoreView: View {
                 Label("Sincronizar ahora", systemImage: "arrow.triangle.2.circlepath")
             }
             .disabled(!model.strapState.isConnected)
-            Button {
-                model.pairNew()
-            } label: {
-                Label(model.strap.hasSavedStrap ? "Emparejar otra pulsera" : "Buscar pulsera", systemImage: "magnifyingglass")
+            if model.strapState == .scanning {
+                Button {
+                    model.stopScan()
+                } label: {
+                    Label("Buscando… (toca para parar)", systemImage: "stop.circle")
+                }
+            } else {
+                Button {
+                    model.scanForStraps()
+                } label: {
+                    Label(model.strap.hasSavedStrap ? "Emparejar otra pulsera" : "Buscar pulseras cercanas", systemImage: "magnifyingglass")
+                }
+            }
+            if !model.discoveredStraps.isEmpty {
+                ForEach(model.discoveredStraps) { s in
+                    Button {
+                        pendingStrap = s
+                    } label: {
+                        HStack {
+                            Image(systemName: "sensor.tag.radiowaves.forward")
+                            VStack(alignment: .leading) {
+                                Text(s.name).font(.subheadline.bold())
+                                Text(Self.signal(s.rssi)).font(.caption).foregroundStyle(Theme.secondary)
+                            }
+                            Spacer()
+                            Text("Elegir").font(.caption.bold()).foregroundStyle(Theme.green)
+                        }
+                    }
+                }
+                Text("Nada se conecta hasta que elijas una. Comprueba el nombre: el número es el de serie de la pulsera.")
+                    .font(.caption).foregroundStyle(Theme.secondary)
             }
             if case .pairingRefused = model.strapState {
                 Button {
@@ -194,6 +222,25 @@ struct MoreView: View {
             }
         } header: {
             Text("Pulsera")
+        }
+        .confirmationDialog(pendingStrap.map { "¿Emparejar con \($0.name)?" } ?? "",
+                            isPresented: Binding(get: { pendingStrap != nil }, set: { if !$0 { pendingStrap = nil } }),
+                            titleVisibility: .visible) {
+            Button("Sí, es mi pulsera de pruebas") {
+                if let s = pendingStrap { model.chooseStrap(s) }
+                pendingStrap = nil
+            }
+            Button("Cancelar", role: .cancel) { pendingStrap = nil }
+        } message: {
+            Text("Una WHOOP solo admite un emparejamiento. Asegúrate de que no es la pulsera vinculada a tu cuenta de WHOOP.")
+        }
+    }
+
+    static func signal(_ rssi: Int) -> String {
+        switch rssi {
+        case (-60)...: return "Muy cerca"
+        case (-75)...: return "Cerca"
+        default: return "Lejos"
         }
     }
 
@@ -365,7 +412,7 @@ struct PairingGuideView: View {
                 step(1, "Libera la pulsera", "La WHOOP 5.0 solo admite un emparejamiento a la vez. En la app de WHOOP, desvincula la pulsera (o desinstala la app).")
                 step(2, "Olvida el emparejamiento antiguo", "iPhone → Ajustes → Bluetooth → toca (i) junto a la WHOOP → Omitir dispositivo.")
                 step(3, "Modo emparejamiento", "Toca la pulsera varias veces seguidas hasta que los LED parpadeen en azul.")
-                step(4, "Empareja con Pulso", "En Más → Pulsera, pulsa «Buscar pulsera» y acepta la solicitud de emparejamiento Bluetooth de iOS.")
+                step(4, "Empareja con Pulso", "En Más → Pulsera, pulsa «Buscar pulseras cercanas», elige la tuya por su nombre y acepta la solicitud de emparejamiento de iOS.")
             } header: {
                 Text("Primera vez")
             }
@@ -462,11 +509,10 @@ struct OnboardingView: View {
                     } else {
                         model.saveProfile(profile)
                         model.hasOnboarded = true
-                        model.pairNew()
                         onDone()
                     }
                 } label: {
-                    Text(page < 2 ? "Siguiente" : "Buscar mi pulsera")
+                    Text(page < 2 ? "Siguiente" : "Empezar")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 6)
@@ -519,11 +565,13 @@ struct OnboardingView: View {
     private var pairing: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Antes de emparejar").font(.title2.bold())
-                Label("Desvincula la pulsera de la app de WHOOP (solo admite un emparejamiento).", systemImage: "1.circle.fill")
+                Text("Emparejar, cuando quieras").font(.title2.bold())
+                Text("Pulso no se conecta a ninguna pulsera por su cuenta. Cuando quieras emparejar, ve a Más → Pulsera → Buscar pulseras cercanas y elige la tuya de la lista.")
+                    .foregroundStyle(Theme.secondary)
+                Label("Usa una pulsera que no esté vinculada a tu cuenta de WHOOP (solo admite un emparejamiento).", systemImage: "1.circle.fill")
                 Label("En Ajustes → Bluetooth, omite la WHOOP si aparece.", systemImage: "2.circle.fill")
                 Label("Toca la pulsera varias veces hasta que parpadee en azul.", systemImage: "3.circle.fill")
-                Label("Acepta la solicitud de emparejamiento que mostrará iOS.", systemImage: "4.circle.fill")
+                Label("Elígela en la lista y acepta la solicitud de emparejamiento de iOS.", systemImage: "4.circle.fill")
             }
             .padding(24)
         }
