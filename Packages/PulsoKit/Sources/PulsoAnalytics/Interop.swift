@@ -330,6 +330,8 @@ public enum WhoopExport {
         public var workoutsLinked = 0
         public var workoutsKnown = 0
         public var journal = 0
+
+        public init() {}
     }
 
     /// Saves an import. Running it again with the same files changes nothing: days are refreshed (fields
