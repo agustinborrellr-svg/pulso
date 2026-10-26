@@ -49,6 +49,8 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     /// Adds a request, asking for permission first if the user has never been asked (so the
     /// confirmations and alerts work even if Despertador / Avisos were never opened).
     private func add(_ request: UNNotificationRequest) {
+        // The screenshot run must not stop on the system permission prompt.
+        if AppMode.screenshots { return }
         center.getNotificationSettings { settings in
             guard settings.authorizationStatus == .notDetermined else {
                 self.center.add(request)
