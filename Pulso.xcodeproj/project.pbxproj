@@ -40,6 +40,7 @@
 		7AA299176873D0A166160DAD /* AppModel+Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4682CF202FFB386AFDDD3C77 /* AppModel+Diagnostics.swift */; };
 		8083260824C6E4DF1E6A80F1 /* AppModel+Alarms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058E282DF080510D9A019857 /* AppModel+Alarms.swift */; };
 		8110FAF9E2330C591FEE29DF /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 161B85AAB6D9A641FEAD08D1 /* HealthKit.framework */; };
+		836182DBF0E4BF1DC95FA0F9 /* GuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 606ADA2594C918C41A1C5114 /* GuideView.swift */; };
 		8BA0AB154FC2582FB1B31783 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2392A2F04BF40C64240F84A4 /* WidgetKit.framework */; };
 		8DBE1C6BB50DC3274C07E853 /* PulsoFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = 7C50D970881B2336E0D252C3 /* PulsoFeatures */; };
 		9279693D6004DF6417213423 /* AppModel+WhoopImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9719244373411EDA28B0B0BA /* AppModel+WhoopImport.swift */; };
@@ -106,6 +107,7 @@
 		4682CF202FFB386AFDDD3C77 /* AppModel+Diagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Diagnostics.swift"; sourceTree = "<group>"; };
 		56920E1410B972C2828F9517 /* LabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabView.swift; sourceTree = "<group>"; };
 		5E9A002EB2D84AB65695CF9E /* HRBroadcaster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HRBroadcaster.swift; sourceTree = "<group>"; };
+		606ADA2594C918C41A1C5114 /* GuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuideView.swift; sourceTree = "<group>"; };
 		673D2D69F4A2BA0DF7310097 /* LiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveView.swift; sourceTree = "<group>"; };
 		6E5384FA2761D1942BA03E99 /* SharedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
 		7123F2EF70734D23961A4F2C /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
@@ -264,6 +266,7 @@
 				1CF0170FEA524F8ADCD58BC9 /* AlarmsView.swift */,
 				F25DDB647492817FC6DC66D1 /* BedtimeView.swift */,
 				A64EAE06663BC70D64B2C18E /* ECGView.swift */,
+				606ADA2594C918C41A1C5114 /* GuideView.swift */,
 				7B571906E4B79EDFE8EFB1F3 /* IntegrationsView.swift */,
 				EE6BDCECB7512E289ABE721F /* IntelligenceView.swift */,
 				56920E1410B972C2828F9517 /* LabView.swift */,
@@ -456,6 +459,7 @@
 				00F995BBEA85C71B9FA89358 /* AppModel.swift in Sources */,
 				10E2B0325AC08AC7CFD7F5E3 /* BedtimeView.swift in Sources */,
 				61427AC7E98B199BA7AF8A8D /* ECGView.swift in Sources */,
+				836182DBF0E4BF1DC95FA0F9 /* GuideView.swift in Sources */,
 				5B0563BEB7EE31E961B58C58 /* HRBroadcaster.swift in Sources */,
 				218166DCE7B27B0A2DD4BF15 /* HealthExporter.swift in Sources */,
 				409D00D09EB3F215AB48191C /* IntegrationsView.swift in Sources */,
