@@ -218,7 +218,7 @@ struct MetricDetailView: View {
             }
             .padding(16)
         }
-        .background(Theme.background.ignoresSafeArea())
+        .background(PulsoBackground())
         .navigationTitle(metric.name)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -429,7 +429,7 @@ struct WhatIfView: View {
             }
             .padding(16)
         }
-        .background(Theme.background.ignoresSafeArea())
+        .background(PulsoBackground())
         .navigationTitle("Simulador")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {

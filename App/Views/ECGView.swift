@@ -169,7 +169,7 @@ struct ECGRecordView: View {
                 }
             }
             .padding(.bottom)
-            .background(Theme.background.ignoresSafeArea())
+            .background(PulsoBackground())
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(result == nil ? "Cancelar" : "Cerrar") {
@@ -192,7 +192,7 @@ struct ECGDetailView: View {
 
     var body: some View {
         ScrollView { ECGDetailContent(recording: recording) }
-            .background(Theme.background.ignoresSafeArea())
+            .background(PulsoBackground())
             .navigationTitle("ECG")
             .navigationBarTitleDisplayMode(.inline)
     }

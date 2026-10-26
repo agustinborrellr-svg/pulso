@@ -8,16 +8,16 @@ enum ShotScreen: String, Identifiable {
     case today, sleep, trends, live, more
     case alarms, alarmEditor, notifications, integrations, ecg, ecgDetail, bedtime, lab, workout, onboarding, whatif, intelDetail
     case guide, guideData, guideRecovery, guideAlarm, whoopImport
+    case recovery, strain, stress, trendRecovery, trendStrain, trendHRV, device, pairing, deviceAdvanced
 
     var id: String { rawValue }
 
     var tab: Int? {
         switch self {
         case .today: return 0
-        case .sleep: return 1
-        case .trends: return 2
-        case .live: return 3
-        case .more: return 4
+        case .trends: return 1
+        case .live: return 2
+        case .more: return 3
         default: return nil
         }
     }
@@ -96,6 +96,15 @@ struct ShotDestination: View {
                 case .guideRecovery: GuideView(startPage: 3)
                 case .guideAlarm: GuideView(startPage: 8)
                 case .whoopImport: WhoopImportView()
+                case .sleep: SleepDetailView()
+                case .recovery: RecoveryDetailView()
+                case .strain: StrainDetailView()
+                case .stress: StressMonitorView()
+                case .trendRecovery: TrendDetailView(metric: .recovery)
+                case .trendStrain: TrendDetailView(metric: .strain)
+                case .trendHRV: TrendDetailView(metric: .hrv)
+                case .device, .deviceAdvanced: DeviceView()
+                case .pairing: PairingFlowView()
                 case .whatif: WhatIfView()
                 case .intelDetail:
                     if let m = model.intelligence?.metric("forecast") { MetricDetailView(metric: m) } else { Text("Calculando…") }

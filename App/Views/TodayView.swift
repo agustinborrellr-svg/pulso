@@ -37,7 +37,7 @@ struct TodayView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
-            .background(Theme.background.ignoresSafeArea())
+            .background(PulsoBackground())
             .refreshable { await pullToRefresh() }
             .toolbar(.hidden, for: .navigationBar)
         }

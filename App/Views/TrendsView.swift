@@ -56,7 +56,7 @@ struct TrendsView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
-            .background(Theme.background.ignoresSafeArea())
+            .background(PulsoBackground())
             .navigationTitle("Análisis")
         }
     }

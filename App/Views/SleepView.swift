@@ -43,7 +43,7 @@ struct SleepView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
-            .background(Theme.background.ignoresSafeArea())
+            .background(PulsoBackground())
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $editing) { s in
                 SleepEditSheet(session: s)

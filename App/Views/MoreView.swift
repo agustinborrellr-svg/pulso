@@ -124,7 +124,7 @@ struct MoreView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Theme.background.ignoresSafeArea())
+            .background(PulsoBackground())
             .navigationTitle("Más")
             .fullScreenCover(isPresented: $showGuide) { GuideView() }
 
@@ -144,6 +144,11 @@ struct MoreView: View {
 
     private var strapSection: some View {
         Section {
+            NavigationLink {
+                DeviceView()
+            } label: {
+                Label("Configuración del dispositivo", systemImage: "applewatch.side.right")
+            }
             HStack {
                 Image(systemName: "sensor.tag.radiowaves.forward.fill")
                     .font(.title2)
@@ -444,7 +449,7 @@ struct JournalEditor: View {
             }
             .padding()
         }
-        .background(Theme.background.ignoresSafeArea())
+        .background(PulsoBackground())
         .navigationTitle("Diario")
     }
 }
@@ -566,7 +571,7 @@ struct OnboardingView: View {
                 .padding(.horizontal)
                 .padding(.bottom)
             }
-            .background(Theme.background.ignoresSafeArea())
+            .background(PulsoBackground())
         }
         .preferredColorScheme(.dark)
         .onAppear { profile = model.profile }

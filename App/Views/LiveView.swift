@@ -31,7 +31,7 @@ struct LiveView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
-            .background(Theme.background.ignoresSafeArea())
+            .background(PulsoBackground())
             .navigationTitle("En vivo")
             .onAppear { model.setLive(true) }
             .onDisappear { if model.liveWorkout == nil { model.setLive(false) } }
@@ -249,7 +249,7 @@ struct BreathingView: View {
             Spacer()
         }
         .padding()
-        .background(Theme.background.ignoresSafeArea())
+        .background(PulsoBackground())
         .navigationTitle("Respiración")
         .onDisappear { model.setLive(false, client: "breathing-view") }
         .onAppear {
@@ -376,7 +376,7 @@ struct WorkoutDetailView: View {
             }
             .padding(16)
         }
-        .background(Theme.background.ignoresSafeArea())
+        .background(PulsoBackground())
         .navigationTitle("Entreno")
         .onAppear {
             let s = model.samples(from: Date(timeIntervalSince1970: TimeInterval(workout.start)),

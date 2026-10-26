@@ -153,7 +153,7 @@ struct GuideView: View {
             .padding(.horizontal)
             .padding(.bottom)
         }
-        .background(Theme.background.ignoresSafeArea())
+        .background(PulsoBackground())
         .preferredColorScheme(.dark)
         .onDisappear { UserDefaults.standard.set(true, forKey: Self.seenKey) }
     }

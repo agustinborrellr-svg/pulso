@@ -3,19 +3,29 @@ import PulsoStore
 import PulsoAnalytics
 
 enum Theme {
-    static let background = Color(red: 0.035, green: 0.043, blue: 0.055)
-    static let card = Color(red: 0.086, green: 0.098, blue: 0.118)
-    static let cardHighlight = Color(red: 0.118, green: 0.133, blue: 0.157)
-    static let secondary = Color(white: 0.62)
-    static let tertiary = Color(white: 0.40)
+    // Slate palette: dark blue-grey surfaces, bright scores.
+    static let background = Color(red: 0.067, green: 0.082, blue: 0.098)
+    static let backgroundTop = Color(red: 0.149, green: 0.180, blue: 0.208)
+    static let card = Color(red: 0.149, green: 0.176, blue: 0.200)
+    static let cardHighlight = Color(red: 0.200, green: 0.231, blue: 0.259)
+    static let hairline = Color.white.opacity(0.07)
+    static let secondary = Color(white: 0.64)
+    static let tertiary = Color(white: 0.42)
 
-    static let green = Color(red: 0.16, green: 0.84, blue: 0.45)
-    static let yellow = Color(red: 1.00, green: 0.78, blue: 0.18)
-    static let red = Color(red: 1.00, green: 0.30, blue: 0.30)
-    static let strain = Color(red: 0.24, green: 0.56, blue: 1.00)
-    static let sleep = Color(red: 0.58, green: 0.50, blue: 1.00)
-    static let stress = Color(red: 1.00, green: 0.55, blue: 0.20)
-    static let hrv = Color(red: 0.25, green: 0.85, blue: 0.85)
+    static let green = Color(red: 0.09, green: 0.93, blue: 0.02)
+    static let yellow = Color(red: 1.00, green: 0.87, blue: 0.00)
+    static let red = Color(red: 1.00, green: 0.18, blue: 0.27)
+    static let strain = Color(red: 0.00, green: 0.58, blue: 0.91)
+    static let sleep = Color(red: 0.48, green: 0.63, blue: 0.73)
+    static let stress = Color(red: 0.96, green: 0.65, blue: 0.14)
+    static let hrv = Color(red: 0.25, green: 0.70, blue: 0.95)
+    /// Better / worse than your usual (arrows next to each metric).
+    static let better = Color(red: 0.10, green: 0.86, blue: 0.62)
+    static let worse = Color(red: 0.96, green: 0.65, blue: 0.14)
+    static let stressLow = Color(red: 0.29, green: 0.64, blue: 0.94)
+    static let stressMid = Color(red: 0.06, green: 0.83, blue: 0.61)
+    static let stressHigh = Color(red: 0.96, green: 0.65, blue: 0.14)
+    static let link = Color(red: 0.45, green: 0.62, blue: 1.00)
 
     static func recoveryColor(_ score: Double?) -> Color {
         guard let score else { return secondary }
@@ -39,10 +49,10 @@ enum Theme {
 
     static func stageColor(_ s: SleepStage) -> Color {
         switch s {
-        case .awake: return Color(red: 1.0, green: 0.62, blue: 0.40)
-        case .light: return Color(red: 0.55, green: 0.62, blue: 1.0)
-        case .deep: return Color(red: 0.36, green: 0.28, blue: 0.95)
-        case .rem: return Color(red: 0.30, green: 0.80, blue: 1.0)
+        case .awake: return Color(white: 0.85)
+        case .light: return Color(red: 0.66, green: 0.66, blue: 0.98)
+        case .deep: return Color(red: 0.96, green: 0.55, blue: 0.94)
+        case .rem: return Color(red: 0.66, green: 0.32, blue: 0.95)
         }
     }
 
@@ -57,7 +67,12 @@ enum Theme {
 
     static func stressColor(_ v: Double?) -> Color {
         guard let v else { return secondary }
-        return v < 1 ? green : (v < 2 ? yellow : stress)
+        return v < 1 ? stressLow : (v < 2 ? stressMid : stressHigh)
+    }
+
+    static func stressLevel(_ v: Double?) -> String {
+        guard let v else { return "–" }
+        return v < 1 ? "BAJO" : (v < 2 ? "MEDIO" : "ALTO")
     }
 }
 
@@ -132,7 +147,7 @@ struct Card<Content: View>: View {
         VStack(alignment: .leading, spacing: 12) { content }
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

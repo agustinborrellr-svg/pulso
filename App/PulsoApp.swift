@@ -68,21 +68,18 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $tab) {
-            TodayView()
-                .tabItem { Label("Hoy", systemImage: "circle.circle") }
+            HomeView()
+                .tabItem { Label("Inicio", systemImage: "house") }
                 .tag(0)
-            SleepView()
-                .tabItem { Label("Sueño", systemImage: "moon.zzz") }
-                .tag(1)
             TrendsView()
                 .tabItem { Label("Análisis", systemImage: "brain.head.profile") }
-                .tag(2)
+                .tag(1)
             LiveView()
                 .tabItem { Label("En vivo", systemImage: "heart.text.square") }
-                .tag(3)
+                .tag(2)
             MoreView()
-                .tabItem { Label("Más", systemImage: "gearshape") }
-                .tag(4)
+                .tabItem { Label("Más", systemImage: "line.3.horizontal") }
+                .tag(3)
         }
         .tint(.white)
         .onAppear {
