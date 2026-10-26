@@ -55,7 +55,7 @@ struct TrendDetailView: View {
                 .foregroundStyle(.white)
                 .fixedSize(horizontal: false, vertical: true)
 
-            TrendChart(metric: metric, points: w.points, period: period, highlightLast: offset == 0)
+            MetricChart(metric: metric, points: w.points, period: period, highlightLast: offset == 0)
                 .frame(height: 280)
                 .padding(.top, 6)
 
@@ -139,7 +139,7 @@ struct PeriodPicker: View {
 }
 
 /// Bars or line with the value on each point, today's column highlighted, tap to read any day.
-struct TrendChart: View {
+struct MetricChart: View {
     let metric: TrendMetric
     let points: [TrendSample]
     let period: TrendPeriod
@@ -319,7 +319,7 @@ struct WeeklyTrendCard: View {
         } label: {
             PCard {
                 CardHeader(title: metric.title, chevron: true)
-                TrendChart(metric: metric, points: w.points, period: .week, compact: true)
+                MetricChart(metric: metric, points: w.points, period: .week, compact: true)
                     .frame(height: 190)
                     .allowsHitTesting(false)
             }

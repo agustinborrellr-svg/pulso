@@ -465,7 +465,6 @@ extension Fmt {
         f.numberStyle = .decimal
         f.maximumFractionDigits = 0
         f.usesGroupingSeparator = true
-        f.minimumGroupingDigits = 1
         return f.string(from: NSNumber(value: v.rounded())) ?? String(Int(v))
     }
 

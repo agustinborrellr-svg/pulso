@@ -267,36 +267,36 @@ enum TrendMetric: String, CaseIterable, Identifiable {
     /// "DESGLOSE DE …" under the chart.
     func breakdown(_ w: TrendWindow, days: [DaySummary]) -> (title: String, buckets: [Bucket])? {
         func count(_ test: (Double) -> Bool) -> Double { Double(w.values.filter(test).count) }
-        func days(_ n: Double) -> String { "\(Int(n))x" }
+        func times(_ n: Double) -> String { "\(Int(n))x" }
         switch self {
         case .recovery:
             let g = count { $0 >= 67 }, y = count { $0 >= 34 && $0 < 67 }, r = count { $0 < 34 }
             return ("Desglose de la recuperación (días)", [
-                Bucket(label: "Verde (67-99%)", value: g, color: Theme.green, text: days(g)),
-                Bucket(label: "Amarillo (34-66%)", value: y, color: Theme.yellow, text: days(y)),
-                Bucket(label: "Rojo (1-33%)", value: r, color: Theme.red, text: days(r)),
+                Bucket(label: "Verde (67-99%)", value: g, color: Theme.green, text: times(g)),
+                Bucket(label: "Amarillo (34-66%)", value: y, color: Theme.yellow, text: times(y)),
+                Bucket(label: "Rojo (1-33%)", value: r, color: Theme.red, text: times(r)),
             ])
         case .strain:
             let a = count { $0 > 18 }, b = count { $0 > 14 && $0 <= 18 }, c = count { $0 > 10 && $0 <= 14 }, d = count { $0 <= 10 }
             return ("Desglose del esfuerzo (días)", [
-                Bucket(label: "Esfuerzo total (>18,0)", value: a, color: Theme.strain, text: days(a)),
-                Bucket(label: "Extenuante (14,1-18,0)", value: b, color: Theme.strain.opacity(0.8), text: days(b)),
-                Bucket(label: "Moderado (10,1-14,0)", value: c, color: Theme.strain.opacity(0.6), text: days(c)),
-                Bucket(label: "Ligero (<10,0)", value: d, color: Theme.strain.opacity(0.4), text: days(d)),
+                Bucket(label: "Esfuerzo total (>18,0)", value: a, color: Theme.strain, text: times(a)),
+                Bucket(label: "Extenuante (14,1-18,0)", value: b, color: Theme.strain.opacity(0.8), text: times(b)),
+                Bucket(label: "Moderado (10,1-14,0)", value: c, color: Theme.strain.opacity(0.6), text: times(c)),
+                Bucket(label: "Ligero (<10,0)", value: d, color: Theme.strain.opacity(0.4), text: times(d)),
             ])
         case .restorativePct:
             let a = count { $0 > 45 }, b = count { $0 >= 30 && $0 <= 45 }, c = count { $0 < 30 }
             return ("Desglose del % de restauración (días)", [
-                Bucket(label: "Alto (>45%)", value: a, color: Theme.sleep, text: days(a)),
-                Bucket(label: "Suficiente (30-45%)", value: b, color: Theme.sleep.opacity(0.65), text: days(b)),
-                Bucket(label: "Bajo (<30%)", value: c, color: Theme.sleep.opacity(0.35), text: days(c)),
+                Bucket(label: "Alto (>45%)", value: a, color: Theme.sleep, text: times(a)),
+                Bucket(label: "Suficiente (30-45%)", value: b, color: Theme.sleep.opacity(0.65), text: times(b)),
+                Bucket(label: "Bajo (<30%)", value: c, color: Theme.sleep.opacity(0.35), text: times(c)),
             ])
         case .sleepPerformance:
             let a = count { $0 >= 85 }, b = count { $0 >= 70 && $0 < 85 }, c = count { $0 < 70 }
             return ("Desglose de la calificación (días)", [
-                Bucket(label: "Óptimo (≥85%)", value: a, color: Theme.sleep, text: days(a)),
-                Bucket(label: "Suficiente (70-84%)", value: b, color: Theme.sleep.opacity(0.65), text: days(b)),
-                Bucket(label: "Deficiente (<70%)", value: c, color: Theme.sleep.opacity(0.35), text: days(c)),
+                Bucket(label: "Óptimo (≥85%)", value: a, color: Theme.sleep, text: times(a)),
+                Bucket(label: "Suficiente (70-84%)", value: b, color: Theme.sleep.opacity(0.65), text: times(b)),
+                Bucket(label: "Deficiente (<70%)", value: c, color: Theme.sleep.opacity(0.35), text: times(c)),
             ])
         case .zonesLight, .zonesHard:
             let range = self == .zonesLight ? 0..<3 : 3..<5
