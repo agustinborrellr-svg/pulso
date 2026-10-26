@@ -111,6 +111,11 @@ final class StrapManager: NSObject {
     private var sessionStarted = false
     private var pendingSubscriptions = Set<CBUUID>()
     private var helloTimeout: DispatchWorkItem?
+    private var sessionTimer: DispatchWorkItem?
+    private var unsupportedLogged = false
+    /// Time the strap's firmware alarm was last armed for on this link (avoids re-sending the same
+    /// SET_ALARM_TIME on every schedule refresh).
+    private var armedAlarm: Date?
     private var helloReceived = false
     private var helloRetried = false
     private var subscribeQueue: [CBUUID] = []
@@ -336,9 +341,14 @@ final class StrapManager: NSObject {
     func setAlarm(_ date: Date?) {
         guard active else { return }
         queue.async {
+            guard self.bonded else { return }
             if let date {
+                if let armed = self.armedAlarm, abs(armed.timeIntervalSince(date)) < 1 { return }
+                self.armedAlarm = date
                 self.send(self.commands.setAlarm(at: date))
             } else {
+                guard self.armedAlarm != nil else { return }
+                self.armedAlarm = nil
                 self.send(self.commands.disableAlarm())
             }
         }
@@ -391,7 +401,18 @@ final class StrapManager: NSObject {
         p.delegate = self
     }
 
+    /// Schedules `beginSession` so a reconnect can cancel a timer armed for the previous link.
+    private func scheduleSession(after delay: Double) {
+        sessionTimer?.cancel()
+        let item = DispatchWorkItem { [weak self] in self?.beginSession() }
+        sessionTimer = item
+        queue.asyncAfter(deadline: .now() + delay, execute: item)
+    }
+
     private func resetSession() {
+        sessionTimer?.cancel()
+        sessionTimer = nil
+        armedAlarm = nil
         if !liveBuffer.isEmpty {
             _ = store(liveBuffer)
             liveBuffer.removeAll()
@@ -458,7 +479,7 @@ final class StrapManager: NSObject {
             subscribeQueue = StrapUUID.notifyChars.filter { chars[$0] != nil }
             pendingSubscriptions = Set(subscribeQueue)
             queue.asyncAfter(deadline: .now() + 0.6) { [weak self] in self?.subscribeNext() }
-            queue.asyncAfter(deadline: .now() + 8) { [weak self] in self?.beginSession() }
+            scheduleSession(after: 8)
             return
         }
         pendingSubscriptions = Set(StrapUUID.notifyChars.filter { chars[$0] != nil })
@@ -467,7 +488,7 @@ final class StrapManager: NSObject {
         }
         subscribeStandardChars(p)
         // Continue even if a subscription confirmation never arrives.
-        queue.asyncAfter(deadline: .now() + 2.0) { [weak self] in self?.beginSession() }
+        scheduleSession(after: 2.0)
     }
 
     /// Next vendor channel in sequential mode; standard GATT services come after them.
@@ -475,7 +496,7 @@ final class StrapManager: NSObject {
         guard let p = peripheral, p.state == .connected else { return }
         guard !subscribeQueue.isEmpty else {
             subscribeStandardChars(p)
-            queue.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.beginSession() }
+            scheduleSession(after: 0.5)
             return
         }
         let uuid = subscribeQueue.removeFirst()
@@ -553,6 +574,8 @@ final class StrapManager: NSObject {
         offloadLast = nil
         state = .syncing(records: 0)
         log("Descargando historial…")
+        // NOOP / OpenStrap: the 5.0 asks for the data range before the history request (read-only).
+        send(commands.getDataRange())
         send(commands.sendHistoricalData())
         armOffloadIdle()
     }
@@ -727,7 +750,11 @@ extension StrapManager: CBCentralManagerDelegate {
                         advertisementData: [String: Any], rssi RSSI: NSNumber) {
         let services = (advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID]) ?? []
         if services.contains(StrapUUID.gen4Service) && !services.contains(StrapUUID.service) {
-            state = .unsupported("Esta app es para WHOOP 5.0 / MG. Se ha encontrado una WHOOP 4.0.")
+            // Leaving `.scanning` here would orphan the scan (its stop paths check that state).
+            if !unsupportedLogged {
+                unsupportedLogged = true
+                log("Se ha encontrado una WHOOP 4.0: esta app es para WHOOP 5.0 / MG, la ignoro")
+            }
             return
         }
         let name = (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? peripheral.name ?? "WHOOP"
@@ -829,6 +856,14 @@ extension StrapManager: CBPeripheralDelegate {
                 } else {
                     log("Escritura fallida: \(error.localizedDescription)")
                 }
+                return
+            }
+            log("Escritura rechazada tras el emparejamiento: \(error.localizedDescription)")
+            if insufficient, let p = self.peripheral {
+                // The bond was lost mid-session: start over from discovery so the hello write re-bonds.
+                resetSession()
+                state = .pairing
+                p.discoverServices([StrapUUID.service, StrapUUID.heartRateService, StrapUUID.batteryService, StrapUUID.deviceInfoService])
             }
             return
         }

@@ -19,9 +19,12 @@ public struct HistorySample: Equatable, Sendable {
     public var sleepState: UInt8?
     public var signalFlags: UInt8?
     public var signalQuality: UInt8?
-    /// Both optical amplitude channels read the 128 sentinel: the band's own beat detection was unreliable.
+    /// inner[100]/[101] are two signed int8 per-detector pSNR values; both reading -128 (0x80) means
+    /// both detectors were unavailable that second.
     public var signalPoor: Bool
-    /// Off-wrist: flag bit 4, both optical baselines zero, or no HR at all.
+    /// Off-wrist heuristic: flag bit 4 of inner[25], both optical baselines zero, or no HR at all.
+    /// None of those bytes is a documented wear flag (the HELLO body and WRIST_ON/OFF events are);
+    /// the analytics treat this as a hint, not ground truth.
     public var offWrist: Bool
 
     public init(unix: UInt32, recordIndex: UInt32? = nil, heartRate: UInt8? = nil, rr: [UInt16] = [],
@@ -61,10 +64,13 @@ public struct HistorySample: Equatable, Sendable {
             if (0.5...1.5).contains(mag) { gravity = SIMD3(x, y, z) }
         }
         let dyn = LE.f32(b, 33).flatMap { ($0.isFinite && (0...8).contains($0)) ? $0 : nil }
+        // AS6221 skin temperature: SIGNED i16 / 100 °C; -5000 is the firmware's "unavailable" sentinel.
         let temp = LE.u16(b, 65).flatMap { raw -> Float? in
-            let c = Float(raw) / 100
+            let c = Float(Int16(bitPattern: raw)) / 100
             return (5...45).contains(c) ? c : nil
         }
+        // inner[74] is the strap's SpO₂ candidate byte: the community has not pinned its encoding or a
+        // validity flag, so only the physiological 70–100 window is kept and it stays an estimate.
         let spo2 = LE.u8(b, 74).flatMap { (70...100).contains($0) ? $0 : nil }
         let activity = LE.u8(b, 55).flatMap { $0 <= 2 ? $0 : nil }
         let sleepState = LE.u8(b, 73).map { ($0 >> 4) & 0x03 }
@@ -117,10 +123,11 @@ public struct RealtimeHR: Equatable, Sendable {
         guard f.canonicalType == .realtimeData else { return nil }
         let b = f.inner
         guard let ts = LE.u32(b, 2), let hr = LE.u8(b, 8) else { return nil }
-        let flag = LE.u8(b, 9) ?? 0
+        // inner[9] is the R-R count (whoop-rs, OpenStrap), not a validity flag: a second with a heart
+        // rate but no beat intervals (motion, poor contact) is still a valid live reading.
         let slots = max(0, (b.count - 10) / 2)
         let rr = HistorySample.readRR(b, countAt: 9, firstAt: 10, maxSlots: min(slots, 8))
-        return RealtimeHR(unix: ts, heartRate: hr, rr: rr, valid: flag != 0 && hr > 0)
+        return RealtimeHR(unix: ts, heartRate: hr, rr: rr, valid: (25...240).contains(hr))
     }
 }
 

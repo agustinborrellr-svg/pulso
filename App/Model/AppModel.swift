@@ -288,7 +288,8 @@ final class AppModel: ObservableObject {
                 if let message { self.errorMessage = "Error analizando: \(message)" }
                 self.reload()
                 self.refreshIntelligence()
-                self.exportToHealthIfEnabled()
+                // Simulated days must never reach Apple Health as real samples.
+                if !self.demoActive { self.exportToHealthIfEnabled() }
                 self.evaluateAlerts(force: true)
                 if let next = self.pendingRecompute {
                     self.pendingRecompute = nil

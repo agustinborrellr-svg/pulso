@@ -218,11 +218,17 @@ final class IntegrationsTests: XCTestCase {
         let mock = MockTransport([(201, #"{"id":1,"error":"pulso-1.fit duplicate of <a href='/activities/4242'>x</a>","status":"There was an error processing your activity.","activity_id":null}"#)])
         let c = StravaClient(credentials: StravaCredentials(clientID: "1", clientSecret: "s"),
                              tokens: StravaTokens(accessToken: "t", refreshToken: "r", expiresAt: Int.max), transport: mock)
+        // A duplicate reported in the first reply links the existing activity instead of failing.
+        let linked = try await c.uploadAndWait(track(), pollEvery: 1_000_000)
+        XCTAssertEqual(linked, 4242)
+        let broken = StravaClient(credentials: StravaCredentials(clientID: "1", clientSecret: "s"),
+                                  tokens: StravaTokens(accessToken: "t", refreshToken: "r", expiresAt: Int.max),
+                                  transport: MockTransport([(201, #"{"id":2,"error":"Improperly formatted data.","status":"error","activity_id":null}"#)]))
         do {
-            _ = try await c.upload(track())
-            XCTFail("an error in the upload response must throw")
+            _ = try await broken.upload(track())
+            XCTFail("a non-duplicate error in the upload response must throw")
         } catch let e as StravaError {
-            if case .uploadFailed(let m) = e { XCTAssertTrue(m.contains("duplicate")) } else { XCTFail("\(e)") }
+            if case .uploadFailed(let m) = e { XCTAssertTrue(m.contains("Improperly")) } else { XCTFail("\(e)") }
         }
         let limited = StravaClient(credentials: StravaCredentials(clientID: "1", clientSecret: "s"),
                                    tokens: StravaTokens(accessToken: "t", refreshToken: "r", expiresAt: Int.max),

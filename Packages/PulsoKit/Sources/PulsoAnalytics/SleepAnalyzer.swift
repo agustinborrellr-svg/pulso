@@ -24,9 +24,10 @@ public enum SleepAnalyzer {
         s.minutesDeep = Double(stages.filter { $0 == .deep }.count)
         s.minutesREM = Double(stages.filter { $0 == .rem }.count)
 
-        // Latency: minutes until the first 10 consecutive asleep minutes.
+        // Latency: minutes until the first 10 consecutive asleep minutes. A night that never
+        // consolidates counts as all latency (no onset), not as latency 0.
         var run = 0
-        s.latencyMinutes = 0
+        s.latencyMinutes = Double(stages.count)
         for (i, st) in stages.enumerated() {
             run = st == .awake ? 0 : run + 1
             if run >= 10 {

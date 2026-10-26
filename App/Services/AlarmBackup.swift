@@ -10,9 +10,11 @@ import AlarmKit
 final class AlarmBackup {
     private static let idKey = "pulso.alarmkit.id"
 
+    /// True only when AlarmKit is available *and* authorised: otherwise the backup is the
+    /// notification burst, which does not ring in silent mode.
     var usesSystemAlarm: Bool {
         #if canImport(AlarmKit)
-        if #available(iOS 26.0, *) { return true }
+        if #available(iOS 26.0, *) { return AlarmManager.shared.authorizationState == .authorized }
         #endif
         return false
     }

@@ -105,6 +105,17 @@ public enum Deviation {
             guard let inv = Num.inverse(cov) else { continue }
             let w = Num.matVec(inv, z)
             let d2 = max(0, Num.dot(z, w))
+            // Coherence = where tonight's D² sits among the baseline nights' own D² (same centre, scale and
+            // covariance). The χ²₄ tail over-fires with median/MAD scaling on 14–28 nights (a typical night
+            // read ≈ 40 %, and "very unusual" fired 3–6× too often), so the empirical rank is used instead.
+            // Beyond every baseline night the rank has no resolution left, so the χ² tail takes over there,
+            // capped at the rank's own floor.
+            let pastD2 = zPast.map { zp -> Double in max(0, Num.dot(zp, Num.matVec(inv, zp))) }
+            let asExtreme = pastD2.filter { $0 >= d2 }.count
+            let rankFloor = 100 * 0.5 / (Double(pastD2.count) + 1)
+            let coherence = asExtreme > 0
+                ? 100 * (Double(asExtreme) + 0.5) / (Double(pastD2.count) + 1)
+                : min(rankFloor, 100 * Num.chiSquareSurvival(d2, k: k))
             let contributors = (0..<k).map { j in
                 Contributor(key: vars[j].key, label: vars[j].label, z: z[j], share: d2 > 1e-9 ? z[j] * w[j] / d2 : 0,
                             adverse: z[j] * vars[j].badSign > 0)
@@ -122,7 +133,7 @@ public enum Deviation {
             debt = debtDecay * debt + max(0, dPlus - debtThreshold)
             lastDay = row.day
             out.append(Point(day: row.day, mahalanobis: d2.squareRoot(), strain: dPlus,
-                             coherence: 100 * Num.chiSquareSurvival(d2, k: k), contributors: contributors, debt: debt,
+                             coherence: coherence, contributors: contributors, debt: debt,
                              baselineNights: past.count))
         }
         return out

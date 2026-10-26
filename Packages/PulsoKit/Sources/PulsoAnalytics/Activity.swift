@@ -112,8 +112,15 @@ public enum Calories {
             }
             let p = model.reserveFraction(hr)
             let inWorkout = activeWindows.contains { $0.contains(e.ts) }
+            // Keytel's equation is only trusted from moderate intensity; below that it is blended towards
+            // BMR between 30 % and 50 % of heart-rate reserve so walking and chores count without a cliff.
             if p >= 0.5 || (inWorkout && p >= 0.3) {
                 let k = max(bmrMin, keytelPerMinute(hr: hr, profile))
+                total += k
+                active += k - bmrMin
+            } else if p >= 0.3 {
+                let w = (p - 0.3) / 0.2
+                let k = bmrMin + w * max(0, keytelPerMinute(hr: hr, profile) - bmrMin)
                 total += k
                 active += k - bmrMin
             } else {
@@ -193,9 +200,9 @@ public enum Fitness {
         return (15...90).contains(v) ? v : nil
     }
 
-    /// Age at which a population-average person has this VO₂max (Jackson non-exercise norms, simplified).
+    /// Age at which a population-average person has this VO₂max. Rough linear approximation of published
+    /// normative tables (≈ 47 / 39 ml/kg/min at 20, −0.4 per year); an estimate, not a validated norm.
     public static func fitnessAge(vo2max: Double, sex: Sex) -> Int {
-        // Average VO₂max declines ≈ 0.4 ml/kg/min per year from ≈ 47 (men) / 39 (women) at age 20.
         let base = sex == .female ? 39.0 : (sex == .male ? 47.0 : 43.0)
         let age = 20 + (base - vo2max) / 0.4
         return Int(Stats.clamp(age, 18, 90).rounded())

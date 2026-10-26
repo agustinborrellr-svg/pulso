@@ -56,9 +56,10 @@ public enum SmartWake {
         var score = 0.0
         var reasons: [String] = []
 
+        // One restless minute is a normal toss; it should not reach the wake threshold on its own.
         let moving = recent.filter { ($0.motion ?? 0) > thr * 3 || $0.posture > 0.3 }.count
         if moving >= 1 {
-            score += moving >= 2 ? 0.6 : 0.45
+            score += moving >= 2 ? 0.6 : 0.2
             reasons.append("movimiento")
         }
         if let wakeFrac = Stats.mean(recent.map { $0.strapWakeFraction }), wakeFrac >= 0.5 {

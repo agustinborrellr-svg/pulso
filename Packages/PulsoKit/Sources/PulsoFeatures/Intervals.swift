@@ -161,8 +161,10 @@ public final class IntervalRunner {
             lastCountdown = pos.remaining
             cues.append(.countdown(secondsLeft: pos.remaining))
         }
-        // Zone guidance (not in the first 30 s of a step: HR lags).
-        if let lo = step.zoneLow, let hi = step.zoneHigh, let hr = heartRate, pos.elapsed >= 30 {
+        // Zone guidance, skipping the start of a step because HR lags: 30 s on long steps, a third of
+        // the step on short ones so 30/30 and Tabata work steps can still get a cue.
+        let zoneLag = min(30, max(5, step.seconds / 3))
+        if let lo = step.zoneLow, let hi = step.zoneHigh, let hr = heartRate, pos.elapsed >= zoneLag {
             let z = model.zone(hr)
             if z > hi || z < lo {
                 let since = outOfZoneSince ?? now

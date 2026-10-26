@@ -22,9 +22,17 @@ public enum Opcode {
     public static let getAdvertisingName: UInt8 = 141
     public static let getHello: UInt8 = 145
 
-    /// Never sent by this app: firmware load, trims (data erase), DFU, reboots, fuel-gauge reset,
-    /// persistent config writes.
-    public static let forbidden: Set<UInt8> = [25, 29, 32, 36, 37, 38, 45, 77, 83, 99, 115, 116, 117, 118, 119, 120, 123, 142, 143, 144, 146, 153, 154]
+    /// Never sent by this app. Numbers follow the WHOOP 5/MG 50.42.x command matrix documented by NOOP:
+    /// 14 generic-HR profile (NV write), 15 FORGET_BONDS, 25 FORCE_TRIM, 29/32 reboot, 33 SET_READ_POINTER,
+    /// 36–38 + 83 + 142–144 firmware image, 45 DFU, 61 AFE params, 73 smart-alarm haptics (NV), 77/140 advertising
+    /// name, 99 fuel-gauge reset, 100/101 capsense, 115–121 persistent config/feature flags, 123 wrist select,
+    /// 138 signal-processing config, 146/147 new clock pair (we use the legacy 10), 148 wear override,
+    /// 149 LED accessibility, 150 gyro mode, 153/154 persistent R20/R21, 155–159 certificates + LOCK_DEVICE.
+    public static let forbidden: Set<UInt8> = [
+        14, 15, 25, 29, 32, 33, 36, 37, 38, 45, 61, 73, 77, 83, 99, 100, 101,
+        115, 116, 117, 118, 119, 120, 121, 123, 138, 140, 142, 143, 144, 146, 147, 148, 149, 150,
+        153, 154, 155, 156, 157, 158, 159,
+    ]
 }
 
 /// Builds outbound command frames with a running sequence number.
@@ -64,8 +72,10 @@ public final class CommandBuilder {
         frame(Opcode.toggleRealtimeHR, [on ? 0x01 : 0x00])
     }
 
-    /// SET_CLOCK(10): `[u32 seconds][u16 subseconds (1/32768 s)][0 0]`. An un-clocked WHOOP 5
-    /// discards sensor data, so this must run before any history offload.
+    /// SET_CLOCK(10): `[u32 seconds][u32 subseconds (1/32768 s)]`, written here as u16 + two zero bytes.
+    /// Opcode 10 is the legacy clock command (NOOP lists 146/147 as the current pair) but the 8-byte body on
+    /// opcode 10 is the one OpenStrap verified to latch on real 5.0 hardware; an un-clocked WHOOP 5 discards
+    /// sensor data, so this must run before any history offload.
     public func setClock(_ date: Date = Date()) -> (seq: UInt8, bytes: [UInt8])? {
         frame(Opcode.setClock, CommandBuilder.clockPayload(date))
     }
@@ -77,7 +87,9 @@ public final class CommandBuilder {
         return LE.bytes(sec) + LE.bytes(sub) + [0, 0]
     }
 
-    public func sendHistoricalData() -> (seq: UInt8, bytes: [UInt8])? { frame(Opcode.sendHistoricalData, []) }
+    /// SEND_HISTORICAL_DATA(22) with the explicit `00` request byte every reference client sends (padding
+    /// would produce the same bytes, but the byte is semantic, not filler).
+    public func sendHistoricalData() -> (seq: UInt8, bytes: [UInt8])? { frame(Opcode.sendHistoricalData, [0x00]) }
     public func abortHistorical() -> (seq: UInt8, bytes: [UInt8])? { frame(Opcode.abortHistoricalTransmits, [0x00]) }
 
     /// HISTORICAL_DATA_RESULT(23) success: `[0x01] + 8-byte token` echoed from HISTORY_END.
@@ -88,24 +100,32 @@ public final class CommandBuilder {
         return frame(Opcode.historicalDataResult, [0x01] + token)
     }
 
-    /// Gen5 one-shot buzz (RUN_HAPTIC_PATTERN_MAVERICK 0x13): the notification waveform pair 47/152.
+    /// Body byte 11 of RUN_HAPTIC_PATTERN_MAVERICK counts repetitions *after* the first pulse and the
+    /// firmware rejects values of 8 or more, so `pulses` buzzes are encoded as `pulses - 1`, capped at 7.
+    static func overallRepeat(pulses: UInt8) -> UInt8 { min(max(pulses, 1) - 1, 7) }
+
+    /// Gen5 one-shot buzz (RUN_HAPTIC_PATTERN_MAVERICK 0x13): the notification waveform pair 47/152,
+    /// played `loops` times (1…8).
     public func buzz(loops: UInt8 = 1) -> (seq: UInt8, bytes: [UInt8])? {
-        frame(Opcode.runHapticPatternMaverick, [0x01, 47, 152, 0, 0, 0, 0, 0, 0, 0, 0, max(1, loops)])
+        frame(Opcode.runHapticPatternMaverick, [0x01, 47, 152, 0, 0, 0, 0, 0, 0, 0, 0, Self.overallRepeat(pulses: loops)])
     }
 
     /// RUN_HAPTIC_PATTERN_MAVERICK with up to 8 waveform ids (used by the Laboratorio tester to find
-    /// stronger / softer effects on a given firmware). Non-persistent: it only vibrates.
+    /// stronger / softer effects on a given firmware). Non-persistent: it only vibrates. Effect ids above
+    /// 251 are rejected by the firmware, so they are clamped.
     public func haptic(effects: [UInt8], loops: UInt8 = 1) -> (seq: UInt8, bytes: [UInt8])? {
-        let fx = Array(effects.prefix(8)) + [UInt8](repeating: 0, count: max(0, 8 - effects.count))
+        let fx = Array(effects.prefix(8)).map { min($0, 251) } + [UInt8](repeating: 0, count: max(0, 8 - effects.count))
         guard fx.contains(where: { $0 != 0 }) else { return nil }
-        return frame(Opcode.runHapticPatternMaverick, [0x01] + fx + [0, 0, max(1, loops)])
+        return frame(Opcode.runHapticPatternMaverick, [0x01] + fx + [0, 0, Self.overallRepeat(pulses: loops)])
     }
 
     /// STOP_HAPTICS(122): cuts a running vibration short.
     public func stopHaptics() -> (seq: UInt8, bytes: [UInt8])? { frame(Opcode.stopHaptics, [0x00]) }
 
-    /// Gen5 on-strap alarm, REVISION_4 body (20 bytes). Experimental on 5.0 firmware.
-    /// `[0]=4 [1]=id(1…6) [2..6]=u32 epoch s [6..8]=u16 subsec [8..16]=effects [16..18]=0 [18]=loops [19]=duration s`
+    /// Gen5 on-strap alarm, REVISION_4 body (21 bytes on the wire: the trailing alarm-type/crescendo byte is
+    /// 0 and comes from the 4-byte padding). Experimental on 5.0 firmware.
+    /// `[0]=4 [1]=id(1…6) [2..6]=u32 epoch s [6..8]=u16 subsec [8..16]=effects [16..18]=0 [18]=repeats(<8) [19]=duration s`
+    /// With repeats = 7 the firmware requires a duration of 30–120 s. The time must be strictly in the future.
     public func setAlarm(at date: Date, id: UInt8 = 1) -> (seq: UInt8, bytes: [UInt8])? {
         let ms = UInt64(max(0, date.timeIntervalSince1970 * 1000))
         var body = [UInt8](repeating: 0, count: 20)

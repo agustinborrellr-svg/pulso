@@ -304,13 +304,23 @@ public final class WakeSession {
         }
     }
 
-    /// After this long past the set time, an alarm that never rang counts as missed (the app was
-    /// asleep): it must not start vibrating hours late.
+    /// After this long past the moment something should have happened (the set time, the end of a ring,
+    /// the end of a snooze), the alarm counts as missed (the app was asleep): it must not start vibrating
+    /// hours late.
     public var missedAfter = 30 * 60
 
     public func tick(now: Int) -> [Action] {
         var out: [Action] = []
-        if state == .waiting || state == .monitoring, now >= latest + missedAfter {
+        // Any phase can be slept through by iOS; a tick that arrives far too late must end the alarm
+        // instead of buzzing (or chaining snoozes) hours after the fact.
+        let overdue: Bool
+        switch state {
+        case .waiting, .monitoring: overdue = now >= latest + missedAfter
+        case .ringing(let since): overdue = now >= since + Int(ringDuration) + missedAfter
+        case .snoozed(let until): overdue = now >= until + missedAfter
+        case .finished: overdue = false
+        }
+        if overdue {
             state = .finished
             return [.stopLiveStream, .finished(reason: "Perdida (la app estaba dormida)")]
         }

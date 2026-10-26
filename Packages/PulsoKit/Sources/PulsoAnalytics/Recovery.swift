@@ -83,13 +83,14 @@ public enum Recovery {
         }
 
         let hasHRV = terms.contains { $0.key == "hrv" }
+        let wsum = max(1e-9, terms.reduce(0) { $0 + $1.weight })
+        // Impacts are the normalised terms of the composite below, so the "why" adds up to the score.
         let contributors = terms.map {
-            Contributor(key: $0.key, label: $0.label, value: $0.value, baseline: $0.base, unit: $0.unit, impact: $0.weight * $0.z)
+            Contributor(key: $0.key, label: $0.label, value: $0.value, baseline: $0.base, unit: $0.unit, impact: $0.weight * $0.z / wsum)
         }
         guard hasHRV else {
             return Result(score: nil, calibrating: true, contributors: contributors, skinTempDeviation: tempDev)
         }
-        let wsum = terms.reduce(0) { $0 + $1.weight }
         let composite = Stats.clamp(terms.reduce(0) { $0 + $1.weight * $1.z } / wsum, -3, 3)
         // Softer than before: one bad night lands in the 20s–30s, not at 1–2 %.
         let score = Stats.clamp(100 * Stats.logistic(1.15 * (composite + 0.35)), 3, 99)

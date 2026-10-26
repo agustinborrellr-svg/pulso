@@ -106,7 +106,7 @@ struct RootView: View {
                 .environmentObject(model)
                 .interactiveDismissDisabled()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .pulsoBackgroundRefresh)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .pulsoBackgroundRefresh).receive(on: RunLoop.main)) { _ in
             model.connect()
             model.syncNow()
             model.refreshAlarmSchedule()

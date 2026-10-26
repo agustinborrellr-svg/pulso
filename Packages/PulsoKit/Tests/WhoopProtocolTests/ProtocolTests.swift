@@ -124,7 +124,42 @@ final class ProtocolTests: XCTestCase {
         XCTAssertNil(b.frame(25))   // FORCE_TRIM
         XCTAssertNil(b.frame(45))   // ENTER_BLE_DFU
         XCTAssertNil(b.frame(29))   // REBOOT
+        XCTAssertNil(b.frame(15))   // FORGET_BONDS
+        XCTAssertNil(b.frame(33))   // SET_READ_POINTER
+        XCTAssertNil(b.frame(140))  // SET_ADVERTISING_NAME
+        XCTAssertNil(b.frame(159))  // LOCK_DEVICE
         XCTAssertNotNil(b.getBattery())
+        XCTAssertNotNil(b.getDataRange())
+        XCTAssertNotNil(b.setClock())
+        XCTAssertNotNil(b.setAlarm(at: Date()))
+    }
+
+    func testHapticRepeatByteCountsPulsesAfterTheFirst() throws {
+        // NOOP / whoop-rs: body[11] = repetitions after the first pulse, must be < 8.
+        for (pulses, want): (UInt8, UInt8) in [(0, 0), (1, 0), (2, 1), (4, 3), (8, 7), (10, 7), (255, 7)] {
+            let f = try Framing.decode(.gen5, XCTUnwrap(CommandBuilder().buzz(loops: pulses)).bytes)
+            XCTAssertEqual(Array(f.payload.prefix(12)), [0x01, 47, 152, 0, 0, 0, 0, 0, 0, 0, 0, want], "pulses = \(pulses)")
+            let h = try Framing.decode(.gen5, XCTUnwrap(CommandBuilder().haptic(effects: [47, 255], loops: pulses)).bytes)
+            XCTAssertEqual(Array(h.payload.prefix(12)), [0x01, 47, 251, 0, 0, 0, 0, 0, 0, 0, 0, want])
+        }
+    }
+
+    func testSendHistoricalDataCarriesExplicitRequestByte() throws {
+        let f = try Framing.decode(.gen5, XCTUnwrap(CommandBuilder().sendHistoricalData()).bytes)
+        XCTAssertEqual(f.cmd, Opcode.sendHistoricalData)
+        XCTAssertEqual(f.payload, [0x00])
+    }
+
+    func testNegativeSkinTemperatureIsNotMisreadAsHot() throws {
+        var wire = try XCTUnwrap(Hex.decode(Self.realV18))
+        // inner[65..67] = frame[73..75]: write the -50.00 °C unavailable sentinel, then re-seal the CRC32.
+        let inner = Array(wire[8..<(wire.count - 4)])
+        var patched = inner
+        patched[65] = 0x70; patched[66] = 0xEC   // -5000 LE
+        wire.replaceSubrange(8..<(wire.count - 4), with: patched)
+        wire.replaceSubrange((wire.count - 4)..., with: LE.bytes(CRC.crc32(patched)))
+        let s = try XCTUnwrap(HistorySample.decodeV18(Framing.decode(.gen5, wire)))
+        XCTAssertNil(s.skinTempC)
     }
 
     func testGen5CommandsArePaddedToFourBytes() throws {
@@ -150,6 +185,17 @@ final class ProtocolTests: XCTestCase {
         XCTAssertEqual(r.rr, [968])
         XCTAssertEqual(r.unix, 1_789_945_840)
         XCTAssertTrue(r.valid)
+
+        // No R-R this second (count 0) must not invalidate the heart rate.
+        let noRR: [UInt8] = [0x28, 0x02] + ts + [0, 0, 131, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        let f2 = try Framing.decode(.gen5, Framing.encode(.gen5, type: noRR[0], seq: noRR[1], cmd: noRR[2], payload: Array(noRR[3...])))
+        let r2 = try XCTUnwrap(RealtimeHR.decode(f2))
+        XCTAssertEqual(r2.heartRate, 131)
+        XCTAssertEqual(r2.rr, [])
+        XCTAssertTrue(r2.valid)
+        let zero: [UInt8] = [0x28, 0x02] + ts + [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        let f3 = try Framing.decode(.gen5, Framing.encode(.gen5, type: zero[0], seq: zero[1], cmd: zero[2], payload: Array(zero[3...])))
+        XCTAssertFalse(try XCTUnwrap(RealtimeHR.decode(f3)).valid)
     }
 
     func testStandardHeartRateMeasurement() {

@@ -43,8 +43,10 @@ public enum Intelligence {
             guard let w = weeks[k], w.strain.count >= 4, w.hrv.count >= 4, let s = Num.mean(w.strain), let h = Num.median(w.hrv) else { return nil }
             return (s, h)
         }
-        guard series.count >= 12 else {
-            return .insufficient("adaptationLag", "Desfase de adaptación", unit: "semanas", need: "12 semanas con datos (llevas \(series.count))",
+        // 12 weeks give 11 weekly differences: the best of five lags then clears |r| ≥ 0.3 on pure noise
+        // most of the time, so more history and a permutation test are required before naming a lag.
+        guard series.count >= 26 else {
+            return .insufficient("adaptationLag", "Desfase de adaptación", unit: "semanas", need: "26 semanas con datos (llevas \(series.count))",
                                  have: series.count, formula: f, version: version)
         }
         let dl = zip(series.dropFirst(), series).map { $0.0 - $1.0 }
@@ -58,7 +60,29 @@ public enum Intelligence {
         }
         let all = Array(0..<dl.count)
         let lags = (0...4).compactMap { l in corr(l, all).map { (l, $0) } }
-        guard let best = lags.max(by: { abs($0.1) < abs($1.1) }), abs(best.1) >= 0.3 else {
+        // Permutation test over the max-|r|-of-5-lags statistic (deterministic shuffles of the load diffs).
+        var permState: UInt64 = 7
+        func corrShuffled(_ lag: Int, _ x: [Double]) -> Double? {
+            let pairs = (0..<x.count).compactMap { i -> (Double, Double)? in i + lag < dh.count ? (x[i], dh[i + lag]) : nil }
+            guard pairs.count >= 6, let ma = Num.mean(pairs.map { $0.0 }), let mb = Num.mean(pairs.map { $0.1 }) else { return nil }
+            var n = 0.0, a = 0.0, b = 0.0
+            for (x, y) in pairs { n += (x - ma) * (y - mb); a += (x - ma) * (x - ma); b += (y - mb) * (y - mb) }
+            return a > 0 && b > 0 ? n / (a * b).squareRoot() : nil
+        }
+        let observed = lags.map { abs($0.1) }.max() ?? 0
+        var exceed = 0
+        let perms = 300
+        for _ in 0..<perms {
+            var x = dl
+            for i in stride(from: x.count - 1, to: 0, by: -1) {
+                permState = permState &* 6364136223846793005 &+ 1442695040888963407
+                x.swapAt(i, Int(permState >> 33) % (i + 1))
+            }
+            let m = (0...4).compactMap { corrShuffled($0, x) }.map { abs($0) }.max() ?? 0
+            if m >= observed { exceed += 1 }
+        }
+        let pValue = Double(exceed + 1) / Double(perms + 1)
+        guard let best = lags.max(by: { abs($0.1) < abs($1.1) }), abs(best.1) >= 0.3, pValue < 0.05 else {
             return MetricResult(id: "adaptationLag", name: "Desfase de adaptación", value: nil, unit: "semanas",
                                 summary: "No se ve un desfase claro entre tus cambios de carga y tu VFC.", confidence: .low,
                                 sampleSize: series.count, formula: f, version: version)

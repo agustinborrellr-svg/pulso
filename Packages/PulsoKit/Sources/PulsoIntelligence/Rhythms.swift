@@ -15,6 +15,12 @@ public enum Rhythms {
         guard !rel.isEmpty else { return nil }
         let minutes = days * 1440
         var asleep = [Bool](repeating: false, count: minutes)
+        // Minutes with no recorded night are unknown, not "awake": only compare minutes we know.
+        var known = [Bool](repeating: false, count: minutes)
+        for s in rel {
+            let a = max(0, (s.end - 86400 - start) / 60), b = min(minutes, (s.end - start) / 60)
+            if a < b { for i in a..<b { known[i] = true } }
+        }
         for s in rel {
             // Only asleep minutes (not awake stages) count as sleep.
             for (i, st) in s.stages.enumerated() where st != .awake {
@@ -29,11 +35,11 @@ public enum Rhythms {
         let covered = Set(rel.map { DayKey.string(ts: $0.end) }).count
         guard covered >= 5 else { return nil }
         var same = 0, total = 0
-        for i in 0..<(minutes - 1440) {
+        for i in 0..<(minutes - 1440) where known[i] && known[i + 1440] {
             total += 1
             if asleep[i] == asleep[i + 1440] { same += 1 }
         }
-        guard total > 0 else { return nil }
+        guard total >= 1440 else { return nil }
         return (200 * Double(same) / Double(total) - 100, covered)
     }
 

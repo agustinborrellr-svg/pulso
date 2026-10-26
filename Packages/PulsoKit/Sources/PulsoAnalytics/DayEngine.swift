@@ -38,9 +38,15 @@ public final class DayEngine {
         return out
     }
 
+    /// Wall-clock `hour` of `day` (may be negative or past 24 to reach the neighbouring days), so the
+    /// boundaries stay at the same local time across a DST change instead of drifting by an hour.
     private func ts(_ day: String, hour: Double) -> Int {
-        let d = DayKey.date(day, calendar: calendar) ?? Date()
-        return Int(d.timeIntervalSince1970 + hour * 3600)
+        let midnight = DayKey.date(day, calendar: calendar) ?? Date()
+        let days = Int(floor(hour / 24))
+        let h = hour - Double(days) * 24
+        let base = calendar.date(byAdding: .day, value: days, to: midnight) ?? midnight
+        let wall = calendar.date(bySettingHour: Int(h), minute: Int((h - floor(h)) * 60), second: 0, of: base)
+        return Int((wall ?? base.addingTimeInterval(h * 3600)).timeIntervalSince1970)
     }
 
     /// Recomputes every day from `fromDay` (default: first day with data) through today.

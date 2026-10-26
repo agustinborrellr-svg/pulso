@@ -117,15 +117,18 @@ extension AppModel {
         strap.setAlarm(s.planned.latest)
     }
 
-    /// Smart alarms need the app alive at the start of the window. Keeping the strap's live stream on
-    /// overnight makes iOS deliver a Bluetooth notification every second, which keeps Pulso running.
+    /// The alarm needs the app alive when its time comes. Keeping the strap's live stream on makes
+    /// iOS deliver a Bluetooth notification every second, which keeps Pulso running: from 10 h before
+    /// the window for smart alarms, from 30 min before the time for fixed ones (otherwise a fixed alarm
+    /// locked in the background would only be rung by the iPhone backup).
     func updateNightGuard() {
-        guard let s = wakeSession, s.planned.isSmart, !(s.state == .finished) else {
+        guard let s = wakeSession, !(s.state == .finished) else {
             setLive(false, client: "night")
             return
         }
         let untilWindow = s.planned.earliest.timeIntervalSinceNow
-        setLive(untilWindow < 10 * 3600 && untilWindow > -3 * 3600, client: "night")
+        let lead: TimeInterval = s.planned.isSmart ? 10 * 3600 : 30 * 60
+        setLive(untilWindow < lead && untilWindow > -3 * 3600, client: "night")
     }
 
     func alarmTick(now: Date) {
@@ -157,7 +160,11 @@ extension AppModel {
                 strap.buzz(loops: loops)
                 alarmRinging = true
             case .alert(let title, let body):
-                NotificationService.shared.now(title, body, id: "pulso.alarm.banner", category: NotificationService.Category.alarm,
+                // The first banner (ringing) carries the stop/snooze actions and its dismissal stops the alarm;
+                // snooze confirmations use a category whose dismissal is harmless.
+                let ringing: Bool = { if case .ringing = s.state { return true } else { return false } }()
+                NotificationService.shared.now(title, body, id: ringing ? "pulso.alarm.banner" : "pulso.alarm.info",
+                                               category: ringing ? NotificationService.Category.alarm : NotificationService.Category.alarmInfo,
                                                timeSensitive: true, sound: !s.planned.alarm.phoneBackup)
             case .backup(let at):
                 if let at {
@@ -244,7 +251,8 @@ extension AppModel {
 
     func handleNotificationAction(_ action: String, category: String, id: String) {
         switch (category, action) {
-        case (NotificationService.Category.alarm, NotificationService.Action.snooze):
+        case (NotificationService.Category.alarm, NotificationService.Action.snooze),
+             (NotificationService.Category.alarmInfo, NotificationService.Action.snooze):
             if wakeSession?.isActive == true {
                 alarmSnooze()
             } else if let a = alarms.first(where: { $0.enabled }) {
@@ -252,6 +260,7 @@ extension AppModel {
                 alarmBackup.schedule(at: Date().addingTimeInterval(Double(a.snoozeMinutes) * 60), title: a.label)
             }
         case (NotificationService.Category.alarm, NotificationService.Action.stop),
+             (NotificationService.Category.alarmInfo, NotificationService.Action.stop),
              (NotificationService.Category.alarm, UNNotificationDismissActionIdentifier):
             alarmStop()
         case (NotificationService.Category.breathe, NotificationService.Action.breathe):

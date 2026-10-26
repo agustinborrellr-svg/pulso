@@ -54,17 +54,22 @@ len = tamaño(inner) + 4
 | Opcode | Nombre | Cuerpo |
 |---|---|---|
 | 3 | TOGGLE_REALTIME_HR | `01` / `00` |
-| 10 | SET_CLOCK | `u32 segundos · u16 subseg (1/32768 s) · 00 00` |
-| 19 | RUN_HAPTIC_PATTERN_MAVERICK | `01 2F 98 00×8 bucles` |
+| 10 | SET_CLOCK (forma heredada; NOOP documenta 146/147 como el par nuevo, pero el cuerpo de 8 bytes en el 10 es el que OpenStrap ha verificado en hardware 5.0) | `u32 segundos · u32 subseg (1/32768 s)` |
+| 19 | RUN_HAPTIC_PATTERN_MAVERICK | `01 2F 98 00×8 00 00 repeticiones`; el último byte son las repeticiones **después** del primer pulso (0 = un zumbido) y debe ser < 8 |
 | 20 | ABORT_HISTORICAL_TRANSMITS | `00` |
-| 22 | SEND_HISTORICAL_DATA | vacío |
+| 22 | SEND_HISTORICAL_DATA | `00` |
 | 23 | HISTORICAL_DATA_RESULT | `01` + token de 8 bytes (inner 13..20 del fin de bloque) |
 | 26 | GET_BATTERY_LEVEL | `01` → `cuerpo[0]` = % |
-| 66 / 69 | SET_ALARM_TIME / DISABLE_ALARM | revisión 4 (20 bytes) / `02 FF` |
+| 34 | GET_DATA_RANGE | vacío (NOOP: la 5.0 pide el rango antes del histórico) |
+| 66 / 69 | SET_ALARM_TIME / DISABLE_ALARM | revisión 4 (21 bytes: id 1–6, hora, 8 efectos, control, repeticiones < 8, duración, tipo 0) / `02 FF` |
 | 145 | GET_HELLO | `01` → serie, firmware, reloj, batería |
 
-Bloqueados siempre: 25 (FORCE_TRIM), 29 y 32 (reinicio), 36–38, 45 y 142–144 (firmware),
-77 (renombrar), 99 (fuel gauge), 115–120 (configuración persistente), 123 y 146.
+Bloqueados siempre (`Opcode.forbidden`): 14 (perfil HR genérico, escribe NV), 15 (FORGET_BONDS),
+25 (FORCE_TRIM), 29 y 32 (reinicio), 33 (SET_READ_POINTER), 36–38, 83 y 142–144 (firmware), 45 (DFU),
+61 (AFE), 73 (patrón de alarma persistente), 77 y 140 (renombrar), 99 (fuel gauge), 100–101 (capsense),
+115–121 (configuración persistente), 123 (muñeca), 138 (procesado de señal), 146–147 (reloj nuevo),
+148 (anular detección de muñeca), 149–150, 153–154 (R20/R21 persistentes), 155–159 (certificados y
+LOCK_DEVICE).
 
 ## Descarga del histórico
 
@@ -92,11 +97,15 @@ Los offsets son relativos a `inner`.
 | 37 / 41 / 45 | gravedad x/y/z f32 (g) |
 | 49 | contador de pasos u16 |
 | 55 | actividad (0 quieto / 1 andar / 2 correr) |
-| 65 | temperatura de la piel u16 / 100 → °C |
-| 73 | estado de sueño de la pulsera (bits 4–5) |
-| 74 | SpO₂ % (solo durmiendo; 70–100) |
-| 98–99 | líneas base ópticas (0 = fuera de la muñeca) |
-| 100–101 | amplitudes (128/128 = señal pobre) |
+| 61 / 63 | temperatura de la celda / ambiente i16 / 10 → °C (no se usan) |
+| 65 | temperatura de la piel **i16** / 100 → °C (-5000 = no disponible) |
+| 73 | estado de sueño de la pulsera (bits 4–5); los bits 0–3 **no** son «en la muñeca» |
+| 74 | byte candidato a SpO₂ (la comunidad no ha fijado su codificación; se toma 70–100 como estimación) |
+| 98–99 | medias ópticas por detector (0/0 se usa como pista de «fuera de la muñeca») |
+| 100–101 | pSNR por detector, int8 en dB (-128/-128 = ambos detectores sin señal) |
+
+El bit 4 de `inner[25]` y las medias en 98–99 son **heurísticas** de fuera de muñeca: la señal fiable
+son el cuerpo del GET_HELLO y los eventos WRIST_ON (9) / WRIST_OFF (10).
 
 ## Fuentes
 

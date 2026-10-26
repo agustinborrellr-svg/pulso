@@ -66,7 +66,8 @@ public enum LoadResponse {
             guard !curve.isEmpty else { continue }
             var rec: Double?
             if curve[0] <= threshold {
-                rec = curve[0] / threshold
+                // Already back in range on the first night: zero nights, not a σ ratio dressed as nights.
+                rec = 0
             } else if let j = curve.firstIndex(where: { $0 <= threshold }) {
                 let a = curve[j - 1], b = curve[j]
                 rec = Double(j) + (a - threshold) / max(1e-6, a - b)

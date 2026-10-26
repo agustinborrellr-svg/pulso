@@ -118,14 +118,14 @@ Pulso/
     └── PulsoECG/                  Análisis del ECG, simulador, PDF y decodificador de la MG
 ```
 
-Tests del núcleo (75): `cd Packages/PulsoKit && swift test`. Validan:
+Tests del núcleo (91): `cd Packages/PulsoKit && swift test`. Validan:
 
 - **Protocolo**: tramas **reales** capturadas de una WHOOP 5.0 (saludo, registro v18, fin de bloque, checksums).
 - **Almacenamiento**: base de datos, ECG, copias de seguridad y compatibilidad con datos de versiones anteriores.
 - **Pipeline completo**: una semana sintética fisiológicamente realista (sueño, fases, VFC, respiración, entrenos, esfuerzo, recuperación).
 - **Alarmas**: planificación por días, ventana inteligente, sueño ligero frente a profundo, posponer, apagar y respaldo del iPhone.
 - **Avisos**: cada regla, sin repetir, horas de silencio.
-- **Strava y archivos**: OAuth, renovación del token, subida con espera, duplicados, límites; FIT validado con un decodificador independiente (`fitdecode`) y TCX como XML válido.
+- **Strava y archivos**: OAuth, renovación del token, subida con espera, duplicados, límites; cabecera y CRC del FIT, y TCX como XML válido (la validación con un decodificador externo se hizo a mano, no está en CI).
 - **ECG**: ritmo sinusal, bradicardia, taquicardia, fibrilación auricular simulada, arritmia respiratoria (no debe salir irregular), ruido; PDF válido.
 
 Todos los cálculos se explican en la app (*Más → Cómo se calcula cada métrica*) y en [`docs/PROTOCOLO.md`](docs/PROTOCOLO.md).
@@ -151,14 +151,20 @@ Todos los cálculos se explican en la app (*Más → Cómo se calcula cada métr
 **Estimaciones**
 
 - Pasos.
-- Fases del sueño: la precisión típica de cualquier wearable de muñeca ronda el 65–75 % frente a un laboratorio.
-- VO₂máx.
+- Fases del sueño: la precisión típica de cualquier wearable de muñeca ronda el 65–75 % frente a un laboratorio, y el modelo fuerza proporciones plausibles de profundo y REM.
+- VO₂máx y edad cardio.
+- SpO₂ y «fuera de la muñeca»: salen de bytes del registro cuya codificación la comunidad aún no ha fijado.
+- El ECG sólo está validado contra su simulador, no contra registros reales.
 
 **No disponible**
 
 - ECG de la MG hasta que se conozca su protocolo (todo lo demás está hecho), tensión arterial y los modelos propietarios de WHOOP.
 - Vibrar con las notificaciones de otras apps (WhatsApp, llamadas…): iOS no lo permite a apps de terceros.
 - WHOOP 4.0: tiene otro protocolo y no está soportada.
+- Widgets y Live Activity con un Apple ID gratuito (Sideloadly): necesitan App Groups, que sólo da la cuenta de desarrollador de pago.
+- Que el pulsómetro Bluetooth lo vean equipos no Apple con Pulso en segundo plano.
+
+Revisión de código y lista de pendientes: [`docs/REVISION-2026-10-26.md`](docs/REVISION-2026-10-26.md).
 
 ## Créditos
 

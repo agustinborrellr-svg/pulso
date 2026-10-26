@@ -99,7 +99,8 @@ public enum ECGAnalyzer {
         guard n > Int(rate * 2) else { return [] }
         var d = [Double](repeating: 0, count: n)
         for i in 2..<(n - 2) {
-            d[i] = (2 * filtered[i + 2] + filtered[i + 1] - filtered[i - 1] - 2 * filtered[i - 2]) * rate / 8
+            // Pan–Tompkins five-point derivative: (1/8)·(−x[n−2] − 2x[n−1] + 2x[n+1] + x[n+2]).
+            d[i] = (filtered[i + 2] + 2 * filtered[i + 1] - 2 * filtered[i - 1] - filtered[i - 2]) * rate / 8
         }
         let integ = movingAverage(d.map { $0 * $0 }, max(3, Int(rate * 0.15)))
         let refractory = Int(rate * 0.25)

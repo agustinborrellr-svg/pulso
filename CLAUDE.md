@@ -36,7 +36,7 @@ docs/PROTOCOLO.md       referencia del protocolo BLE de la WHOOP 5.0
 - Versión 1.1 en marcha: despertador inteligente, avisos, Strava, Apple Salud bidireccional, pulsómetro
   para otras apps, intervalos con vibración y voz, carga de entrenamiento, aviso de enfermedad, ciclo,
   widgets, Live Activity, Siri/Atajos, copia de seguridad, laboratorio y ECG preparado para la MG.
-- Núcleo: 75 tests en verde con Swift 6.2 en Linux (WSL Ubuntu 24.04 en el PC de Gus:
+- Núcleo: 88 tests en verde con Swift 6.2 en Linux (WSL Ubuntu 24.04 en el PC de Gus:
   `wsl -d Ubuntu-24.04 -u root -- bash -c "cd /mnt/c/Users/agust/Pulso/Packages/PulsoKit && swift test --scratch-path /root/pk-build"`).
   FIT validado con `fitdecode`, TCX con un parser XML, PDF del ECG renderizado y revisado.
 - Toda la lógica nueva vive en PulsoKit (probada). La capa iOS (App/, Widgets/) solo orquesta y
@@ -61,10 +61,14 @@ docs/PROTOCOLO.md       referencia del protocolo BLE de la WHOOP 5.0
 - Modelo ajustado: deuda de sueño como arrastre decreciente, necesidad acotada, recuperación más suave,
   esfuerzo cotidiano en días de descanso. 87 tests en verde.
 - Seguridad: la app **nunca** se conecta sola a una pulsera; buscar lista y pide confirmación.
-- Plan Mac: `COMPILAR_EN_MAC.md` (guía para un amigo con Xcode 26, Apple ID gratuito). Zip listo en `Escritorio/Pulso-Xcode.zip`
-  (`git archive`). Sideloadly reinstalado en v0.71.1 el 26-oct; .ipa en Escritorio.
-- 26-oct: Sideloadly 0.71.1 → -80046; iloader 2.4.0 (instalado en `%LOCALAPPDATA%/iloader`) pasa la contraseña pero
-  el 2FA da 403 (trusted phone numbers / SMS) con todos los servidores anisette. Vía gratis bloqueada.
+
+## Estado (2026-10-26, revisión en Mac)
+
+- Revisado en Xcode 27.1: núcleo 91 tests en verde, app compila para simulador. Protocolo contrastado con
+  noop / OpenStrap / whoop-rs: corregidos el byte de repeticiones de las vibraciones, la validez del pulso en
+  directo (byte 9 = nº de R-R), la temperatura i16 y la lista de opcodes bloqueados (faltaban FORGET_BONDS,
+  SET_READ_POINTER, LOCK_DEVICE…). Alarma fija ahora mantiene la app viva 30 min antes; entitlement
+  time-sensitive añadido; demo ya no se exporta a Salud. Detalle y pendientes en `docs/REVISION-2026-10-26.md`.
 
 ## Compilar y dejarlo verde
 

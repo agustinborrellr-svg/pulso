@@ -273,7 +273,9 @@ public final class StravaClient: @unchecked Sendable {
         let (data, status) = try await transport.send(req)
         try check(data, status)
         guard let s = try? JSONDecoder().decode(StravaUploadStatus.self, from: data) else { throw StravaError.badResponse }
-        if let e = s.error, !e.isEmpty { throw StravaError.uploadFailed(e) }
+        // A duplicate is reported in the very first reply; keep it as a status so callers can link the
+        // existing activity instead of failing.
+        if let e = s.error, !e.isEmpty, Self.duplicateActivityID(e) == nil { throw StravaError.uploadFailed(e) }
         return s
     }
 

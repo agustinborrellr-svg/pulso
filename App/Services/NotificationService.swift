@@ -9,6 +9,8 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
 
     enum Category {
         static let alarm = "PULSO_ALARM"
+        /// Snooze confirmations: same buttons as `alarm`, but swiping it away does not stop the alarm.
+        static let alarmInfo = "PULSO_ALARM_INFO"
         static let alert = "PULSO_ALERT"
         static let breathe = "PULSO_BREATHE"
     }
@@ -31,6 +33,7 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         let breathe = UNNotificationAction(identifier: Action.breathe, title: "Respirar 1 min", options: [.foreground])
         center.setNotificationCategories([
             UNNotificationCategory(identifier: Category.alarm, actions: [snooze, stop], intentIdentifiers: [], options: [.customDismissAction]),
+            UNNotificationCategory(identifier: Category.alarmInfo, actions: [snooze, stop], intentIdentifiers: [], options: []),
             UNNotificationCategory(identifier: Category.alert, actions: [], intentIdentifiers: [], options: []),
             UNNotificationCategory(identifier: Category.breathe, actions: [breathe], intentIdentifiers: [], options: []),
         ])
@@ -40,6 +43,20 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         if AppMode.screenshots { return }
         center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
             DispatchQueue.main.async { done?(granted) }
+        }
+    }
+
+    /// Adds a request, asking for permission first if the user has never been asked (so the
+    /// confirmations and alerts work even if Despertador / Avisos were never opened).
+    private func add(_ request: UNNotificationRequest) {
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .notDetermined else {
+                self.center.add(request)
+                return
+            }
+            self.center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+                if granted { self.center.add(request) }
+            }
         }
     }
 
@@ -58,7 +75,7 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
             let delay = TimeInterval(at) - Date().timeIntervalSince1970
             if delay > 1 { trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false) }
         }
-        center.add(UNNotificationRequest(identifier: alert.id, content: content, trigger: trigger))
+        add(UNNotificationRequest(identifier: alert.id, content: content, trigger: trigger))
     }
 
     /// Removes pending (not yet shown) requests whose identifier starts with `prefix`.
@@ -86,7 +103,7 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         content.categoryIdentifier = category
         content.interruptionLevel = timeSensitive ? .timeSensitive : .active
         if sound { content.sound = .default }
-        center.add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
+        add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
     }
 
     // MARK: Alarm backup (fallback when AlarmKit isn't available)

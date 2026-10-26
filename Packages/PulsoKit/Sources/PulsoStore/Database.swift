@@ -303,8 +303,14 @@ public final class PulsoDatabase {
 
     /// Recordings newest first. `withSamples: false` skips the waveform (cheap list view).
     public func ecgRecordings(withSamples: Bool = true) throws -> [ECGRecording] {
+        try ecgRecordings(withSamples: withSamples, id: nil)
+    }
+
+    private func ecgRecordings(withSamples: Bool, id: Int64?) throws -> [ECGRecording] {
         let cols = withSamples ? "samples" : "NULL"
-        return try sql.query("SELECT id,start,source,external_id,rate,\(cols),json FROM ecg ORDER BY start DESC") { r -> ECGRecording? in
+        let filter = id == nil ? "" : " WHERE id = ?"
+        return try sql.query("SELECT id,start,source,external_id,rate,\(cols),json FROM ecg\(filter) ORDER BY start DESC",
+                             id.map { [.int($0)] } ?? []) { r -> ECGRecording? in
             guard let source = ECGSource(rawValue: r.text(2) ?? "") else { return nil }
             let meta = r.text(6).flatMap { try? decoder.decode(ECGMeta.self, from: Data($0.utf8)) }
             let raw = r.bytes(5)
@@ -322,7 +328,7 @@ public final class PulsoDatabase {
     }
 
     public func ecgRecording(id: Int64) throws -> ECGRecording? {
-        try ecgRecordings().first { $0.id == id }
+        try ecgRecordings(withSamples: true, id: id).first
     }
 
     public func hasECG(externalID: String) throws -> Bool {

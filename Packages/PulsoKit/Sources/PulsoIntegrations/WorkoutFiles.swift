@@ -238,7 +238,7 @@ public enum TCXEncoder {
         }
         x += """
               <Notes>\(escape(w.notes.isEmpty ? "Registrado con Pulso (WHOOP)" : w.notes))</Notes>
-              <Creator xsi:type="Device_t" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Name>Pulso</Name><UnitId>0</UnitId><ProductID>0</ProductID></Creator>
+              <Creator xsi:type="Device_t" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Name>Pulso</Name><UnitId>0</UnitId><ProductID>0</ProductID><Version><VersionMajor>1</VersionMajor><VersionMinor>1</VersionMinor><BuildMajor>0</BuildMajor><BuildMinor>0</BuildMinor></Version></Creator>
             </Activity>
           </Activities>
         </TrainingCenterDatabase>
