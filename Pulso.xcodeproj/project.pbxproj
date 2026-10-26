@@ -30,6 +30,7 @@
 		61427AC7E98B199BA7AF8A8D /* ECGView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A64EAE06663BC70D64B2C18E /* ECGView.swift */; };
 		62FD95142A7E085B0EF09FA6 /* PulsoStore in Frameworks */ = {isa = PBXBuildFile; productRef = 43231A16108D8EBC60E48635 /* PulsoStore */; };
 		633AB00BAA23E7FCC48C54E3 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 365C60DF1EDF99A64A3F77F5 /* NotificationService.swift */; };
+		6375CDEA00AAFC9216C553FF /* WhoopImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAC2BB99291300E6532DA892 /* WhoopImportView.swift */; };
 		675D309742555C0C29F84664 /* WorkoutCardiacCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77EB4D79CE510801DF5317E2 /* WorkoutCardiacCard.swift */; };
 		6F195E39758A4453DF420C8B /* PulsoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8F240068FFF7ABA402A8CE /* PulsoApp.swift */; };
 		728820718DDCB5140420B423 /* PulsoWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1A2041694349751380A8956 /* PulsoWidgets.swift */; };
@@ -41,6 +42,7 @@
 		8110FAF9E2330C591FEE29DF /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 161B85AAB6D9A641FEAD08D1 /* HealthKit.framework */; };
 		8BA0AB154FC2582FB1B31783 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2392A2F04BF40C64240F84A4 /* WidgetKit.framework */; };
 		8DBE1C6BB50DC3274C07E853 /* PulsoFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = 7C50D970881B2336E0D252C3 /* PulsoFeatures */; };
+		9279693D6004DF6417213423 /* AppModel+WhoopImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9719244373411EDA28B0B0BA /* AppModel+WhoopImport.swift */; };
 		9A67114F66AB01B5E7C44392 /* SleepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB407F8648481A39B5E40EF5 /* SleepView.swift */; };
 		A0C504DC34A0BC013711B01F /* StrapManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF38BA3BF430C3D8648D340B /* StrapManager.swift */; };
 		A5A092E7EF1F7B04D2637CD7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1E7C1A9FFD218203A2C9FCC /* Assets.xcassets */; };
@@ -114,11 +116,13 @@
 		8CB7ACF6CD2CDD29DC59CA80 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		913CBA0C9CE5BBEDDB8EAF0D /* TrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsView.swift; sourceTree = "<group>"; };
 		922F90409F3846A9F3965840 /* VoiceCoach.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCoach.swift; sourceTree = "<group>"; };
+		9719244373411EDA28B0B0BA /* AppModel+WhoopImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+WhoopImport.swift"; sourceTree = "<group>"; };
 		9837A227D7FF959A2E228C4F /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		9D97BD4A2354F19625BDB43B /* AppModel+Alerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Alerts.swift"; sourceTree = "<group>"; };
 		A64EAE06663BC70D64B2C18E /* ECGView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ECGView.swift; sourceTree = "<group>"; };
 		B1A2041694349751380A8956 /* PulsoWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulsoWidgets.swift; sourceTree = "<group>"; };
 		B1E7C1A9FFD218203A2C9FCC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BAC2BB99291300E6532DA892 /* WhoopImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopImportView.swift; sourceTree = "<group>"; };
 		C46DE8E45CB470E5130FE5D6 /* PulsoKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PulsoKit; path = Packages/PulsoKit; sourceTree = SOURCE_ROOT; };
 		C503C8997F985D7830590883 /* AppModel+Integrations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Integrations.swift"; sourceTree = "<group>"; };
 		CB407F8648481A39B5E40EF5 /* SleepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepView.swift; sourceTree = "<group>"; };
@@ -270,6 +274,7 @@
 				CB407F8648481A39B5E40EF5 /* SleepView.swift */,
 				7123F2EF70734D23961A4F2C /* TodayView.swift */,
 				913CBA0C9CE5BBEDDB8EAF0D /* TrendsView.swift */,
+				BAC2BB99291300E6532DA892 /* WhoopImportView.swift */,
 				77EB4D79CE510801DF5317E2 /* WorkoutCardiacCard.swift */,
 			);
 			path = Views;
@@ -322,6 +327,7 @@
 				759E973D6AB94AEE832D905E /* AppModel+ECG.swift */,
 				C503C8997F985D7830590883 /* AppModel+Integrations.swift */,
 				F0FA5FA79CF962FD0E9C9894 /* AppModel+Intelligence.swift */,
+				9719244373411EDA28B0B0BA /* AppModel+WhoopImport.swift */,
 				E939C87F93579B4FB3C7B491 /* AppModel+Workouts.swift */,
 			);
 			path = Model;
@@ -445,6 +451,7 @@
 				1E3FAE6A1EA4A54D2681F14C /* AppModel+ECG.swift in Sources */,
 				3898325454148FFC9C09DEB8 /* AppModel+Integrations.swift in Sources */,
 				4F82FFD8F50A9C4411C8C1D2 /* AppModel+Intelligence.swift in Sources */,
+				9279693D6004DF6417213423 /* AppModel+WhoopImport.swift in Sources */,
 				1635FD0137264C861147A992 /* AppModel+Workouts.swift in Sources */,
 				00F995BBEA85C71B9FA89358 /* AppModel.swift in Sources */,
 				10E2B0325AC08AC7CFD7F5E3 /* BedtimeView.swift in Sources */,
@@ -470,6 +477,7 @@
 				12B4AD8F077B841DEC5540AA /* TodayView.swift in Sources */,
 				AF3072DF908ED3B41F3A1610 /* TrendsView.swift in Sources */,
 				0F3C3F668476BA605BBF1B50 /* VoiceCoach.swift in Sources */,
+				6375CDEA00AAFC9216C553FF /* WhoopImportView.swift in Sources */,
 				675D309742555C0C29F84664 /* WorkoutCardiacCard.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
