@@ -63,6 +63,7 @@ struct RootView: View {
     @EnvironmentObject var model: AppModel
     @State private var tab = 0
     @State private var showOnboarding = false
+    @State private var showGuide = false
     @State private var shot: ShotScreen?
 
     var body: some View {
@@ -101,11 +102,15 @@ struct RootView: View {
         .fullScreenCover(item: $shot) { screen in
             ShotDestination(screen: screen).environmentObject(model)
         }
-        .sheet(isPresented: $showOnboarding) {
+        .sheet(isPresented: $showOnboarding, onDismiss: {
+            // First run: the welcome screens set the strap up, the guide explains the app.
+            if !UserDefaults.standard.bool(forKey: GuideView.seenKey) { showGuide = true }
+        }) {
             OnboardingView { showOnboarding = false }
                 .environmentObject(model)
                 .interactiveDismissDisabled()
         }
+        .fullScreenCover(isPresented: $showGuide) { GuideView() }
         .onReceive(NotificationCenter.default.publisher(for: .pulsoBackgroundRefresh).receive(on: RunLoop.main)) { _ in
             model.connect()
             model.syncNow()

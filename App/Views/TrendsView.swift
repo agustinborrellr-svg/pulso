@@ -57,7 +57,7 @@ struct TrendsView: View {
                 .padding(.bottom, 24)
             }
             .background(Theme.background.ignoresSafeArea())
-            .navigationTitle(mode == 1 ? "Inteligencia" : "Tendencias")
+            .navigationTitle("Análisis")
         }
     }
 

@@ -7,6 +7,7 @@ import PulsoIntelligence
 enum ShotScreen: String, Identifiable {
     case today, sleep, trends, live, more
     case alarms, alarmEditor, notifications, integrations, ecg, ecgDetail, bedtime, lab, workout, onboarding, whatif, intelDetail
+    case guide, guideData, guideRecovery, guideAlarm, whoopImport
 
     var id: String { rawValue }
 
@@ -28,7 +29,8 @@ extension AppModel {
         hasOnboarded = true
         if alarms.isEmpty {
             alarms = [
-                AlarmConfig(id: "shot-1", label: "Trabajo", hour: 7, minute: 15, weekdays: [2, 3, 4, 5, 6], mode: .smart, windowMinutes: 30),
+                AlarmConfig(id: "shot-1", label: "Trabajo", hour: 7, minute: 15, weekdays: [2, 3, 4, 5, 6], mode: .smart, windowMinutes: 30,
+                            dayTimes: [2: 6 * 60 + 45, 3: 7 * 60 + 15, 4: 7 * 60 + 15, 5: 7 * 60 + 15, 6: 8 * 60]),
                 AlarmConfig(id: "shot-2", enabled: false, label: "Fin de semana", hour: 9, minute: 30, weekdays: [1, 7], mode: .sleepGoal,
                             windowMinutes: 45, vibration: .gentle),
             ]
@@ -89,6 +91,11 @@ struct ShotDestination: View {
                         Text("Sin entrenos")
                     }
                 case .onboarding: OnboardingView {}
+                case .guide: GuideView()
+                case .guideData: GuideView(startPage: 1)
+                case .guideRecovery: GuideView(startPage: 3)
+                case .guideAlarm: GuideView(startPage: 8)
+                case .whoopImport: WhoopImportView()
                 case .whatif: WhatIfView()
                 case .intelDetail:
                     if let m = model.intelligence?.metric("forecast") { MetricDetailView(metric: m) } else { Text("Calculando…") }

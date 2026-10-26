@@ -15,12 +15,18 @@ struct MoreView: View {
     @State private var pendingStrap: DiscoveredStrap?
     @State private var confirmDemo = false
     @State private var diagnosticsURL: URL?
+    @State private var showGuide = false
 
     var body: some View {
         NavigationStack {
             List {
                 strapSection
                 Section("Tú") {
+                    Button {
+                        showGuide = true
+                    } label: {
+                        Label("Guía de Pulso: cómo funciona todo", systemImage: "book.pages")
+                    }
                     NavigationLink {
                         ProfileEditor(profile: model.profile)
                     } label: {
@@ -120,8 +126,18 @@ struct MoreView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background.ignoresSafeArea())
             .navigationTitle("Más")
+            .fullScreenCover(isPresented: $showGuide) { GuideView() }
 
         }
+    }
+
+    /// "4 días de datos" rather than a raw count of seconds.
+    static func storedText(_ seconds: Int) -> String {
+        if seconds <= 0 { return "ninguno" }
+        let hours = Double(seconds) / 3600
+        if hours < 1 { return "\(max(1, seconds / 60)) min" }
+        if hours < 48 { return String(format: "%.0f h", hours) }
+        return String(format: "%.0f días", hours / 24)
     }
 
     // MARK: Strap
@@ -151,7 +167,7 @@ struct MoreView: View {
                 LabeledContent("Modelo", value: model.identity.isMG ? "WHOOP MG (\(model.identity.hardware))" : "WHOOP 5.0 (\(model.identity.hardware))")
             }
             LabeledContent("Última sincronización", value: Fmt.relative(model.lastSync))
-            LabeledContent("Segundos guardados", value: "\(model.rawSampleCount)")
+            LabeledContent("Datos guardados", value: Self.storedText(model.rawSampleCount))
 
             Button {
                 model.syncNow()

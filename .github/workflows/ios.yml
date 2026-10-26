@@ -172,10 +172,10 @@ jobs:
           ls "$DATA/Documents" || true
           sleep 4
           n=1
-          for S in today sleep trends live more alarms alarmEditor notifications integrations ecg ecgDetail bedtime lab workout onboarding whatif intelDetail; do
+          for S in today sleep trends live more alarms alarmEditor notifications integrations ecg ecgDetail bedtime lab workout onboarding whatif intelDetail guide guideData guideRecovery guideAlarm whoopImport; do
             xcrun simctl terminate "$UDID" $BID || true
             sleep 1
-            xcrun simctl launch "$UDID" $BID -PulsoScreenshots YES -PulsoScreen $S
+            xcrun simctl launch "$UDID" $BID -PulsoScreenshots YES -PulsoScreen $S -AppleLanguages "(es)" -AppleLocale es_ES
             sleep 6
             xcrun simctl io "$UDID" screenshot "shots/$(printf %02d $n)-$S.png"
             n=$((n+1))

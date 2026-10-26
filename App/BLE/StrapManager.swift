@@ -144,6 +144,10 @@ final class StrapManager: NSObject {
     private var offloadFirst: Int?
     private var offloadLast: Int?
     private var lastSyncAt: Date?
+    /// Next automatic download while the link stays up (runs whenever the app is awake then).
+    private var autoSync: DispatchWorkItem?
+    /// Gap between automatic downloads on a link that stays connected all day.
+    static let autoSyncInterval: TimeInterval = 30 * 60
     private var wantsLive = false
     /// A scan was requested before Bluetooth finished powering on.
     private var wantsScan = false
@@ -409,7 +413,19 @@ final class StrapManager: NSObject {
         queue.asyncAfter(deadline: .now() + delay, execute: item)
     }
 
+    /// A strap that stays connected sends nothing on its own, so without this the data would wait on the
+    /// strap until the app is opened. The timer only fires while the app is awake (foreground, live stream,
+    /// alarms); strap events and live readings below cover the rest.
+    private func scheduleAutoSync() {
+        autoSync?.cancel()
+        let item = DispatchWorkItem { [weak self] in self?.startOffload(force: false) }
+        autoSync = item
+        queue.asyncAfter(deadline: .now() + Self.autoSyncInterval, execute: item)
+    }
+
     private func resetSession() {
+        autoSync?.cancel()
+        autoSync = nil
         sessionTimer?.cancel()
         sessionTimer = nil
         armedAlarm = nil
@@ -632,6 +648,7 @@ final class StrapManager: NSObject {
         offload = nil
         lastSyncAt = Date()
         if bonded { state = .ready }
+        scheduleAutoSync()
         let n = offloadRecords, a = offloadFirst, b = offloadLast
         log("Descarga terminada: \(n) segundos nuevos")
         DispatchQueue.main.async { self.delegate?.strapSyncFinished(newRecords: n, firstTs: a, lastTs: b) }
@@ -670,6 +687,8 @@ final class StrapManager: NSObject {
         case .realtime(let r):
             guard r.valid else { return }
             lastVendorRealtime = Date()
+            // The live stream keeps the app awake (night, workouts): download now and then on the way.
+            if let last = lastSyncAt, Date().timeIntervalSince(last) > Self.autoSyncInterval { startOffload(force: false) }
             let hr = Int(r.heartRate), rr = r.rr.map { Int($0) }
             DispatchQueue.main.async { self.delegate?.strapLive(heartRate: hr, rr: rr, at: Date()) }
         case .event(let e):
