@@ -63,12 +63,15 @@ public struct AlarmConfig: Codable, Identifiable, Equatable, Sendable {
     public var morningReport: Bool
     /// Day key (yyyy-MM-dd) to skip once.
     public var skipDay: String?
+    /// Per-weekday times (weekday → minutes after midnight) that replace `hour:minute` on those days.
+    /// Empty = the same time every day.
+    public var dayTimes: [Int: Int]
 
     public init(id: String = UUID().uuidString, enabled: Bool = true, label: String = "Despertador", hour: Int = 7,
                 minute: Int = 0, weekdays: [Int] = [2, 3, 4, 5, 6], mode: WakeMode = .smart, windowMinutes: Int = 30,
                 vibration: VibrationStyle = .progressive, phoneBackup: Bool = true, phoneBackupDelay: Int = 2,
                 snoozeMinutes: Int = 9, maxSnoozes: Int = 3, doubleTap: AlarmDoubleTap = .snooze,
-                morningReport: Bool = true, skipDay: String? = nil) {
+                morningReport: Bool = true, skipDay: String? = nil, dayTimes: [Int: Int] = [:]) {
         self.id = id
         self.enabled = enabled
         self.label = label
@@ -85,11 +88,12 @@ public struct AlarmConfig: Codable, Identifiable, Equatable, Sendable {
         self.doubleTap = doubleTap
         self.morningReport = morningReport
         self.skipDay = skipDay
+        self.dayTimes = dayTimes
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, enabled, label, hour, minute, weekdays, mode, windowMinutes, vibration, phoneBackup, phoneBackupDelay
-        case snoozeMinutes, maxSnoozes, doubleTap, morningReport, skipDay
+        case snoozeMinutes, maxSnoozes, doubleTap, morningReport, skipDay, dayTimes
     }
 
     /// Tolerant decoding: alarms saved by older versions keep working when fields are added.
@@ -112,11 +116,30 @@ public struct AlarmConfig: Codable, Identifiable, Equatable, Sendable {
         doubleTap = try c.decodeIfPresent(AlarmDoubleTap.self, forKey: .doubleTap) ?? d.doubleTap
         morningReport = try c.decodeIfPresent(Bool.self, forKey: .morningReport) ?? d.morningReport
         skipDay = try c.decodeIfPresent(String.self, forKey: .skipDay)
+        dayTimes = try c.decodeIfPresent([Int: Int].self, forKey: .dayTimes) ?? [:]
     }
 
     public var isRepeating: Bool { !weekdays.isEmpty }
 
     public var timeText: String { String(format: "%02d:%02d", hour, minute) }
+
+    /// Whether some weekday rings at its own time.
+    public var hasDayTimes: Bool { !dayTimes.isEmpty }
+
+    /// Time of day on `weekday` (1 = Sunday … 7 = Saturday).
+    public func time(on weekday: Int) -> (hour: Int, minute: Int) {
+        guard let m = dayTimes[weekday] else { return (hour, minute) }
+        return (m / 60 % 24, m % 60)
+    }
+
+    /// "L 07:00 · S 09:30" for alarms with per-day times, in Monday-first order.
+    public var dayTimesText: String {
+        let names = [2: "L", 3: "M", 4: "X", 5: "J", 6: "V", 7: "S", 1: "D"]
+        return [2, 3, 4, 5, 6, 7, 1].filter(weekdays.contains).compactMap { d in
+            let t = time(on: d)
+            return names[d].map { String(format: "%@ %02d:%02d", $0, t.hour, t.minute) }
+        }.joined(separator: " · ")
+    }
 
     /// "L M X J V", "Todos los días", "Fines de semana", "Una vez".
     public var daysText: String {
@@ -147,18 +170,20 @@ public enum AlarmPlanner {
     /// Next time `alarm` goes off strictly after `now`, or nil if disabled.
     public static func next(_ alarm: AlarmConfig, after now: Date, calendar: Calendar = .current) -> PlannedAlarm? {
         guard alarm.enabled else { return nil }
-        var probe = now
-        for _ in 0..<15 {
-            guard let date = calendar.nextDate(after: probe, matching: DateComponents(hour: alarm.hour, minute: alarm.minute, second: 0),
-                                               matchingPolicy: .nextTime) else { return nil }
-            let weekday = calendar.component(.weekday, from: date)
+        let today = calendar.startOfDay(for: now)
+        // Day by day, so each weekday can use its own time.
+        for offset in 0..<15 {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: today) else { continue }
+            let weekday = calendar.component(.weekday, from: day)
+            guard alarm.weekdays.isEmpty || alarm.weekdays.contains(weekday) else { continue }
+            let t = alarm.time(on: weekday)
+            guard let date = calendar.nextDate(after: day.addingTimeInterval(-1), matching: DateComponents(hour: t.hour, minute: t.minute, second: 0),
+                                               matchingPolicy: .nextTime),
+                  date > now, calendar.isDate(date, inSameDayAs: day) else { continue }
             let key = DayKey.string(date, calendar: calendar)
-            let dayOK = alarm.weekdays.isEmpty || alarm.weekdays.contains(weekday)
-            if dayOK && key != alarm.skipDay {
-                let window = alarm.mode == .fixed ? 0 : max(0, alarm.windowMinutes)
-                return PlannedAlarm(alarm: alarm, latest: date, earliest: date.addingTimeInterval(-Double(window) * 60), dayKey: key)
-            }
-            probe = date.addingTimeInterval(60)
+            guard key != alarm.skipDay else { continue }
+            let window = alarm.mode == .fixed ? 0 : max(0, alarm.windowMinutes)
+            return PlannedAlarm(alarm: alarm, latest: date, earliest: date.addingTimeInterval(-Double(window) * 60), dayKey: key)
         }
         return nil
     }

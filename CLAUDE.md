@@ -70,6 +70,15 @@ docs/PROTOCOLO.md       referencia del protocolo BLE de la WHOOP 5.0
   SET_READ_POINTER, LOCK_DEVICE…). Alarma fija ahora mantiene la app viva 30 min antes; entitlement
   time-sensitive añadido; demo ya no se exporta a Salud. Detalle y pendientes en `docs/REVISION-2026-10-26.md`.
 
+## Estado (2026-10-26, tras la revisión)
+
+- Alarmas con hora distinta por día de la semana (`AlarmConfig.dayTimes`, editor «Hora distinta cada día»).
+  Las fijas también mantienen la conexión de noche (10 h antes) para que vibre la pulsera.
+- GET_DATA_RANGE con `00`; desfase de adaptación desde 12 semanas (test de permutaciones; confianza
+  baja hasta 26). 94 tests en verde.
+- Instalación: Sideloadly 0.71.1 → -80046; iloader 2.4.0 pasa la contraseña pero el 2FA da 403 con todos
+  los anisette. Vía gratis en Windows bloqueada: Mac de un amigo (`COMPILAR_EN_MAC.md`) o cuenta de pago.
+
 ## Compilar y dejarlo verde
 
 1. Comprueba que hay Git (`git --version`). Si no hay historial (`git log` falla): `git init -b main`, `git add -A` y un commit.

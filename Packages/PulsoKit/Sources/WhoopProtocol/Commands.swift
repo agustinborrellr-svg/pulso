@@ -66,7 +66,9 @@ public final class CommandBuilder {
     public func getAdvertisingName() -> (seq: UInt8, bytes: [UInt8])? { frame(Opcode.getAdvertisingName, [0x01]) }
     public func getBattery() -> (seq: UInt8, bytes: [UInt8])? { frame(Opcode.getBatteryLevel, [0x01]) }
     public func getClock() -> (seq: UInt8, bytes: [UInt8])? { frame(Opcode.getClock, []) }
-    public func getDataRange() -> (seq: UInt8, bytes: [UInt8])? { frame(Opcode.getDataRange, []) }
+    /// GET_DATA_RANGE(34) with the `00` request byte NOOP sends with every command (as SEND_HISTORICAL_DATA,
+    /// where an empty body makes the 5.0 serve nothing).
+    public func getDataRange() -> (seq: UInt8, bytes: [UInt8])? { frame(Opcode.getDataRange, [0x00]) }
 
     public func toggleRealtimeHR(_ on: Bool) -> (seq: UInt8, bytes: [UInt8])? {
         frame(Opcode.toggleRealtimeHR, [on ? 0x01 : 0x00])

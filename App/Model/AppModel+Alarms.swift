@@ -117,18 +117,18 @@ extension AppModel {
         strap.setAlarm(s.planned.latest)
     }
 
-    /// The alarm needs the app alive when its time comes. Keeping the strap's live stream on makes
-    /// iOS deliver a Bluetooth notification every second, which keeps Pulso running: from 10 h before
-    /// the window for smart alarms, from 30 min before the time for fixed ones (otherwise a fixed alarm
-    /// locked in the background would only be rung by the iPhone backup).
+    /// The alarm needs the app alive when its time comes, fixed or smart: the strap can only be told to
+    /// vibrate by a running app. Keeping the strap's live stream on makes iOS deliver a Bluetooth
+    /// notification every second, which keeps Pulso running. It has to start while the app is still
+    /// awake (going to the background at bedtime, a reconnect), because nothing wakes a suspended app
+    /// later on, hence the 10 h lead for every mode.
     func updateNightGuard() {
         guard let s = wakeSession, !(s.state == .finished) else {
             setLive(false, client: "night")
             return
         }
         let untilWindow = s.planned.earliest.timeIntervalSinceNow
-        let lead: TimeInterval = s.planned.isSmart ? 10 * 3600 : 30 * 60
-        setLive(untilWindow < lead && untilWindow > -3 * 3600, client: "night")
+        setLive(untilWindow < 10 * 3600 && untilWindow > -3 * 3600, client: "night")
     }
 
     func alarmTick(now: Date) {

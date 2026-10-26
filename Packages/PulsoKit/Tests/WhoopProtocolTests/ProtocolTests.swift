@@ -150,6 +150,12 @@ final class ProtocolTests: XCTestCase {
         XCTAssertEqual(f.payload, [0x00])
     }
 
+    func testGetDataRangeCarriesExplicitRequestByte() throws {
+        let f = try Framing.decode(.gen5, XCTUnwrap(CommandBuilder().getDataRange()).bytes)
+        XCTAssertEqual(f.cmd, Opcode.getDataRange)
+        XCTAssertEqual(f.payload, [0x00])
+    }
+
     func testNegativeSkinTemperatureIsNotMisreadAsHot() throws {
         var wire = try XCTUnwrap(Hex.decode(Self.realV18))
         // inner[65..67] = frame[73..75]: write the -50.00 °C unavailable sentinel, then re-seal the CRC32.

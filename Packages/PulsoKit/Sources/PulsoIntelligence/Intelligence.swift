@@ -43,10 +43,10 @@ public enum Intelligence {
             guard let w = weeks[k], w.strain.count >= 4, w.hrv.count >= 4, let s = Num.mean(w.strain), let h = Num.median(w.hrv) else { return nil }
             return (s, h)
         }
-        // 12 weeks give 11 weekly differences: the best of five lags then clears |r| ≥ 0.3 on pure noise
-        // most of the time, so more history and a permutation test are required before naming a lag.
-        guard series.count >= 26 else {
-            return .insufficient("adaptationLag", "Desfase de adaptación", unit: "semanas", need: "26 semanas con datos (llevas \(series.count))",
+        // With 12 weeks the best of five lags clears |r| ≥ 0.3 on pure noise most of the time: the permutation
+        // test below is what guards against that, and confidence stays low until 26 weeks.
+        guard series.count >= 12 else {
+            return .insufficient("adaptationLag", "Desfase de adaptación", unit: "semanas", need: "12 semanas con datos (llevas \(series.count))",
                                  have: series.count, formula: f, version: version)
         }
         let dl = zip(series.dropFirst(), series).map { $0.0 - $1.0 }
@@ -101,7 +101,7 @@ public enum Intelligence {
         let ci = s.isEmpty ? Double(best.0)...Double(best.0) : s[Int(Double(s.count) * 0.05)]...s[Int(Double(s.count - 1) * 0.95)]
         return MetricResult(id: "adaptationLag", name: "Desfase de adaptación", value: Double(best.0), unit: "semanas",
                             summary: "Tu VFC tarda unas \(best.0) semana\(best.0 == 1 ? "" : "s") en reflejar un cambio sostenido de carga. Es una estimación personal, no una constante.",
-                            interval: ci, confidence: .from(samples: series.count, medium: 20, high: 30), sampleSize: series.count, formula: f,
+                            interval: ci, confidence: .from(samples: series.count, medium: 26, high: 40), sampleSize: series.count, formula: f,
                             version: version)
     }
 

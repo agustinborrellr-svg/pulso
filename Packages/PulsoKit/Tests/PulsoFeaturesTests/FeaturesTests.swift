@@ -42,6 +42,38 @@ final class FeaturesTests: XCTestCase {
         XCTAssertNil(after.skipDay)
     }
 
+    func testPerDayTimes() throws {
+        // Weekdays at 07:00 by default, Monday at 06:15 and Saturday at 09:30.
+        var a = AlarmConfig(hour: 7, minute: 0, weekdays: [2, 3, 4, 5, 6, 7], mode: .fixed, dayTimes: [2: 6 * 60 + 15, 7: 9 * 60 + 30])
+        let friNight = date(2026, 10, 23, 22)
+        let sat = try XCTUnwrap(AlarmPlanner.next(a, after: friNight, calendar: calendar))
+        XCTAssertEqual(sat.latest, date(2026, 10, 24, 9, 30))
+        let mon = try XCTUnwrap(AlarmPlanner.next(a, after: sat.latest, calendar: calendar))
+        XCTAssertEqual(mon.latest, date(2026, 10, 26, 6, 15), "Sunday is off, Monday has its own time")
+        let tue = try XCTUnwrap(AlarmPlanner.next(a, after: mon.latest, calendar: calendar))
+        XCTAssertEqual(tue.latest, date(2026, 10, 27, 7, 0), "days without their own time use the default")
+        // Same day: before Saturday's 09:30 it is still today; after it, next is Monday.
+        XCTAssertEqual(AlarmPlanner.next(a, after: date(2026, 10, 24, 8), calendar: calendar)?.latest, date(2026, 10, 24, 9, 30))
+        XCTAssertEqual(AlarmPlanner.upcoming([a], after: friNight, days: 7, calendar: calendar).count, 6)
+        XCTAssertEqual(a.dayTimesText, "L 06:15 · M 07:00 · X 07:00 · J 07:00 · V 07:00 · S 09:30")
+        a.skipDay = "2026-10-24"
+        XCTAssertEqual(AlarmPlanner.next(a, after: friNight, calendar: calendar)?.latest, date(2026, 10, 26, 6, 15))
+        // Alarms saved before per-day times existed still decode.
+        let old = #"{"id":"x","hour":8,"minute":5,"weekdays":[2]}"#
+        let decoded = try JSONDecoder().decode(AlarmConfig.self, from: Data(old.utf8))
+        XCTAssertTrue(decoded.dayTimes.isEmpty)
+        let roundTrip = try JSONDecoder().decode(AlarmConfig.self, from: JSONEncoder().encode(a))
+        XCTAssertEqual(roundTrip.dayTimes, a.dayTimes)
+    }
+
+    func testDSTDayKeepsLocalAlarmTime() throws {
+        // 2026-10-25 is the autumn DST change in Madrid.
+        let a = AlarmConfig(hour: 7, minute: 0, weekdays: [], mode: .fixed)
+        let p = try XCTUnwrap(AlarmPlanner.next(a, after: date(2026, 10, 24, 23), calendar: calendar))
+        XCTAssertEqual(calendar.component(.hour, from: p.latest), 7)
+        XCTAssertEqual(p.dayKey, "2026-10-25")
+    }
+
     func testUpcomingAndEarliestAmongMany() {
         let weekday = AlarmConfig(id: "w", hour: 7, minute: 0, weekdays: [2, 3, 4, 5, 6], mode: .fixed)
         let weekend = AlarmConfig(id: "e", hour: 9, minute: 30, weekdays: [1, 7], mode: .smart, windowMinutes: 45)
