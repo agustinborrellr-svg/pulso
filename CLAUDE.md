@@ -61,7 +61,7 @@ docs/PROTOCOLO.md       referencia del protocolo BLE de la WHOOP 5.0
 - Modelo ajustado: deuda de sueño como arrastre decreciente, necesidad acotada, recuperación más suave,
   esfuerzo cotidiano en días de descanso. 87 tests en verde.
 - Seguridad: la app **nunca** se conecta sola a una pulsera; buscar lista y pide confirmación.
-- Plan Mac: `COMPILAR_EN_MAC.md` (guía para un amigo con Xcode 26, Apple ID gratuito). Zip listo en EscritorioPulso-Xcode.zip
+- Plan Mac: `COMPILAR_EN_MAC.md` (guía para un amigo con Xcode 26, Apple ID gratuito). Zip listo en `Escritorio/Pulso-Xcode.zip`
   (`git archive`). Sideloadly reinstalado en v0.71.1 el 26-oct; .ipa en Escritorio.
 
 ## Compilar y dejarlo verde
