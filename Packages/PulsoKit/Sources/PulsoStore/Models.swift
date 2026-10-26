@@ -184,9 +184,11 @@ public enum WorkoutSource: String, Codable, Sendable {
     case health
     /// Imported from Strava.
     case strava
+    /// Imported from a WHOOP data export (CSV).
+    case whoop
 
     /// Imported from another app: its own metrics are kept when the strap has no data for the window.
-    public var isExternal: Bool { self == .health || self == .strava }
+    public var isExternal: Bool { self == .health || self == .strava || self == .whoop }
 }
 
 public struct Workout: Codable, Equatable, Identifiable, Sendable {

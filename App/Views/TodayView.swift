@@ -248,7 +248,7 @@ struct WorkoutRow: View {
                 .foregroundStyle(Theme.strain)
             VStack(alignment: .leading, spacing: 2) {
                 Text(workout.sport).font(.subheadline.bold()).foregroundStyle(.white)
-                Text("\(Fmt.time(workout.start)) · \(Fmt.hm(workout.durationMinutes)) · \(Int(workout.kcal)) kcal\(workout.source == .auto ? " · auto" : "")")
+                Text("\(Fmt.time(workout.start)) · \(Fmt.hm(workout.durationMinutes)) · \(Int(workout.kcal)) kcal\(workout.source == .auto ? " · auto" : workout.source == .whoop ? " · WHOOP" : "")")
                     .font(.caption).foregroundStyle(Theme.secondary)
             }
             Spacer()

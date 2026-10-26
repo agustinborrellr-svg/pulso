@@ -7,7 +7,6 @@ import PulsoIntegrations
 
 struct MoreView: View {
     @EnvironmentObject var model: AppModel
-    @State private var importing = false
     @State private var restoring = false
     @State private var exportURLs: [URL] = []
     @State private var backupURL: URL?
@@ -121,9 +120,6 @@ struct MoreView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background.ignoresSafeArea())
             .navigationTitle("Más")
-            .fileImporter(isPresented: $importing, allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
-                if case .success(let url) = result { model.importWhoopCSV(from: url) }
-            }
 
         }
     }
@@ -280,10 +276,10 @@ struct MoreView: View {
                     Button("Cancelar", role: .cancel) {}
                 }
             }
-            Button {
-                importing = true
+            NavigationLink {
+                WhoopImportView()
             } label: {
-                Label("Importar historial de WHOOP (CSV)", systemImage: "square.and.arrow.down")
+                Label("Importar de WHOOP (CSV)", systemImage: "square.and.arrow.down")
             }
             Button {
                 exportURLs = model.exportFiles()
@@ -343,7 +339,7 @@ struct MoreView: View {
         } header: {
             Text("Datos")
         } footer: {
-            Text("La demo genera cinco semanas simuladas (noches buenas y malas, entrenos, unos días de «incubar algo») para probar todo sin pulsera. Todo se guarda solo en tu iPhone. La copia de seguridad incluye todo (también cada segundo de datos); guárdala en Archivos o iCloud Drive. Para importar de WHOOP, exporta tus datos desde su app y elige physiological_cycles.csv: tus líneas base estarán listas desde el primer día.")
+            Text("La demo genera cinco semanas simuladas (noches buenas y malas, entrenos, unos días de «incubar algo») para probar todo sin pulsera. Todo se guarda solo en tu iPhone. La copia de seguridad incluye todo (también cada segundo de datos); guárdala en Archivos o iCloud Drive. Para importar de WHOOP, exporta tus datos desde su app y sube los CSV que quieras (ciclos, sueño, entrenos, diario): verás tu historial y tus líneas base estarán listas desde el primer día.")
         }
     }
 }

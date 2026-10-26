@@ -204,7 +204,11 @@ final class AppModel: ObservableObject {
     func reload() {
         do {
             let from = DayKey.shift(DayKey.string(Date()), days: -400)
-            days = try db.days(from: from, to: "9999-12-31")
+            let measured = try db.days(from: from, to: "9999-12-31")
+            // Days imported from WHOOP fill the history where the strap has nothing of its own.
+            let have = Set(measured.map(\.day))
+            let imported = try db.importedDays().filter { $0.day >= from && !have.contains($0.day) }
+            days = (measured + imported).sorted { $0.day < $1.day }
             let journal = try db.allJournal()
             insights = Insights.compute(journal: journal, days: days)
             trainingLoad = TrainingLoad.series(days, through: DayKey.string(Date()))
@@ -486,24 +490,6 @@ final class AppModel: ObservableObject {
     }
 
     // MARK: - Import / export
-
-    func importWhoopCSV(from url: URL) {
-        let access = url.startAccessingSecurityScopedResource()
-        defer { if access { url.stopAccessingSecurityScopedResource() } }
-        do {
-            let text = try String(contentsOf: url, encoding: .utf8)
-            let imported = WhoopExportImporter.parse(csv: text)
-            guard !imported.isEmpty else {
-                errorMessage = "No he encontrado días válidos. Usa el archivo physiological_cycles.csv de tu exportación de WHOOP."
-                return
-            }
-            for d in imported { try db.saveImported(d) }
-            errorMessage = "Importados \(imported.count) días de WHOOP como referencia para tus líneas base."
-            recompute(fromDay: DayKey.shift(DayKey.string(Date()), days: -30))
-        } catch {
-            errorMessage = "No se pudo importar: \(error.localizedDescription)"
-        }
-    }
 
     /// Writes CSV exports to a temporary folder and returns their URLs (for the share sheet).
     func exportFiles(rawDays: Int = 7) -> [URL] {
