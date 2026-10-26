@@ -79,6 +79,17 @@ docs/PROTOCOLO.md       referencia del protocolo BLE de la WHOOP 5.0
 - Instalación: Sideloadly 0.71.1 → -80046; iloader 2.4.0 pasa la contraseña pero el 2FA da 403 con todos
   los anisette. Vía gratis en Windows bloqueada: Mac de un amigo (`COMPILAR_EN_MAC.md`) o cuenta de pago.
 
+## Estado (2026-10-27)
+
+- Importación de WHOOP reescrita (`WhoopExport` en Interop.swift): CSV en español/inglés, ciclos, sueño,
+  entrenos (origen `.whoop`) y diario, todos opcionales; probado con la exportación real de Gus (140 días,
+  247 entrenos). Pantalla Más → Importar de WHOOP. Los días importados se ven en la app.
+- Guía de Pulso (`GuideView`, 11 páginas): tras la bienvenida y en Más.
+- Descarga automática cada 30 min con la pulsera conectada (y aprovechando el pulso en directo).
+- `MetricsTruthTests`: métricas contra la fisiología conocida de la demo (FC reposo ±0,3 lpm). 101 tests.
+- AccentColor era casi negro (botones invisibles en hojas): ahora blanco. Capturas en es_ES y sin
+  pedir permisos.
+
 ## Compilar y dejarlo verde
 
 1. Comprueba que hay Git (`git --version`). Si no hay historial (`git log` falla): `git init -b main`, `git add -A` y un commit.
