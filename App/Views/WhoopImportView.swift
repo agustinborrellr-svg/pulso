@@ -81,6 +81,7 @@ struct WhoopImportView: View {
                     }
                 }
                 .disabled(recognised.isEmpty || working)
+                .opacity(recognised.isEmpty ? 0.4 : 1)
             } footer: {
                 Text("Puedes repetir la importación sin miedo: no duplica entrenos ni pisa lo que hayas apuntado en el diario de Pulso. Los días que mida la pulsera mandan sobre los importados.")
             }
