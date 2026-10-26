@@ -63,6 +63,8 @@ docs/PROTOCOLO.md       referencia del protocolo BLE de la WHOOP 5.0
 - Seguridad: la app **nunca** se conecta sola a una pulsera; buscar lista y pide confirmación.
 - Plan Mac: `COMPILAR_EN_MAC.md` (guía para un amigo con Xcode 26, Apple ID gratuito). Zip listo en `Escritorio/Pulso-Xcode.zip`
   (`git archive`). Sideloadly reinstalado en v0.71.1 el 26-oct; .ipa en Escritorio.
+- 26-oct: Sideloadly 0.71.1 → -80046; iloader 2.4.0 (instalado en %LOCALAPPDATA%iloader) pasa la contraseña pero
+  el 2FA da 403 (trusted phone numbers / SMS) con todos los servidores anisette. Vía gratis bloqueada.
 
 ## Compilar y dejarlo verde
 
