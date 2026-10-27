@@ -101,6 +101,18 @@ docs/PROTOCOLO.md       referencia del protocolo BLE de la WHOOP 5.0
   + `PairingFlowView`. Lógica probada en PulsoKit: `TrendSeries`, `PulsoAge`.
 - Ojo con Swift Charts y ejes categóricos: fijar `.chartXScale(domain:)` o el orden sale mal.
 
+## Estado (2026-10-27, arreglos pasos 1-5)
+
+- Paso 1: SQLite versionado (`PRAGMA user_version` + migraciones), lectura tolerante (TolerantDecoding.swift),
+  `DayEngine.derivedVersion` (recalcula al cambiar algoritmos), ciclo abierto hasta dormir (WHOOP), posponer.
+- Paso 2: fases sin forzar + `StageConfidence` con motivos; siestas/sueño de día con pregunta (aviso + tarjeta),
+  decisiones en kv `sleep.decisions`.
+- Paso 3: carga TRIMP 7/28; Strava robusto (refresh único, 401, 429, paginación); ECG validado con PhysioNet
+  (sens 78 %, esp 96 %; `PULSO_ECG_DIR`, descarga con scratchpad physionet.py).
+- Paso 4: VO₂ máx (normas), plan semanal, actividad manual, tendencia de Edad Pulso.
+- Paso 5 (subido SIN COMPILAR): restyle del resto (pulsoTitle/pulsoList), Análisis con pestañas.
+- 27-oct: GitHub Actions dejó de arrancar (facturación / minutos de Mac agotados en repo privado).
+
 ## Compilar y dejarlo verde
 
 1. Comprueba que hay Git (`git --version`). Si no hay historial (`git log` falla): `git init -b main`, `git add -A` y un commit.
