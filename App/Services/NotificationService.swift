@@ -13,12 +13,16 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         static let alarmInfo = "PULSO_ALARM_INFO"
         static let alert = "PULSO_ALERT"
         static let breathe = "PULSO_BREATHE"
+        /// "¿Siesta o sueño?" with one button per answer.
+        static let sleepQuestion = "PULSO_SLEEP_QUESTION"
     }
 
     enum Action {
         static let snooze = "SNOOZE"
         static let stop = "STOP"
         static let breathe = "BREATHE"
+        static let wasNap = "WAS_NAP"
+        static let wasSleep = "WAS_SLEEP"
     }
 
     /// (actionIdentifier, categoryIdentifier, request identifier) — called on the main queue.
@@ -31,11 +35,14 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         let snooze = UNNotificationAction(identifier: Action.snooze, title: "Posponer", options: [])
         let stop = UNNotificationAction(identifier: Action.stop, title: "Apagar", options: [.destructive])
         let breathe = UNNotificationAction(identifier: Action.breathe, title: "Respirar 1 min", options: [.foreground])
+        let wasNap = UNNotificationAction(identifier: Action.wasNap, title: "Fue una siesta", options: [])
+        let wasSleep = UNNotificationAction(identifier: Action.wasSleep, title: "Era mi sueño", options: [])
         center.setNotificationCategories([
             UNNotificationCategory(identifier: Category.alarm, actions: [snooze, stop], intentIdentifiers: [], options: [.customDismissAction]),
             UNNotificationCategory(identifier: Category.alarmInfo, actions: [snooze, stop], intentIdentifiers: [], options: []),
             UNNotificationCategory(identifier: Category.alert, actions: [], intentIdentifiers: [], options: []),
             UNNotificationCategory(identifier: Category.breathe, actions: [breathe], intentIdentifiers: [], options: []),
+            UNNotificationCategory(identifier: Category.sleepQuestion, actions: [wasNap, wasSleep], intentIdentifiers: [], options: []),
         ])
     }
 

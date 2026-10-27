@@ -238,6 +238,26 @@ public final class PulsoDatabase {
         }.compactMap { $0 }
     }
 
+    // MARK: - Daytime sleep decisions
+
+    static let sleepDecisionsKey = "sleep.decisions"
+
+    public func sleepDecisions() -> [SleepDecision] {
+        get([SleepDecision].self, for: Self.sleepDecisionsKey) ?? []
+    }
+
+    /// Saves the answer for a daytime sleep, replacing an earlier answer for the same sleep.
+    public func saveSleepDecision(_ d: SleepDecision) throws {
+        var all = sleepDecisions().filter { SleepDecision.overlapFraction($0.start, $0.end, d.start, d.end) < 0.5 }
+        all.append(d)
+        try set(all.suffix(400), for: Self.sleepDecisionsKey)
+    }
+
+    /// The answer given for a sleep that overlaps this one by at least half (detection moves edges a little).
+    public func sleepDecision(start: Int, end: Int) -> SleepDecision? {
+        sleepDecisions().last { SleepDecision.overlapFraction($0.start, $0.end, start, end) >= 0.5 }
+    }
+
     public func deleteDay(_ day: String) throws {
         try sql.run("DELETE FROM days WHERE day = ?", [.text(day)])
     }

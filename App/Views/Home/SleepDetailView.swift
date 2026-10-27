@@ -97,6 +97,10 @@ struct SleepDetailView: View {
                 }
                 .buttonStyle(.plain)
             }
+            if let c = s.stageConfidence {
+                Divider().overlay(Theme.hairline)
+                StageConfidenceRow(confidence: c)
+            }
             Divider().overlay(Theme.hairline)
             HStack {
                 RoundedRectangle(cornerRadius: 2).fill(LinearGradient(colors: [Theme.stageColor(.deep), Theme.stageColor(.rem)],
@@ -298,20 +302,39 @@ struct SleepDetailView: View {
         .overlay(alignment: .top) { Divider().overlay(Theme.hairline) }
     }
 
+    /// Daytime sleeps with what each one counted as, and a menu to change it.
     @ViewBuilder
     private var naps: some View {
-        let list = model.naps(on: model.selectedDay)
+        let list = model.daytimeSleeps(on: model.selectedDay)
         if !list.isEmpty {
             PCard {
-                CardHeader(title: "Siestas")
+                CardHeader(title: "Sueño durante el día", subtitle: "Toca para cambiar si fue siesta o sueño")
                 ForEach(list) { n in
-                    HStack {
-                        Image(systemName: "powersleep").foregroundStyle(Theme.sleep)
-                        Text("\(Fmt.time(n.start)) – \(Fmt.time(n.end))").foregroundStyle(.white)
-                        Spacer()
-                        Text(Fmt.hmm(n.asleepMinutes)).foregroundStyle(Theme.secondary)
+                    Menu {
+                        Button { model.answerSleepQuestion(n, isNap: true) } label: {
+                            Label("Fue una siesta", systemImage: n.isNap ? "checkmark" : "powersleep")
+                        }
+                        Button { model.answerSleepQuestion(n, isNap: false) } label: {
+                            Label("Era mi sueño", systemImage: n.isNap ? "bed.double" : "checkmark")
+                        }
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: n.isNap ? "powersleep" : "bed.double").foregroundStyle(Theme.sleep)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(Fmt.time(n.start)) – \(Fmt.time(n.end))").font(.subheadline).foregroundStyle(.white)
+                                Text(n.isNap ? "Siesta: reduce lo que necesitas esta noche" : "Sueño: cuenta en tus horas")
+                                    .font(.caption).foregroundStyle(Theme.secondary)
+                            }
+                            Spacer()
+                            Text(Fmt.hmm(n.asleepMinutes)).font(.headline.monospacedDigit()).foregroundStyle(.white)
+                            if !n.kindConfirmed {
+                                Caps("Auto", size: 9, color: Theme.secondary)
+                                    .padding(.horizontal, 6).padding(.vertical, 3)
+                                    .background(Theme.cardHighlight, in: RoundedRectangle(cornerRadius: 4))
+                            }
+                            Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(Theme.secondary)
+                        }
                     }
-                    .font(.subheadline)
                 }
             }
         }

@@ -9,6 +9,7 @@ enum ShotScreen: String, Identifiable {
     case alarms, alarmEditor, notifications, integrations, ecg, ecgDetail, bedtime, lab, workout, onboarding, whatif, intelDetail
     case guide, guideData, guideRecovery, guideAlarm, whoopImport
     case recovery, strain, stress, trendRecovery, trendStrain, trendHRV, device, pairing, deviceAdvanced
+    case sleepQuestion
 
     var id: String { rawValue }
 
@@ -106,6 +107,12 @@ struct ShotDestination: View {
                 case .trendHRV: TrendDetailView(metric: .hrv)
                 case .device, .deviceAdvanced: DeviceView()
                 case .pairing: PairingFlowView()
+                case .sleepQuestion:
+                    let now = Int(Date().timeIntervalSince1970)
+                    DetailScreen(title: "Inicio") {
+                        SleepQuestionCard(session: SleepSession(start: now - 2 * 3600, end: now - 3600 - 600, isNap: true,
+                                                                minutesAwake: 4, minutesLight: 38, minutesDeep: 8))
+                    }
                 case .whatif: WhatIfView()
                 case .intelDetail:
                     if let m = model.intelligence?.metric("forecast") { MetricDetailView(metric: m) } else { Text("Calculando…") }

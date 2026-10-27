@@ -2,8 +2,8 @@ import Foundation
 import PulsoStore
 
 /// Four-class sleep staging (awake / light / deep / REM) over one-minute epochs from cardiac and
-/// movement features, smoothed with a sticky Viterbi decoder, then nudged toward adult population
-/// stage proportions when the features alone are ambiguous.
+/// movement features, smoothed with a sticky Viterbi decoder. The split is reported as detected (it is
+/// not pushed toward textbook proportions) together with how far it can be trusted.
 public enum SleepStager {
     struct Features {
         var hr: [Double]
@@ -23,8 +23,13 @@ public enum SleepStager {
     /// Stages each minute of `epochs` (already cut to the sleep period). `rmssdPerMinute` is a
     /// centred-window RMSSD for each minute (nil where the beat stream was broken).
     public static func stage(_ epochs: [MinuteEpoch], rmssdPerMinute: [Double?], stillThreshold: Double) -> [SleepStage] {
+        stageWithConfidence(epochs, rmssdPerMinute: rmssdPerMinute, stillThreshold: stillThreshold).stages
+    }
+
+    public static func stageWithConfidence(_ epochs: [MinuteEpoch], rmssdPerMinute: [Double?],
+                                           stillThreshold: Double) -> (stages: [SleepStage], confidence: StageConfidence?) {
         let n = epochs.count
-        guard n > 0 else { return [] }
+        guard n > 0 else { return ([], nil) }
 
         // Smooth HR over 3 minutes to suppress single-minute noise.
         let hrRaw = epochs.map { $0.hr }
@@ -50,25 +55,67 @@ public enum SleepStager {
             }
         )
 
-        var deepBias = 0.0, remBias = 0.0
-        var stages = decode(f, n: n, deepBias: deepBias, remBias: remBias)
-        // Nudge toward physiological proportions if the decoder lands far outside them.
-        for _ in 0..<6 {
-            let asleep = Double(stages.filter { $0 != .awake }.count)
-            guard asleep >= 60 else { break }
-            let deepFrac = Double(stages.filter { $0 == .deep }.count) / asleep
-            let remFrac = Double(stages.filter { $0 == .rem }.count) / asleep
-            var changed = false
-            if deepFrac < 0.10 { deepBias += 0.5; changed = true } else if deepFrac > 0.30 { deepBias -= 0.5; changed = true }
-            if remFrac < 0.14 { remBias += 0.5; changed = true } else if remFrac > 0.30 { remBias -= 0.5; changed = true }
-            if !changed { break }
-            stages = decode(f, n: n, deepBias: deepBias, remBias: remBias)
+        let (stages, emit) = decode(f, n: n)
+        let confidence = assess(stages: stages, emit: emit, epochs: epochs, rmssdPerMinute: rmssdPerMinute)
+        return (stages, confidence)
+    }
+
+    /// How far the split can be trusted: strap coverage, a clean beat stream, how clear each minute was and
+    /// whether the proportions are physiologically plausible.
+    static func assess(stages: [SleepStage], emit: [[Double]], epochs: [MinuteEpoch], rmssdPerMinute: [Double?]) -> StageConfidence {
+        let n = Double(max(1, stages.count))
+        let coverage = Double(epochs.filter { $0.worn && $0.hr != nil }.count) / n
+        let beatCoverage = Double(rmssdPerMinute.filter { $0 != nil }.count) / n
+        let index: [SleepStage: Int] = [.awake: 0, .light: 1, .deep: 2, .rem: 3]
+        var probs: [Double] = []
+        for (i, st) in stages.enumerated() where st != .awake {
+            let e = emit[i]
+            let m = e.max() ?? 0
+            let ex = e.map { exp($0 - m) }
+            probs.append(ex[index[st] ?? 1] / ex.reduce(0, +))
         }
-        return stages
+        let decisiveness = Stats.mean(probs) ?? 0
+        let asleep = Double(stages.filter { $0 != .awake }.count)
+        let deepFrac = asleep > 0 ? Double(stages.filter { $0 == .deep }.count) / asleep : 0
+        let remFrac = asleep > 0 ? Double(stages.filter { $0 == .rem }.count) / asleep : 0
+        func pct(_ x: Double) -> Int { Int((x * 100).rounded()) }
+
+        var score = 100.0
+        var reasons: [String] = []
+        if coverage < 0.9 {
+            score -= (0.9 - coverage) * 200
+            reasons.append("La pulsera no leyó bien el \(pct(1 - coverage)) % de la noche (floja, mal colocada o quitada).")
+        }
+        if beatCoverage < 0.8 {
+            score -= (0.8 - beatCoverage) * 120
+            reasons.append("Solo hubo señal latido a latido limpia el \(pct(beatCoverage)) % del tiempo, y la VFC es la clave para separar profundo y REM.")
+        }
+        if decisiveness < 0.75 {
+            score -= (0.75 - decisiveness) * 150
+            reasons.append("Muchos minutos estaban a medio camino entre dos fases (pulso y VFC sin un patrón claro).")
+        }
+        if asleep >= 60 {
+            if deepFrac < 0.05 || deepFrac > 0.35 {
+                score -= 20
+                reasons.append("El sueño profundo (\(pct(deepFrac)) %) queda fuera de lo habitual en adultos (5-35 %).")
+            }
+            if remFrac < 0.08 || remFrac > 0.35 {
+                score -= 20
+                reasons.append("El REM (\(pct(remFrac)) %) queda fuera de lo habitual en adultos (8-35 %).")
+            }
+        }
+        if asleep < 180 {
+            score -= 15
+            reasons.append("Es un sueño corto: con menos de 3 horas los ciclos no se completan y cuesta más separarlos.")
+        }
+        score = Stats.clamp(score, 0, 100)
+        let level: StageConfidence.Level = score >= 75 ? .high : (score >= 50 ? .medium : .low)
+        return StageConfidence(level: level, score: score.rounded(), reasons: reasons, coverage: coverage,
+                               beatCoverage: beatCoverage, decisiveness: decisiveness)
     }
 
     /// Emission log-scores per stage then Viterbi with sticky transitions.
-    static func decode(_ f: Features, n: Int, deepBias: Double, remBias: Double) -> [SleepStage] {
+    static func decode(_ f: Features, n: Int, deepBias: Double = 0, remBias: Double = 0) -> ([SleepStage], [[Double]]) {
         let states: [SleepStage] = [.awake, .light, .deep, .rem]
         var emit = [[Double]](repeating: [0, 0, 0, 0], count: n)
         for i in 0..<n {
@@ -124,6 +171,6 @@ public enum SleepStager {
             path[i] = idx
             idx = back[i][idx]
         }
-        return path.map { states[$0] }
+        return (path.map { states[$0] }, emit)
     }
 }

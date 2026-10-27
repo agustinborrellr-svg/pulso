@@ -9,7 +9,10 @@ import PulsoStore
 public final class DayEngine {
     /// Version of the derived numbers (days, sleeps, workouts). Bump it whenever an algorithm changes: the app
     /// then recomputes every day from the raw seconds it still has.
-    public static let derivedVersion = 2
+    public static let derivedVersion = 3
+
+    /// Daytime sleeps shorter than this are naps unless the user says otherwise.
+    public static let napLimit = 3 * 3600
     public static let derivedVersionKey = "derived.version"
 
     /// The current cycle stays open (it is still "today" for WHOOP and for Pulso) until the next main sleep,
@@ -162,10 +165,12 @@ public final class DayEngine {
         let detectedMain = mainSleep(for: day, blocks: blocks)
         let mainBounds: (start: Int, end: Int)? = manualMain.map { ($0.start, $0.end) } ?? detectedMain
 
-        // Replace this day's automatic sessions.
+        // Replace this day's automatic sessions (the night and any daytime sleep).
+        let napLo = ts(day, hour: 10), napHi = ts(day, hour: 22), dayEnd = ts(day, hour: 24)
         try db.sql.run("DELETE FROM sleeps WHERE manual = 0 AND is_nap = 0 AND end > ? AND end <= ?",
                        [.int(Int64(dayStart)), .int(Int64(mainHi))])
-        let napLo = ts(day, hour: 10), napHi = ts(day, hour: 22), dayEnd = ts(day, hour: 24)
+        try db.sql.run("DELETE FROM sleeps WHERE manual = 0 AND is_nap = 0 AND start >= ? AND start < ? AND end <= ?",
+                       [.int(Int64(napLo)), .int(Int64(napHi)), .int(Int64(dayEnd))])
         try db.sql.run("DELETE FROM sleeps WHERE manual = 0 AND is_nap = 1 AND start >= ? AND start < ?",
                        [.int(Int64(napLo)), .int(Int64(napHi))])
 
@@ -177,16 +182,27 @@ public final class DayEngine {
             main = s
         }
 
+        // Daytime sleep: a nap or real sleep. The user's answer wins; otherwise under 3 h is a nap.
         var naps: [SleepSession] = []
+        var daySleeps: [SleepSession] = []
         for b in blocks where b.start >= napLo && b.start < napHi && b.end <= dayEnd {
             let len = b.end - b.start
-            guard len >= 15 * 60, len <= 180 * 60 else { continue }
+            guard len >= 15 * 60 else { continue }
             if let m = mainBounds, b.start < m.end && b.end > m.start { continue }
-            var nap = SleepAnalyzer.analyze(samples: samples, start: b.start, end: b.end, isNap: true, manual: false, stillThreshold: stillThr)
-            nap.id = try db.save(nap)
-            naps.append(nap)
+            let decision = db.sleepDecision(start: b.start, end: b.end)
+            let kind = decision?.kind ?? (len < Self.napLimit ? .nap : .sleep)
+            var s = SleepAnalyzer.analyze(samples: samples, start: b.start, end: b.end, isNap: kind == .nap, manual: false,
+                                          stillThreshold: stillThr)
+            s.kindConfirmed = decision != nil
+            s.id = try db.save(s)
+            if kind == .nap { naps.append(s) } else { daySleeps.append(s) }
         }
         naps += existing.filter { $0.manual && $0.isNap && $0.start >= napLo && $0.start < napHi }
+        // No night sleep (shift work, a late night): the longest daytime sleep becomes the day's sleep.
+        if main == nil, let longest = daySleeps.max(by: { $0.inBedMinutes < $1.inBedMinutes }) {
+            main = longest
+            daySleeps.removeAll { $0.id == longest.id }
+        }
 
         // Cycle bounds. A cycle runs from waking up to the next main sleep. While that sleep hasn't happened
         // the cycle stays open, so the hours after midnight still belong to yesterday (as in WHOOP) and are
@@ -269,7 +285,10 @@ public final class DayEngine {
             d.sleepId = m.id
             d.sleepStart = m.start
             d.sleepEnd = m.end
-            d.sleepMinutes = m.asleepMinutes
+            // Daytime sleep the user called "sleep" counts fully; naps only lower tomorrow's need.
+            let extra = daySleeps.reduce(0) { $0 + $1.asleepMinutes }
+            let asleep = m.asleepMinutes + extra
+            d.sleepMinutes = asleep
             d.inBedMinutes = m.inBedMinutes
             d.sleepEfficiency = m.efficiency
             d.restorativeMinutes = m.restorativeMinutes
@@ -292,7 +311,7 @@ public final class DayEngine {
             let need = SleepCoach.need(baseHours: profile.sleepNeedHours, previousStrain: prevDay?.strain,
                                        recentShortfalls: shortfalls, napMinutes: prevDay?.napMinutes ?? 0)
             d.sleepNeedMinutes = need.rounded()
-            d.sleepPerformance = SleepCoach.performance(asleepMinutes: m.asleepMinutes, needMinutes: need)
+            d.sleepPerformance = SleepCoach.performance(asleepMinutes: asleep, needMinutes: need)
             let prevTimes = pastWithSleep.suffix(4).compactMap { p -> (onset: Double, wake: Double)? in
                 guard let s = p.sleepStart, let e = p.sleepEnd else { return nil }
                 return (SleepCoach.minutesAfterMidnight(ts: s, calendar: calendar), SleepCoach.minutesAfterMidnight(ts: e, calendar: calendar))
@@ -304,7 +323,7 @@ public final class DayEngine {
             // Debt is a decaying carry-over (half of last night's debt is kept, plus tonight's shortfall;
             // a surplus pays it back), not a plain 7-day sum, which grows without bound.
             let prevDebt = prevDay?.sleepDebtMinutes ?? 0
-            d.sleepDebtMinutes = Stats.clamp(prevDebt * 0.5 + (need - m.asleepMinutes), 0, 12 * 60).rounded()
+            d.sleepDebtMinutes = Stats.clamp(prevDebt * 0.5 + (need - asleep), 0, 12 * 60).rounded()
         }
         d.napMinutes = naps.isEmpty ? nil : naps.reduce(0) { $0 + $1.asleepMinutes }
 

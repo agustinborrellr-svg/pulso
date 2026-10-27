@@ -238,6 +238,7 @@ final class AppModel: ObservableObject {
             trainingLoad = TrainingLoad.series(days, through: DayKey.string(Date()))
             // Keep showing the cycle in progress unless the user went to another day.
             if followCurrent { selectedDay = currentDayKey }
+            notifySleepQuestions()
             if rawSampleCount == 0, (try? db.hasSamples()) == true { rawSampleCount = 1 }
             refreshSampleCount()
             updateWidget()
@@ -264,6 +265,19 @@ final class AppModel: ObservableObject {
         guard let d = DayKey.date(day) else { return [] }
         let a = Int(d.timeIntervalSince1970)
         return ((try? db.sleeps(from: a, to: a + 86400)) ?? []).filter { $0.isNap }
+    }
+
+    /// Every daytime sleep of a day (naps and real sleep), excluding the night.
+    func daytimeSleeps(on day: String) -> [SleepSession] {
+        guard let d = DayKey.date(day) else { return [] }
+        let a = Int(d.timeIntervalSince1970)
+        let main = self.day(day)?.sleepId
+        return ((try? db.sleeps(from: a, to: a + 86400)) ?? []).filter { s in
+            guard s.id != main || s.isNap else { return false }
+            let hour = Calendar.current.component(.hour, from: Date(timeIntervalSince1970: TimeInterval(s.start)))
+            return (10..<22).contains(hour)
+        }
+        .sorted { $0.start < $1.start }
     }
 
     func workouts(for day: DaySummary) -> [Workout] {

@@ -63,7 +63,7 @@ extension DaySummary {
 extension SleepSession {
     private enum TolerantKeys: String, CodingKey {
         case id, start, end, isNap, manual, stages, minutesAwake, minutesLight, minutesDeep, minutesREM, hrv, hrvSDNN, rhr, respRate, spo2
-        case skinTemp, avgHR, minHR, disturbances, latencyMinutes, trend
+        case skinTemp, avgHR, minHR, disturbances, latencyMinutes, trend, stageConfidence, kindConfirmed
     }
 
     public init(from decoder: Decoder) throws {
@@ -88,7 +88,9 @@ extension SleepSession {
                   minHR: try c.decodeIfPresent(Double.self, forKey: .minHR),
                   disturbances: try c.decodeIfPresent(Int.self, forKey: .disturbances) ?? 0,
                   latencyMinutes: try c.decodeIfPresent(Double.self, forKey: .latencyMinutes) ?? 0,
-                  trend: try c.decodeIfPresent([TrendPoint].self, forKey: .trend) ?? [])
+                  trend: try c.decodeIfPresent([TrendPoint].self, forKey: .trend) ?? [],
+                  stageConfidence: try? c.decodeIfPresent(StageConfidence.self, forKey: .stageConfidence),
+                  kindConfirmed: try c.decodeIfPresent(Bool.self, forKey: .kindConfirmed) ?? false)
     }
 }
 

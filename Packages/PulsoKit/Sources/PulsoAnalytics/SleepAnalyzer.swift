@@ -16,9 +16,10 @@ public enum SleepAnalyzer {
             let runs = HRV.clean(Epochs.rrRuns(Epochs.slice(inRange, from: e.ts - 120, to: e.ts + 180), from: e.ts - 120, to: e.ts + 180))
             return HRV.rmssd(runs, minPairs: 30)
         }
-        let stages = SleepStager.stage(epochs, rmssdPerMinute: rmssdPerMinute, stillThreshold: thr)
+        let (stages, confidence) = SleepStager.stageWithConfidence(epochs, rmssdPerMinute: rmssdPerMinute, stillThreshold: thr)
 
-        var s = SleepSession(id: existingID, start: start, end: end, isNap: isNap, manual: manual, stages: stages)
+        var s = SleepSession(id: existingID, start: start, end: end, isNap: isNap, manual: manual, stages: stages,
+                             stageConfidence: confidence)
         s.minutesAwake = Double(stages.filter { $0 == .awake }.count)
         s.minutesLight = Double(stages.filter { $0 == .light }.count)
         s.minutesDeep = Double(stages.filter { $0 == .deep }.count)

@@ -125,13 +125,17 @@ public struct SleepSession: Codable, Equatable, Identifiable, Sendable {
     public var latencyMinutes: Double
     /// Per-5-minute (ts, hr, rmssd) points for charts.
     public var trend: [TrendPoint]
+    /// How far the stage split can be trusted this night, and why.
+    public var stageConfidence: StageConfidence?
+    /// Daytime sleep the user has classified (nap or real sleep). False = Pulso decided on its own.
+    public var kindConfirmed: Bool
 
     public init(id: Int64? = nil, start: Int, end: Int, isNap: Bool = false, manual: Bool = false,
                 stages: [SleepStage] = [], minutesAwake: Double = 0, minutesLight: Double = 0,
                 minutesDeep: Double = 0, minutesREM: Double = 0, hrv: Double? = nil, hrvSDNN: Double? = nil,
                 rhr: Double? = nil, respRate: Double? = nil, spo2: Double? = nil, skinTemp: Double? = nil,
                 avgHR: Double? = nil, minHR: Double? = nil, disturbances: Int = 0, latencyMinutes: Double = 0,
-                trend: [TrendPoint] = []) {
+                trend: [TrendPoint] = [], stageConfidence: StageConfidence? = nil, kindConfirmed: Bool = false) {
         self.id = id
         self.start = start
         self.end = end
@@ -153,12 +157,74 @@ public struct SleepSession: Codable, Equatable, Identifiable, Sendable {
         self.disturbances = disturbances
         self.latencyMinutes = latencyMinutes
         self.trend = trend
+        self.stageConfidence = stageConfidence
+        self.kindConfirmed = kindConfirmed
     }
 
     public var inBedMinutes: Double { Double(end - start) / 60 }
     public var asleepMinutes: Double { minutesLight + minutesDeep + minutesREM }
     public var efficiency: Double { inBedMinutes > 0 ? min(1, asleepMinutes / inBedMinutes) : 0 }
     public var restorativeMinutes: Double { minutesDeep + minutesREM }
+}
+
+/// Trust in one night's stage split. Wrist sensors estimate stages from heart rate, its variability and
+/// movement; only brain activity (EEG in a sleep lab) measures them, so even "high" means the signals were
+/// clean and clear, not lab-grade.
+public struct StageConfidence: Codable, Equatable, Sendable {
+    public enum Level: String, Codable, Sendable {
+        case high, medium, low
+
+        public var label: String {
+            switch self {
+            case .high: return "Alta"
+            case .medium: return "Media"
+            case .low: return "Baja"
+            }
+        }
+    }
+
+    public var level: Level
+    /// 0–100.
+    public var score: Double
+    /// Why it isn't higher, in plain Spanish (empty when nothing held it back).
+    public var reasons: [String]
+    /// Fraction of minutes with the strap on and reading.
+    public var coverage: Double
+    /// Fraction of minutes with a clean beat-to-beat signal (needed for HRV, the key to deep/REM).
+    public var beatCoverage: Double
+    /// Mean probability of the chosen stage per asleep minute (how clear each minute was).
+    public var decisiveness: Double
+
+    public init(level: Level, score: Double, reasons: [String], coverage: Double, beatCoverage: Double, decisiveness: Double) {
+        self.level = level
+        self.score = score
+        self.reasons = reasons
+        self.coverage = coverage
+        self.beatCoverage = beatCoverage
+        self.decisiveness = decisiveness
+    }
+}
+
+/// The user's answer to "¿fue una siesta o era tu sueño?" for a daytime sleep.
+public struct SleepDecision: Codable, Equatable, Sendable {
+    public enum Kind: String, Codable, Sendable { case nap, sleep }
+    public var start: Int
+    public var end: Int
+    public var kind: Kind
+
+    public init(start: Int, end: Int, kind: Kind) {
+        self.start = start
+        self.end = end
+        self.kind = kind
+    }
+
+    /// Overlap of two intervals as a fraction of the shorter one.
+    public static func overlapFraction(_ a0: Int, _ a1: Int, _ b0: Int, _ b1: Int) -> Double {
+        let o = min(a1, b1) - max(a0, b0)
+        let shorter = min(a1 - a0, b1 - b0)
+        guard o > 0, shorter > 0 else { return 0 }
+        return Double(o) / Double(shorter)
+    }
 }
 
 public struct TrendPoint: Codable, Equatable, Sendable {

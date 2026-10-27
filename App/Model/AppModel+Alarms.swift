@@ -268,6 +268,8 @@ extension AppModel {
             alarmStop()
         case (NotificationService.Category.breathe, NotificationService.Action.breathe):
             startBreathingGuide()
+        case (NotificationService.Category.sleepQuestion, _):
+            handleSleepQuestionAction(action, id: id)
         default:
             break
         }

@@ -27,6 +27,9 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     HomeTopBar()
                     pillarTabs
+                    if let q = model.pendingSleepQuestions.first {
+                        SleepQuestionCard(session: q)
+                    }
                     AlarmBanner()
                     if model.isEvening && model.selectedDay == model.currentDayKey {
                         BedtimeCard()
