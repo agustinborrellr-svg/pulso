@@ -15,7 +15,7 @@ struct TodayView: View {
                 VStack(spacing: 16) {
                     DayHeader()
                     AlarmBanner()
-                    if model.isEvening && model.selectedDay == DayKey.string(Date()) {
+                    if model.isEvening && model.selectedDay == model.currentDayKey {
                         BedtimeCard()
                     }
                     if let day = model.selected {

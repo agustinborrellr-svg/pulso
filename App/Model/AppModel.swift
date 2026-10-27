@@ -49,6 +49,8 @@ final class AppModel: ObservableObject {
     // Data
     @Published var days: [DaySummary] = []
     @Published var selectedDay: String = DayKey.string(Date())
+    /// The selected day follows the cycle in progress (it moves to the new day after you wake up).
+    var followCurrent = true
     @Published var profile: Profile
     @Published var analyzing = false
     @Published var analysisProgress: Double = 0
@@ -126,6 +128,12 @@ final class AppModel: ObservableObject {
         strap.persist = { samples in try database.insert(samples) }
         migrateLegacyAlarm()
         reload()
+        // Numbers computed by an older version of the algorithms are recomputed from the raw seconds
+        // (imports, journal, manual sleeps and workouts are kept).
+        if db.get(Int.self, for: DayEngine.derivedVersionKey) != DayEngine.derivedVersion {
+            if (try? db.hasSamples()) == true && !AppMode.screenshots { recompute(fromDay: nil) }
+            try? db.set(DayEngine.derivedVersion, for: DayEngine.derivedVersionKey)
+        }
         startTicker()
         NotificationService.shared.setup()
         NotificationService.shared.onAction = { [weak self] action, category, id in
@@ -150,7 +158,22 @@ final class AppModel: ObservableObject {
 
     // MARK: - Derived
 
-    var today: DaySummary? { days.last { $0.day == DayKey.string(Date()) } }
+    /// The cycle in progress: today's once you've slept, yesterday's until then (as in WHOOP). The hours
+    /// between midnight and going to bed belong to yesterday's cycle.
+    var currentDayKey: String {
+        let t = DayKey.string(Date())
+        if days.contains(where: { $0.day == t }) { return t }
+        let y = DayKey.shift(t, days: -1)
+        return days.contains(where: { $0.day == y }) ? y : t
+    }
+
+    /// The current cycle's summary.
+    var today: DaySummary? { days.last { $0.day == currentDayKey } }
+
+    /// "OCT. 26 A HOY" for the cycle in progress, "OCT. 25" for the others.
+    func cycleTitle(_ key: String) -> String {
+        key == currentDayKey ? "\(Fmt.shortDay(key)) A HOY" : Fmt.shortDay(key)
+    }
 
     var selected: DaySummary? { days.first { $0.day == selectedDay } }
 
@@ -195,7 +218,8 @@ final class AppModel: ObservableObject {
 
     func shiftSelectedDay(_ delta: Int) {
         let next = DayKey.shift(selectedDay, days: delta)
-        guard next <= DayKey.string(Date()) else { return }
+        guard next <= currentDayKey else { return }
+        followCurrent = next == currentDayKey
         selectedDay = next
     }
 
@@ -212,6 +236,8 @@ final class AppModel: ObservableObject {
             let journal = try db.allJournal()
             insights = Insights.compute(journal: journal, days: days)
             trainingLoad = TrainingLoad.series(days, through: DayKey.string(Date()))
+            // Keep showing the cycle in progress unless the user went to another day.
+            if followCurrent { selectedDay = currentDayKey }
             if rawSampleCount == 0, (try? db.hasSamples()) == true { rawSampleCount = 1 }
             refreshSampleCount()
             updateWidget()

@@ -8,7 +8,7 @@ struct StrainDetailView: View {
     @EnvironmentObject var model: AppModel
 
     var body: some View {
-        DetailScreen(title: Fmt.cycleTitle(model.selectedDay)) {
+        DetailScreen(title: model.cycleTitle(model.selectedDay)) {
             if let day = model.selected {
                 hero(day)
                 stats(day)
@@ -137,7 +137,7 @@ struct StressMonitorView: View {
     @State private var showInfo = false
 
     var body: some View {
-        DetailScreen(title: "Monitor de estrés", subtitle: Fmt.cycleTitle(model.selectedDay)) {
+        DetailScreen(title: "Monitor de estrés", subtitle: model.cycleTitle(model.selectedDay)) {
             if let day = model.selected {
                 gauge(day)
                 PCard {

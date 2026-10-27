@@ -59,9 +59,9 @@ struct BedtimeView: View {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 8)], spacing: 8) {
                             ForEach(Self.quickHabits, id: \.self) { key in
                                 let item = JournalCatalog.items.first { $0.key == key }
-                                let on = (model.journal(for: DayKey.string(Date()))[key] ?? 0) > 0
+                                let on = (model.journal(for: model.currentDayKey)[key] ?? 0) > 0
                                 Button {
-                                    model.setJournal(day: DayKey.string(Date()), key: key, on: !on)
+                                    model.setJournal(day: model.currentDayKey, key: key, on: !on)
                                 } label: {
                                     HStack(spacing: 6) {
                                         Image(systemName: item?.icon ?? "circle")

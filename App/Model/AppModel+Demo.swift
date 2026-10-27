@@ -36,7 +36,8 @@ extension AppModel {
                 self.analyzing = false
                 if let message { self.errorMessage = "No se pudo crear la demo: \(message)" }
                 self.ecgRecordings = (try? self.db.ecgRecordings(withSamples: false)) ?? []
-                self.selectedDay = DayKey.string(Date())
+                self.followCurrent = true
+                self.selectedDay = self.currentDayKey
                 self.reload()
                 self.refreshIntelligence()
                 completion?()

@@ -28,7 +28,7 @@ struct HomeView: View {
                     HomeTopBar()
                     pillarTabs
                     AlarmBanner()
-                    if model.isEvening && model.selectedDay == DayKey.string(Date()) {
+                    if model.isEvening && model.selectedDay == model.currentDayKey {
                         BedtimeCard()
                     }
                     if let day = model.selected {
@@ -135,15 +135,15 @@ struct HomeTopBar: View {
                 Button { model.shiftSelectedDay(-1) } label: {
                     Image(systemName: "chevron.left").font(.subheadline.weight(.bold)).frame(width: 30, height: 34)
                 }
-                Caps(Fmt.cycleTitle(model.selectedDay), size: 12)
+                Caps(model.cycleTitle(model.selectedDay), size: 12)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
                     .background(Theme.cardHighlight, in: Capsule())
                 Button { model.shiftSelectedDay(1) } label: {
                     Image(systemName: "chevron.right").font(.subheadline.weight(.bold)).frame(width: 30, height: 34)
                 }
-                .disabled(model.selectedDay >= DayKey.string(Date()))
-                .opacity(model.selectedDay >= DayKey.string(Date()) ? 0.3 : 1)
+                .disabled(model.selectedDay >= model.currentDayKey)
+                .opacity(model.selectedDay >= model.currentDayKey ? 0.3 : 1)
             }
             .buttonStyle(.plain)
             .foregroundStyle(.white)
@@ -232,7 +232,7 @@ struct StrainRecoveryWeekCard: View {
     @State private var info = false
 
     var body: some View {
-        let today = DayKey.string(Date())
+        let today = model.currentDayKey
         let keys = (0..<7).map { DayKey.shift(today, days: $0 - 6) }
         let byDay = Dictionary(model.days.map { ($0.day, $0) }, uniquingKeysWith: { a, _ in a })
         PCard {

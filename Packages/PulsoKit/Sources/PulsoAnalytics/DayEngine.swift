@@ -7,6 +7,15 @@ import PulsoStore
 /// the next main sleep starts (or now). Recovery for D comes from that main sleep; Strain accumulates
 /// over the cycle.
 public final class DayEngine {
+    /// Version of the derived numbers (days, sleeps, workouts). Bump it whenever an algorithm changes: the app
+    /// then recomputes every day from the raw seconds it still has.
+    public static let derivedVersion = 2
+    public static let derivedVersionKey = "derived.version"
+
+    /// The current cycle stays open (it is still "today" for WHOOP and for Pulso) until the next main sleep,
+    /// up to this long after waking.
+    static let openCycleLimit = 30 * 3600
+
     public let db: PulsoDatabase
     public var calendar: Calendar
 
@@ -71,6 +80,9 @@ public final class DayEngine {
                 try db.save(summary)
                 past.append(summary)
                 results.append(summary)
+            } else if day == today {
+                // Before tonight's sleep, today has no cycle of its own: drop one saved earlier.
+                try db.deleteDay(day)
             }
             done += 1
             progress?(Double(done) / Double(totalDays))
@@ -176,13 +188,28 @@ public final class DayEngine {
         }
         naps += existing.filter { $0.manual && $0.isNap && $0.start >= napLo && $0.start < napHi }
 
-        // Cycle bounds.
-        let cycleStart = main?.end ?? dayStart
+        // Cycle bounds. A cycle runs from waking up to the next main sleep. While that sleep hasn't happened
+        // the cycle stays open, so the hours after midnight still belong to yesterday (as in WHOOP) and are
+        // never counted twice.
+        let today = DayKey.string(now, calendar: calendar)
+        let yesterday = DayKey.shift(day, days: -1, calendar: calendar)
+        if main == nil, day == today, let prev = past.last(where: { $0.day == yesterday }), let ps = prev.cycleStart,
+           nowTs - ps <= Self.openCycleLimit {
+            return nil
+        }
+        let cycleStart = main?.end ?? ts(day, hour: 4)
         let nextDay = DayKey.shift(day, days: 1, calendar: calendar)
         let nextManual = try db.sleeps(from: ts(nextDay, hour: -12), to: ts(nextDay, hour: 16))
             .first { $0.manual && !$0.isNap && $0.end > ts(nextDay, hour: 0) }
         let nextMain = nextManual.map { ($0.start, $0.end) } ?? mainSleep(for: nextDay, blocks: blocks)
-        var cycleEnd = nextMain.map { $0.0 } ?? ts(nextDay, hour: 4)
+        var cycleEnd: Int
+        if let nm = nextMain {
+            cycleEnd = nm.0
+        } else if nextDay >= today, nowTs - cycleStart <= Self.openCycleLimit {
+            cycleEnd = nowTs
+        } else {
+            cycleEnd = ts(nextDay, hour: 4)
+        }
         cycleEnd = min(cycleEnd, nowTs)
         guard cycleEnd > cycleStart || main != nil else { return nil }
 

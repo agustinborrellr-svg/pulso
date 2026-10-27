@@ -131,7 +131,7 @@ struct LogHabitIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        AppModel.shared.setJournal(day: DayKey.string(Date()), key: habit.rawValue, on: true)
+        AppModel.shared.setJournal(day: AppModel.shared.currentDayKey, key: habit.rawValue, on: true)
         let name = HabitOption.caseDisplayRepresentations[habit].map { String(localized: $0.title) } ?? habit.rawValue
         return .result(dialog: IntentDialog(stringLiteral: "Apuntado: \(name.lowercased())."))
     }

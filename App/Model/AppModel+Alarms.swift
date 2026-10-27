@@ -208,6 +208,9 @@ extension AppModel {
     func alarmSnooze() {
         guard let s = wakeSession else { return }
         strap.stopHaptics()
+        // The "ringing" banner stops the alarm when dismissed: once snoozed it must not linger in the
+        // notification centre, or clearing it later would cancel the snooze.
+        NotificationService.shared.remove(["pulso.alarm.banner"])
         perform(s.snooze(now: Int(Date().timeIntervalSince1970)), session: s)
     }
 

@@ -128,6 +128,12 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
+    /// Removes notifications already shown (and pending ones) with these identifiers.
+    func remove(_ ids: [String]) {
+        center.removeDeliveredNotifications(withIdentifiers: ids)
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+    }
+
     func cancelAlarmBurst() {
         cancelPending(prefix: "pulso.backup.")
         center.getDeliveredNotifications { list in

@@ -22,7 +22,33 @@ public final class PulsoDatabase {
         return dir.appendingPathComponent("pulso.sqlite").path
     }
 
+    /// Schema version this build writes (`PRAGMA user_version`).
+    public static let schemaVersion = 1
+
+    /// Ordered schema changes. Append, never edit: each one runs once, in its own transaction, on databases
+    /// created by older versions. Version 0 is the original schema below.
+    static let migrations: [(version: Int, sql: String)] = [
+        (1, "CREATE INDEX IF NOT EXISTS days_updated ON days(updated); CREATE INDEX IF NOT EXISTS sleeps_end ON sleeps(end);"),
+    ]
+
+    /// Version found on disk after opening (newer than `schemaVersion` if a newer build wrote it).
+    public private(set) var diskSchemaVersion = 0
+
     private func migrate() throws {
+        try createBaseSchema()
+        var v = Int(try sql.scalarInt("PRAGMA user_version;") ?? 0)
+        for m in Self.migrations where m.version > v {
+            _ = try sql.transaction { () -> Int in
+                try sql.execute(m.sql)
+                try sql.execute("PRAGMA user_version = \(m.version);")
+                return m.version
+            }
+            v = m.version
+        }
+        diskSchemaVersion = v
+    }
+
+    private func createBaseSchema() throws {
         try sql.execute("""
         CREATE TABLE IF NOT EXISTS samples(
             ts INTEGER PRIMARY KEY,
@@ -210,6 +236,10 @@ public final class PulsoDatabase {
         try sql.query("SELECT json FROM days WHERE day >= ? AND day <= ? ORDER BY day", [.text(from), .text(to)]) { r in
             r.text(0).flatMap { try? decoder.decode(DaySummary.self, from: Data($0.utf8)) }
         }.compactMap { $0 }
+    }
+
+    public func deleteDay(_ day: String) throws {
+        try sql.run("DELETE FROM days WHERE day = ?", [.text(day)])
     }
 
     public func allDays() throws -> [DaySummary] {

@@ -255,7 +255,7 @@ struct DayHeader: View {
             Button { model.shiftSelectedDay(1) } label: {
                 Image(systemName: "chevron.right").font(.headline).frame(width: 36, height: 36)
             }
-            .disabled(model.selectedDay >= DayKey.string(Date()))
+            .disabled(model.selectedDay >= model.currentDayKey)
         }
         .tint(.white)
     }

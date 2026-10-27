@@ -11,12 +11,12 @@ struct SleepDetailView: View {
     @State private var adding = false
 
     var body: some View {
-        DetailScreen(title: Fmt.cycleTitle(model.selectedDay)) {
+        DetailScreen(title: model.cycleTitle(model.selectedDay)) {
             if let day = model.selected, let s = model.sleep(for: day) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("El sueño de anoche").font(.system(size: 22, weight: .semibold)).foregroundStyle(.white)
-                        Text("\(Fmt.cycleTitle(day.day).capitalized) vs. los 30 días anteriores").font(.caption).foregroundStyle(Theme.secondary)
+                        Text("\(model.cycleTitle(day.day).capitalized) vs. los 30 días anteriores").font(.caption).foregroundStyle(Theme.secondary)
                     }
                     Spacer()
                     Button { editing = s } label: {

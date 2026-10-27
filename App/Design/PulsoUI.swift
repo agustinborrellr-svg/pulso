@@ -477,10 +477,6 @@ extension Fmt {
         return f.string(from: d).replacingOccurrences(of: " ", with: ". ").uppercased()
     }
 
-    static func cycleTitle(_ key: String) -> String {
-        key == DayKey.string(Date()) ? "\(shortDay(key)) A HOY" : shortDay(key)
-    }
-
     /// ("mar", "20") for chart axes.
     static func weekdayAndDay(_ key: String) -> (String, String) {
         guard let d = DayKey.date(key) else { return ("", key) }

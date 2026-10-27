@@ -8,7 +8,7 @@ struct RecoveryDetailView: View {
     @State private var showAllChips = false
 
     var body: some View {
-        DetailScreen(title: Fmt.cycleTitle(model.selectedDay)) {
+        DetailScreen(title: model.cycleTitle(model.selectedDay)) {
             if let day = model.selected {
                 hero(day)
                 vitals(day)
@@ -80,7 +80,7 @@ struct RecoveryDetailView: View {
             HStack(spacing: 6) {
                 Image(systemName: "arrowtriangle.up.fill").foregroundStyle(Theme.better)
                 Image(systemName: "arrowtriangle.down.fill").foregroundStyle(Theme.worse)
-                Text("\(Fmt.cycleTitle(d.day).capitalized) vs. los últimos 30 días").font(.caption).foregroundStyle(Theme.secondary)
+                Text("\(model.cycleTitle(d.day).capitalized) vs. los últimos 30 días").font(.caption).foregroundStyle(Theme.secondary)
             }
             .font(.system(size: 8))
             .padding(12)

@@ -10,7 +10,7 @@ struct TrendDetailView: View {
     @State private var period: TrendPeriod = .week
     @State private var offset = 0
 
-    private var today: String { DayKey.string(Date()) }
+    private var today: String { model.currentDayKey }
 
     private var window: TrendWindow {
         TrendSeries.window(days: model.days, value: { metric.value($0) }, period: period, offset: offset,
@@ -315,7 +315,7 @@ struct WeeklyTrendCard: View {
 
     var body: some View {
         let w = TrendSeries.window(days: model.days, value: { metric.value($0) }, period: .week,
-                                   today: DayKey.string(Date()), aggregate: metric.aggregate)
+                                   today: model.currentDayKey, aggregate: metric.aggregate)
         NavigationLink {
             TrendDetailView(metric: metric)
         } label: {
