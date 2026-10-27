@@ -122,8 +122,12 @@ struct LiveView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Caps("Tacograma · cada latido", size: 10, color: Theme.secondary, weight: .semibold)
                     Chart(Array(beats.enumerated()), id: \.offset) { i, b in
-                        BarMark(x: .value("latido", i), yStart: .value("min", (beats.map(\.rr).min() ?? b.rr) - 20), yEnd: .value("R-R", b.rr), width: .ratio(0.6))
-                            .foregroundStyle(Theme.hrv.opacity(0.8))
+                        LineMark(x: .value("latido", i), y: .value("R-R", b.rr))
+                            .foregroundStyle(Theme.hrv)
+                            .interpolationMethod(.stepCenter)
+                        PointMark(x: .value("latido", i), y: .value("R-R", b.rr))
+                            .symbolSize(10)
+                            .foregroundStyle(Theme.hrv)
                     }
                     .chartXAxis(.hidden)
                     .chartYAxis {

@@ -74,6 +74,8 @@ extension AppModel {
                 t += v / 1000
                 liveBeats.append(.init(t: t, rr: v))
             }
+        }
+        if resting && liveTests.isEmpty {
             saveLiveTest(LiveTestRecord(date: Date().addingTimeInterval(-86400 * 2), kind: .scan, value: 64, hr: 71, rmssd: 38, resp: 14.2, stress: 1.1, detail: "Algo activado"))
             saveLiveTest(LiveTestRecord(date: Date().addingTimeInterval(-86400), kind: .scan, value: 82, hr: 66, rmssd: 52, resp: 13.1, stress: 0.5, detail: "En calma"))
             saveLiveTest(LiveTestRecord(date: Date().addingTimeInterval(-3600 * 20), kind: .orthostatic, value: 17, hr: 79, rmssd: 31, detail: "62→79 lpm"))

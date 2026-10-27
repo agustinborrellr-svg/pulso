@@ -72,18 +72,18 @@ struct WaterfallCard: View {
                 CardHeader(title: "Por qué este \(Int(score)) %", subtitle: "Desde un día normal para ti (\(Int(RecoveryWaterfall.neutral)) %), factor a factor")
                 let bars = Self.bars(steps)
                 Chart(bars) { b in
-                    BarMark(x: .value("factor", b.label), yStart: .value("de", b.from), yEnd: .value("a", b.to), width: .ratio(0.6))
+                    BarMark(xStart: .value("de", b.from), xEnd: .value("a", max(b.to, b.from + 0.4)), y: .value("factor", b.label), height: .ratio(0.6))
                         .foregroundStyle(b.kind == 0 ? Color(white: 0.45) : b.kind == 1 ? Theme.better : b.kind == 2 ? Theme.worse : Theme.recoveryColor(score))
                         .cornerRadius(2)
                 }
-                .chartXScale(domain: bars.map { $0.label })
-                .chartYScale(domain: 0...100)
-                .chartXAxis {
+                .chartYScale(domain: bars.map { $0.label })
+                .chartXScale(domain: 0...100)
+                .chartYAxis {
                     AxisMarks { v in
-                        AxisValueLabel { Text(v.as(String.self) ?? "").font(.system(size: 9)).foregroundStyle(Theme.secondary) }
+                        AxisValueLabel { Text(v.as(String.self) ?? "").font(.system(size: 11)).foregroundStyle(Theme.secondary) }
                     }
                 }
-                .frame(height: 180)
+                .frame(height: CGFloat(bars.count) * 30 + 20)
                 ForEach(steps) { s in
                     HStack {
                         Text(s.label).font(.subheadline).foregroundStyle(.white)
@@ -223,14 +223,14 @@ struct RelationExplorerView: View {
 
     var body: some View {
         let days = model.days.filter { range == 0 || $0.day >= DayKey.shift(model.currentDayKey, days: -range) }
-        let pairs = Relation.pairs(days.map { x.value($0) }, days.map { y.value($0) }, lag: nextDay ? 1 : 0)
+        let pairs = Relation.pairs(days.map { v(x, $0) }, days.map { v(y, $0) }, lag: nextDay ? 1 : 0)
         let fit = Relation.fit(pairs)
         ScrollView {
             VStack(spacing: 14) {
                 PCard {
                     Picker("Eje X", selection: $x) { ForEach(TrendMetric.allCases) { Text($0.title).tag($0) } }
                     Picker("Eje Y", selection: $y) { ForEach(TrendMetric.allCases) { Text($0.title).tag($0) } }
-                    Toggle("Y del día siguiente", isOn: $nextDay)
+                    Toggle("Y del día siguiente", isOn: $nextDay).tint(Theme.green)
                     Picker("Periodo", selection: $range) {
                         Text("3 meses").tag(90)
                         Text("6 meses").tag(180)
@@ -276,6 +276,11 @@ struct RelationExplorerView: View {
         .pulsoTitle("Explorador")
     }
 
+    /// Durations are stored in minutes; the explorer speaks in hours.
+    private func v(_ m: TrendMetric, _ d: DaySummary) -> Double? {
+        m.value(d).map { m.isDuration ? $0 / 60 : $0 }
+    }
+
     private func sentence(_ f: Relation.Result) -> String {
         guard f.n >= 10, abs(f.r) >= 0.1 else { return "Con estos datos no se ve que una mueva a la otra." }
         let dir = f.slope > 0 ? "sube" : "baja"
@@ -295,7 +300,7 @@ struct CalendarRecordsView: View {
             VStack(spacing: 14) {
                 PCard {
                     Picker("Métrica", selection: $metric) {
-                        Text("Recuperación").tag(TrendMetric.recovery)
+                        Text("Recup.").tag(TrendMetric.recovery)
                         Text("Esfuerzo").tag(TrendMetric.strain)
                         Text("Sueño").tag(TrendMetric.sleepPerformance)
                         Text("Estrés").tag(TrendMetric.stress)

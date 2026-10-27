@@ -172,7 +172,7 @@ public enum MonthlyReport {
             line("VFC", "ms", true) { $0.hrv },
             line("FC en reposo", "lpm", false) { $0.rhr },
             line("Horas de sueño", "h", true) { $0.sleepMinutes.map { $0 / 60 } },
-            line("Calificación del sueño", "%", true) { $0.sleepPerformance },
+            line("Calificación del sueño", "%", true) { $0.sleepPerformance.map { $0 * 100 } },
             line("Regularidad", "%", true) { $0.sleepConsistency },
             line("Esfuerzo diario", "", true) { $0.strain },
             line("Pasos", "", true) { $0.steps.map(Double.init) },
