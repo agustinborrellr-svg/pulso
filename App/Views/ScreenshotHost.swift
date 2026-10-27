@@ -5,7 +5,7 @@ import PulsoIntelligence
 
 /// Screens the CI screenshot run can open with `-PulsoScreen <name>`.
 enum ShotScreen: String, Identifiable {
-    case today, sleep, trends, live, more
+    case today, health, sleep, trends, live, more
     case alarms, alarmEditor, notifications, integrations, ecg, ecgDetail, bedtime, lab, workout, onboarding, whatif, intelDetail
     case guide, guideData, guideRecovery, guideAlarm, whoopImport
     case recovery, strain, stress, trendRecovery, trendStrain, trendHRV, device, pairing, deviceAdvanced
@@ -15,9 +15,10 @@ enum ShotScreen: String, Identifiable {
     var tab: Int? {
         switch self {
         case .today: return 0
-        case .trends: return 1
-        case .live: return 2
-        case .more: return 3
+        case .health: return 1
+        case .trends: return 2
+        case .live: return 3
+        case .more: return 4
         default: return nil
         }
     }

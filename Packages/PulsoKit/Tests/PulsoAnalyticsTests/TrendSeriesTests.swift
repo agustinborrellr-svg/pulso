@@ -36,6 +36,10 @@ final class TrendSeriesTests: XCTestCase {
         XCTAssertEqual(week.summary ?? 0, 210, accuracy: 1e-9)
         let month = TrendSeries.window(days: list, value: { $0.recovery }, period: .month, today: "2026-10-26", aggregate: .total)
         XCTAssertEqual(month.summary ?? 0, 210, accuracy: 1e-9)
+        // Only two weeks measured inside a six-month window: still 210 a week, not diluted over 26 weeks.
+        let short = days(14, to: "2026-10-26") { _ in 30 }
+        let half = TrendSeries.window(days: short, value: { $0.recovery }, period: .halfYear, today: "2026-10-26", aggregate: .total)
+        XCTAssertEqual(half.summary ?? 0, 210, accuracy: 1e-9)
     }
 
     func testHalfYearIsWeekly() {

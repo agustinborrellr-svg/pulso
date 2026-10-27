@@ -207,6 +207,7 @@ struct SleepDetailView: View {
                     RuleMark(y: .value("Hora habitual de despertar", wake)).lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4])).foregroundStyle(.white.opacity(0.6))
                 }
                 .chartYScale(domain: .automatic(includesZero: false, reversed: true))
+                .chartXScale(domain: nights.map(\.0))
                 .chartYAxis {
                     AxisMarks(position: .leading) { v in
                         AxisGridLine().foregroundStyle(Theme.hairline)

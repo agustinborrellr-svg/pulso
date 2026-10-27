@@ -160,12 +160,12 @@ struct StressMonitorView: View {
     private func gauge(_ d: DaySummary) -> some View {
         let v = current(d)
         return ZStack {
+            // Top half, low (blue) on the left to high (orange) on the right.
             Circle()
-                .trim(from: 0, to: 0.5)
+                .trim(from: 0.5, to: 1)
                 .stroke(AngularGradient(colors: [Theme.stressLow, Theme.stressMid, Theme.stressHigh], center: .center,
                                         startAngle: .degrees(180), endAngle: .degrees(360)),
                         style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                .rotationEffect(.degrees(180))
             if let v {
                 // Marker on the arc.
                 Circle().fill(.white).frame(width: 18, height: 18)

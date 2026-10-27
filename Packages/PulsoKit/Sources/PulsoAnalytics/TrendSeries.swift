@@ -69,7 +69,8 @@ public enum TrendSeries {
             guard !v.isEmpty else { return nil }
             switch aggregate {
             case .average: return v.reduce(0, +) / Double(v.count)
-            case .total: return v.reduce(0, +) / (Double(samples.count) / 7)
+            // Per week of measured days: days without data are unknown, not zero.
+            case .total: return v.reduce(0, +) / (Double(v.count) / 7)
             }
         }
 

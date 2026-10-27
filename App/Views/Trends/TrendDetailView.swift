@@ -217,6 +217,8 @@ struct MetricChart: View {
             }
         }
         .chartYScale(domain: domain)
+        // Categorical x: without an explicit domain Charts orders days by first appearance (today's highlight first).
+        .chartXScale(domain: points.map(\.day))
         .chartXSelection(value: $selected)
         .chartYAxis {
             AxisMarks(position: .leading, values: .automatic(desiredCount: compact ? 3 : 5)) { v in

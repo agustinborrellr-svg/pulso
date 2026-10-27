@@ -71,15 +71,18 @@ struct RootView: View {
             HomeView()
                 .tabItem { Label("Inicio", systemImage: "house") }
                 .tag(0)
+            HealthView()
+                .tabItem { Label("Salud", systemImage: "heart.circle") }
+                .tag(1)
             TrendsView()
                 .tabItem { Label("Análisis", systemImage: "brain.head.profile") }
-                .tag(1)
+                .tag(2)
             LiveView()
                 .tabItem { Label("En vivo", systemImage: "heart.text.square") }
-                .tag(2)
+                .tag(3)
             MoreView()
                 .tabItem { Label("Más", systemImage: "line.3.horizontal") }
-                .tag(3)
+                .tag(4)
         }
         .tint(.white)
         .onAppear {

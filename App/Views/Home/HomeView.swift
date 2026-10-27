@@ -271,6 +271,7 @@ struct StrainRecoveryWeekCard: View {
                 }
             }
             .chartYScale(domain: 0...21)
+            .chartXScale(domain: keys)
             .chartYAxis {
                 AxisMarks(position: .leading, values: [0, 7, 14, 21]) { v in
                     AxisGridLine().foregroundStyle(Theme.hairline)
