@@ -69,10 +69,36 @@ struct IntegrationsView: View {
                         NavigationLink("Usar mi propia app de la API de Strava") { StravaSetupView(strava: strava) }
                     }
                 } else {
-                    NavigationLink {
-                        StravaSetupView(strava: strava)
-                    } label: {
-                        Label("Configurar Strava (una vez)", systemImage: "key")
+                    // Without a Strava subscription there is no API: Apple Health is the bridge, both ways.
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("Sin suscripción: a través de Apple Salud", systemImage: "heart.text.square")
+                            .font(.subheadline.weight(.semibold))
+                        Text("1. Arriba, activa «Conectar con Apple Salud».")
+                        Text("2. En la app de Strava: Ajustes → Aplicaciones, servicios y dispositivos → Salud, y activa compartir y recibir actividades.")
+                        Text("3. Listo: tus entrenos de Strava llegan a Pulso y los de Pulso a Strava, sin duplicarse.")
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.white)
+                    .padding(.vertical, 4)
+                    if !model.profile.healthKitEnabled {
+                        Button {
+                            var p = model.profile
+                            p.healthKitEnabled = true
+                            model.saveProfile(p)
+                            model.health.requestAuthorization { _ in }
+                        } label: {
+                            Label("Activar Apple Salud", systemImage: "heart.fill")
+                        }
+                    }
+                    if UIApplication.shared.canOpenURL(URL(string: "strava://")!) {
+                        Button {
+                            UIApplication.shared.open(URL(string: "strava://")!)
+                        } label: {
+                            Label("Abrir la app de Strava", systemImage: "arrow.up.forward.app")
+                        }
+                    }
+                    DisclosureGroup("Avanzado (suscriptores de Strava)") {
+                        NavigationLink("Conectar con la API de Strava") { StravaSetupView(strava: strava) }
                     }
                 }
                 if let s = strava.status { Text(s).font(.caption).foregroundStyle(Theme.secondary) }
@@ -80,7 +106,8 @@ struct IntegrationsView: View {
                 Text("Strava")
             } footer: {
                 Text(strava.connected ? "Los entrenos se suben como archivo FIT con tu pulso segundo a segundo, esfuerzo y calorías. Las actividades que grabes con otros dispositivos se importan y se combinan con los datos de la pulsera sin duplicarse."
-                     : "Toca «Conectar con Strava»: se abre la app de Strava (o su web si no la tienes), pulsas «Autorizar» y vuelves solo a Pulso. Nada más.")
+                     : strava.credentials.isComplete ? "Toca «Conectar con Strava»: se abre la app de Strava (o su web si no la tienes), pulsas «Autorizar» y vuelves solo a Pulso."
+                     : "Strava solo abre su API a suscriptores. Con Apple Salud funciona igual sin pagar; siempre puedes exportar un entreno en FIT y subirlo en strava.com.")
             }
 
             // Broadcast

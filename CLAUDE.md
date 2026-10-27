@@ -129,6 +129,8 @@ docs/PROTOCOLO.md       referencia del protocolo BLE de la WHOOP 5.0
 - **Strava en un toque**: `StravaBuiltIn.swift` vacío en el repo; CI lo rellena con los secretos `STRAVA_CLIENT_ID` /
   `STRAVA_CLIENT_SECRET`. Conecta abriendo la app de Strava (`strava://oauth/mobile/authorize`, vuelve por
   `pulso://localhost/strava`). Credenciales propias en Conexiones → Strava → Avanzado.
+  **Oct-2026: Strava cerró su API a suscriptores; Gus no paga.** Camino por defecto = puente Apple Salud (Strava ↔ Salud
+  ↔ Pulso) explicado en Conexiones; la API queda en «Avanzado (suscriptores)». Export FIT manual sigue disponible.
 - 81 actividades (`SportCatalog`); «Intimidad» nunca se manda a Strava ni a Salud (`Sport.shareable`).
 - Sueño de días importados: fases y constantes desde el resumen (`HistoryMerge.summarySleep`).
 - Datos de demostración fuera de la UI (solo capturas de CI). 142 tests del núcleo en verde.
