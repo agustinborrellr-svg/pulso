@@ -53,9 +53,17 @@ public enum HabitImpact {
         let dev = Dictionary(deviation.map { ($0.day, $0) }, uniquingKeysWith: { a, _ in a })
         let logged = Set(journal.map { $0.day })
         var out: [Item] = []
-        for item in JournalCatalog.items {
+        // Pulso's own habits, plus any other question answered in the journal (e.g. imported from WHOOP):
+        // for those, "without" means an explicit "no", not just a day it wasn't asked.
+        let catalog = JournalCatalog.items.map { (key: $0.key, label: $0.label, explicit: false) }
+        let known = Set(catalog.map(\.key))
+        let others = Set(journal.map(\.key)).subtracting(known).sorted().map {
+            (key: $0, label: $0.replacingOccurrences(of: "whoop:", with: "").trimmingCharacters(in: CharacterSet(charactersIn: "¿? ")), explicit: true)
+        }
+        for item in catalog + others {
             var yes: [String] = [], no: [String] = []
-            for day in logged {
+            let answered = item.explicit ? Set(journal.filter { $0.key == item.key }.map(\.day)) : logged
+            for day in answered {
                 guard byDay[LoadResponse.shift(day, 1)]?.recovery != nil else { continue }
                 let on = journal.contains { $0.day == day && $0.key == item.key && $0.value > 0 }
                 if on { yes.append(day) } else { no.append(day) }

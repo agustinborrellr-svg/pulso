@@ -230,9 +230,8 @@ final class AppModel: ObservableObject {
             let from = DayKey.shift(DayKey.string(Date()), days: -400)
             let measured = try db.days(from: from, to: "9999-12-31")
             // Days imported from WHOOP fill the history where the strap has nothing of its own.
-            let have = Set(measured.map(\.day))
-            let imported = try db.importedDays().filter { $0.day >= from && !have.contains($0.day) }
-            days = (measured + imported).sorted { $0.day < $1.day }
+            let imported = try db.importedDays().filter { $0.day >= from }
+            days = HistoryMerge.days(measured: measured, imported: imported, profile: profile)
             let journal = try db.allJournal()
             insights = Insights.compute(journal: journal, days: days)
             trainingLoad = TrainingLoad.series(days, through: DayKey.string(Date()))

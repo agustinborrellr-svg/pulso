@@ -9,13 +9,18 @@ extension AppModel {
         let db = self.db
         let hr = heartRateModel
         let measuredMax = profile.maxHROverride != nil
+        let profile = self.profile
         analysisQueue.async {
             let now = Date()
             let nowTs = Int(now.timeIntervalSince1970)
             let from = nowTs - 150 * 86400
             let today = DayKey.string(now)
-            let days = (try? db.days(from: DayKey.shift(today, days: -150), to: today)) ?? []
-            let sleeps = (try? db.sleeps(from: from, to: nowTs + 3600)) ?? []
+            // The strap's days plus the WHOOP history: without a strap yet, the import alone feeds the analysis.
+            let measured = (try? db.days(from: DayKey.shift(today, days: -150), to: today)) ?? []
+            let imported = ((try? db.importedDays()) ?? []).filter { $0.day >= DayKey.shift(today, days: -150) }
+            let days = HistoryMerge.days(measured: measured, imported: imported, profile: profile)
+            let sleeps = ((try? db.sleeps(from: from, to: nowTs + 3600)) ?? [])
+                + HistoryMerge.sleeps(from: imported, excluding: Set(measured.map(\.day)))
             let workouts = (try? db.workouts(from: from, to: nowTs + 3600)) ?? []
             let journal = (try? db.allJournal()) ?? []
             var drops: [(day: String, drop: Double)] = []
