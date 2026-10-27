@@ -15,6 +15,8 @@ struct HealthView: View {
                     Caps("Salud", size: 15).frame(maxWidth: .infinity).padding(.top, 8)
                     AgeOrbHero(result: result)
                     paceCard(result)
+                    AgeTrendCard()
+                    PlanSummaryCard()
                     if let day = model.selected {
                         NavigationLink { RecoveryDetailView() } label: { HealthMonitorCard(day: day) }
                             .buttonStyle(.plain)
@@ -26,6 +28,10 @@ struct HealthView: View {
                     ForEach(["Sueño", "Esfuerzo", "Fitness"], id: \.self) { g in
                         groupSection(g, result.items.filter { $0.group == g })
                     }
+                    NavigationLink { VO2MaxView() } label: {
+                        ActionRow(icon: "lungs.fill", title: "Tu VO₂ máx y tu nivel cardiovascular")
+                    }
+                    .buttonStyle(.plain)
                     ExplainerCard(title: "¿Qué es la Edad Pulso?",
                                   text: "Tu edad real ajustada por los hábitos que más se asocian a vivir más y mejor: dormir lo suficiente y con horario regular, moverte a diario, acumular tiempo en zonas de esfuerzo y tener buen VO₂ máx y un pulso en reposo bajo.\n\nCada hábito suma o resta como mucho entre 0,8 y 1,5 años según dónde esté entre un valor deficiente y uno óptimo. El ritmo de envejecimiento compara tu último mes con tus últimos 6 meses: por debajo de 1x, tus hábitos recientes van mejor que tu norma.")
                     Text("La Edad Pulso es una estimación orientativa calculada en tu iPhone, no una medida biológica ni un consejo médico.")

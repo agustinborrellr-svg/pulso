@@ -70,7 +70,7 @@ public enum ECGReport {
 
         // Grid + traces.
         let samplesPerRow = Int(rec.sampleRate * secondsPerRow)
-        let filtered = ECGAnalyzer.filter(rec.samples, rate: rec.sampleRate)
+        let filtered = ECGAnalyzer.displaySignal(rec.samples, rate: rec.sampleRate)
         for r in 0..<rows {
             let y0 = top - Double(r) * (rowH + 4 * mm) - rowH // bottom of the row
             // minor grid

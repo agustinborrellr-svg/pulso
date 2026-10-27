@@ -50,26 +50,43 @@ public enum TrainingLoad {
         return exp(min(strain, 21) / 21 * log(1 + Strain.ceilingLoad)) - 1
     }
 
-    /// One point per calendar day from the first summary to `through` (missing days count as rest).
+    /// Daily load as Edwards TRIMP: minutes in each heart-rate zone × the zone number. Linear in time, so a
+    /// hard day weighs a few normal days, not dozens (strain itself is logarithmic and its inverse explodes).
+    public static func trimp(_ d: DaySummary) -> Double {
+        d.zoneMinutes.prefix(5).enumerated().reduce(0) { $0 + Double($1.offset + 1) * $1.element }
+    }
+
+    /// Acute (7-day mean) and chronic (28-day mean) load per calendar day, the classic acute:chronic ratio.
+    /// Days measured by the strap use their zone minutes; imported days (no zones) are estimated from their
+    /// strain with this person's own TRIMP-per-strain-load ratio. Missing days count as rest.
     public static func series(_ days: [DaySummary], through: String? = nil, calendar: Calendar = .current) -> [Point] {
         let sorted = days.filter { $0.strain != nil }.sorted { $0.day < $1.day }
         guard let first = sorted.first?.day else { return [] }
         let last = through ?? sorted.last!.day
         let byDay = Dictionary(sorted.map { ($0.day, $0) }, uniquingKeysWith: { a, _ in a })
-        let ka = 1 - exp(-1.0 / 7), kc = 1 - exp(-1.0 / 42)
-        // Seed both averages with the first fortnight's mean: starting from zero would make anyone
-        // with a steady routine look like they had just spiked their load.
-        let seedDays = (0..<14).map { DayKey.shift(first, days: $0, calendar: calendar) }.filter { $0 <= last }
-        let seed = seedDays.map { byDay[$0]?.strain.map { load(fromStrain: $0) } ?? 0 }.reduce(0, +) / Double(max(1, seedDays.count))
-        var atl = seed, ctl = seed
+        let ratios = sorted.compactMap { d -> Double? in
+            guard d.source == "strap", let s = d.strain, s > 1 else { return nil }
+            let t = trimp(d), l = load(fromStrain: s)
+            return t > 0 && l > 0 ? t / l : nil
+        }
+        let scale = Stats.median(ratios) ?? 0.3
+        func daily(_ key: String) -> Double {
+            guard let d = byDay[key] else { return 0 }
+            let t = trimp(d)
+            if d.source == "strap" && t > 0 { return t }
+            // No zone minutes (imported, or written before zones existed): estimate from strain.
+            return d.strain.map { load(fromStrain: $0) * scale } ?? 0
+        }
+        var loads: [Double] = []
         var out: [Point] = []
         var day = first
         var guardCount = 0
         while day <= last && guardCount < 5000 {
-            let l = byDay[day]?.strain.map { load(fromStrain: $0) } ?? 0
-            atl += (l - atl) * ka
-            ctl += (l - ctl) * kc
-            out.append(Point(day: day, load: l, atl: atl, ctl: ctl))
+            let l = daily(day)
+            loads.append(l)
+            let acute = loads.suffix(7).reduce(0, +) / Double(min(7, loads.count))
+            let chronic = loads.suffix(28).reduce(0, +) / Double(min(28, loads.count))
+            out.append(Point(day: day, load: l, atl: acute, ctl: chronic))
             day = DayKey.shift(day, days: 1, calendar: calendar)
             guardCount += 1
         }

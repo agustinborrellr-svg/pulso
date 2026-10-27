@@ -259,3 +259,73 @@ final class IntegrationsTests: XCTestCase {
         XCTAssertEqual(t.heartRate.first { $0.ts == 106 }?.bpm, 130, "off-wrist second ignored")
     }
 }
+
+extension IntegrationsTests {
+    static let tokenJSON = #"{"access_token":"new","refresh_token":"r2","expires_at":4102444800,"athlete":{"id":7,"firstname":"Gus","lastname":""}}"#
+
+    func testExpiredTokenRefreshesOnceForParallelCalls() async throws {
+        // Two requests at once with an expired token: a single refresh, then both go through.
+        let mock = MockTransport([(200, Self.tokenJSON), (200, "[]"), (200, "[]")])
+        let c = StravaClient(credentials: StravaCredentials(clientID: "1", clientSecret: "s"),
+                             tokens: StravaTokens(accessToken: "old", refreshToken: "r1", expiresAt: 0), transport: mock)
+        async let a = c.activities(after: 0)
+        async let b = c.activities(after: 0)
+        _ = try await (a, b)
+        let refreshes = mock.requests.filter { $0.url?.path == "/oauth/token" }
+        XCTAssertEqual(refreshes.count, 1, "one refresh shared by both calls")
+        XCTAssertEqual(c.tokens?.refreshToken, "r2")
+        XCTAssertTrue(mock.requests.filter { $0.url?.path != "/oauth/token" }.allSatisfy { $0.value(forHTTPHeaderField: "Authorization") == "Bearer new" })
+    }
+
+    func testUnauthorizedRefreshesAndRetriesThenDisconnectsCleanly() async throws {
+        // 401 → forced refresh → retry succeeds.
+        let ok = MockTransport([(401, "{}"), (200, Self.tokenJSON), (200, "[]")])
+        let c = StravaClient(credentials: StravaCredentials(clientID: "1", clientSecret: "s"),
+                             tokens: StravaTokens(accessToken: "t", refreshToken: "r1", expiresAt: Int.max), transport: ok)
+        _ = try await c.activities(after: 0)
+        XCTAssertTrue(c.isConnected)
+        // 401 twice → disconnected, not half-connected.
+        let bad = MockTransport([(401, "{}"), (200, Self.tokenJSON), (401, "{}")])
+        var saved: StravaTokens? = StravaTokens(accessToken: "x", refreshToken: "y", expiresAt: 0)
+        let d = StravaClient(credentials: StravaCredentials(clientID: "1", clientSecret: "s"),
+                             tokens: StravaTokens(accessToken: "t", refreshToken: "r1", expiresAt: Int.max), transport: bad)
+        d.onTokens = { saved = $0 }
+        do {
+            _ = try await d.activities(after: 0)
+            XCTFail("must throw")
+        } catch let e as StravaError {
+            XCTAssertEqual(e, .notConnected)
+        }
+        XCTAssertFalse(d.isConnected)
+        XCTAssertNil(saved, "the stored tokens are cleared too")
+        // A revoked refresh token also disconnects cleanly.
+        let revoked = StravaClient(credentials: StravaCredentials(clientID: "1", clientSecret: "s"),
+                                   tokens: StravaTokens(accessToken: "t", refreshToken: "dead", expiresAt: 0),
+                                   transport: MockTransport([(400, #"{"message":"Bad Request"}"#)]))
+        do { _ = try await revoked.activities(after: 0); XCTFail() } catch let e as StravaError { XCTAssertEqual(e, .notConnected) }
+        XCTAssertFalse(revoked.isConnected)
+    }
+
+    func testRateLimitPausesFurtherRequests() async throws {
+        let mock = MockTransport([(429, "{}"), (200, "[]")])
+        let c = StravaClient(credentials: StravaCredentials(clientID: "1", clientSecret: "s"),
+                             tokens: StravaTokens(accessToken: "t", refreshToken: "r", expiresAt: Int.max), transport: mock)
+        do { _ = try await c.activities(after: 0); XCTFail() } catch let e as StravaError { XCTAssertEqual(e, .rateLimited) }
+        do { _ = try await c.activities(after: 0); XCTFail() } catch let e as StravaError { XCTAssertEqual(e, .rateLimited) }
+        XCTAssertEqual(mock.requests.count, 1, "the second call doesn't even reach Strava during the pause")
+        XCTAssertNotNil(c.rateLimitedUntil)
+    }
+
+    func testFirstImportPagesThroughEverything() async throws {
+        // 250 activities after the date: three pages (100, 100, 50), not just the oldest page.
+        func page(_ from: Int, _ n: Int) -> String {
+            "[" + (from..<(from + n)).map { #"{"id":\#($0),"name":"a","sport_type":"Run","start_date":"2026-01-01T10:00:00Z","elapsed_time":1800}"# }.joined(separator: ",") + "]"
+        }
+        let mock = MockTransport([(200, page(0, 100)), (200, page(100, 100)), (200, page(200, 50))])
+        let c = StravaClient(credentials: StravaCredentials(clientID: "1", clientSecret: "s"),
+                             tokens: StravaTokens(accessToken: "t", refreshToken: "r", expiresAt: Int.max), transport: mock)
+        let all = try await c.activities(after: 0)
+        XCTAssertEqual(all.count, 250)
+        XCTAssertEqual(mock.requests.count, 3)
+    }
+}

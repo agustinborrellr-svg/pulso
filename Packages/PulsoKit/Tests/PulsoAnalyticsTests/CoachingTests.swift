@@ -46,11 +46,25 @@ final class CoachingTests: XCTestCase {
 
     func testTrainingLoadStatus() {
         // Steady weeks → optimal/maintaining; a sudden block of very hard days → risk.
-        var steady = days(42) { i, d in d.strain = 11 }
+        let normal: [Double] = [30, 20, 10, 2, 0], hard: [Double] = [30, 30, 30, 30, 15]
+        var steady = days(42) { i, d in
+            d.strain = 11
+            d.zoneMinutes = normal
+        }
         XCTAssertEqual(TrainingLoad.series(steady, calendar: calendar).count, 42)
         let s1 = TrainingLoad.status(TrainingLoad.series(steady, calendar: calendar))
         XCTAssertTrue([.maintaining, .optimal].contains(s1), "steady load: \(s1)")
-        for i in 35..<42 { steady[i].strain = 19 }
+        // One hard day after weeks of normal ones is not "too much too fast".
+        var single = steady
+        single[41].strain = 17
+        single[41].zoneMinutes = hard
+        let one = TrainingLoad.series(single, calendar: calendar)
+        XCTAssertLessThan(one.last!.acwr!, 1.3, "a single hard day: \(one.last!.acwr!)")
+        XCTAssertNotEqual(TrainingLoad.status(one), .risk)
+        for i in 35..<42 {
+            steady[i].strain = 19
+            steady[i].zoneMinutes = hard
+        }
         let series = TrainingLoad.series(steady, calendar: calendar)
         XCTAssertEqual(TrainingLoad.status(series), .risk)
         XCTAssertGreaterThan(series.last!.acwr!, 1.5)
@@ -251,5 +265,22 @@ final class CoachingTests: XCTestCase {
         let done = SmartWake.decide(.init(now: now, earliest: earliest, latest: latest, mode: .sleepGoal(needMinutes: 410),
                                           samples: samples, sleepOnset: onset))
         XCTAssertEqual(done.action, .wake, done.reason)
+    }
+}
+
+extension CoachingTests {
+    func testImportedDaysWithoutZonesStillCount() {
+        // Strap days with zones teach the ratio; imported WHOOP days only have strain.
+        var list = days(28) { i, d in
+            d.strain = 11
+            d.zoneMinutes = [30, 20, 10, 2, 0]
+        }
+        for i in 0..<14 {
+            list[i].source = "whoop"
+            list[i].zoneMinutes = [0, 0, 0, 0, 0]
+        }
+        let series = TrainingLoad.series(list, calendar: calendar)
+        XCTAssertEqual(series[0].load, series[20].load, accuracy: 1e-6, "an imported 11 weighs like a measured 11")
+        XCTAssertEqual(series.last!.acwr ?? 0, 1, accuracy: 0.01)
     }
 }

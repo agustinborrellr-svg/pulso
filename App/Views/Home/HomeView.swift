@@ -37,6 +37,7 @@ struct HomeView: View {
                     if let day = model.selected {
                         PillarHero(day: day)
                         StrainRecoveryWeekCard()
+                        PlanSummaryCard()
                         if day.stressHourly.contains(where: { $0 != nil }) {
                             NavigationLink { StressMonitorView() } label: { StressPreviewCard(day: day) }
                                 .buttonStyle(.plain)

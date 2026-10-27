@@ -60,7 +60,7 @@ public enum StravaError: Error, Equatable, CustomStringConvertible {
         case .http(let code, let msg): return "Strava respondió \(code): \(msg)"
         case .badResponse: return "Respuesta de Strava no válida."
         case .uploadFailed(let m): return "Strava no aceptó el archivo: \(m)"
-        case .rateLimited: return "Límite de peticiones de Strava alcanzado; prueba más tarde."
+        case .rateLimited: return "Strava pide esperar: se vuelve a intentar dentro de 15 minutos."
         }
     }
 }
@@ -130,6 +130,14 @@ public final class StravaClient: @unchecked Sendable {
 
     public var isConnected: Bool { tokens != nil }
 
+    /// One refresh at a time: Strava rotates the refresh token, so two parallel refreshes would invalidate
+    /// each other and drop the connection.
+    private var refreshTask: Task<StravaTokens, Error>?
+    private let lock = NSLock()
+    /// After a 429 every request waits until this moment (Strava's limits are 15-minute windows).
+    public private(set) var rateLimitedUntil: Date?
+    static let rateLimitPause: TimeInterval = 15 * 60
+
     /// Page to open in an ASWebAuthenticationSession (callback scheme `pulso`). The web endpoint, not
     /// /oauth/mobile/authorize: that one can hand off to the Strava app, which then returns to Pulso
     /// outside the authentication session.
@@ -193,14 +201,66 @@ public final class StravaClient: @unchecked Sendable {
         onTokens?(t)
     }
 
-    /// A valid access token, refreshing it if needed.
-    public func accessToken(now: Int = Int(Date().timeIntervalSince1970)) async throws -> String {
+    /// A valid access token, refreshing it if needed (`force` after a 401).
+    public func accessToken(now: Int = Int(Date().timeIntervalSince1970), force: Bool = false) async throws -> String {
         guard let t = tokens else { throw StravaError.notConnected }
-        if !t.isExpired(now: now) { return t.accessToken }
-        let fresh = try await tokenRequest(["refresh_token": t.refreshToken, "grant_type": "refresh_token"])
-        tokens = fresh
-        onTokens?(fresh)
-        return fresh.accessToken
+        if !force && !t.isExpired(now: now) { return t.accessToken }
+        return try await sharedRefresh(t).accessToken
+    }
+
+    private func sharedRefresh(_ t: StravaTokens) async throws -> StravaTokens {
+        lock.lock()
+        if let running = refreshTask {
+            lock.unlock()
+            return try await running.value
+        }
+        let task = Task { () throws -> StravaTokens in
+            try await self.tokenRequest(["refresh_token": t.refreshToken, "grant_type": "refresh_token"])
+        }
+        refreshTask = task
+        lock.unlock()
+        defer {
+            lock.lock()
+            refreshTask = nil
+            lock.unlock()
+        }
+        do {
+            let fresh = try await task.value
+            tokens = fresh
+            onTokens?(fresh)
+            return fresh
+        } catch StravaError.http(let code, _) where code == 400 || code == 401 {
+            // The refresh token itself was revoked: disconnect cleanly so the app asks to reconnect.
+            tokens = nil
+            onTokens?(nil)
+            throw StravaError.notConnected
+        }
+    }
+
+    /// Sends an authorized request. A 401 gets one forced refresh and a retry; a second 401 disconnects
+    /// cleanly. A 429 pauses every request for 15 minutes.
+    func send(_ make: () -> URLRequest) async throws -> Data {
+        if let until = rateLimitedUntil, until > Date() { throw StravaError.rateLimited }
+        for attempt in 0..<2 {
+            var req = make()
+            req.setValue("Bearer \(try await accessToken(force: attempt == 1))", forHTTPHeaderField: "Authorization")
+            let (data, status) = try await transport.send(req)
+            switch status {
+            case 429:
+                rateLimitedUntil = Date().addingTimeInterval(Self.rateLimitPause)
+                throw StravaError.rateLimited
+            case 401 where attempt == 0:
+                continue
+            case 401:
+                tokens = nil
+                onTokens?(nil)
+                throw StravaError.notConnected
+            default:
+                guard (200..<300).contains(status) else { throw StravaError.http(status, String(decoding: data.prefix(300), as: UTF8.self)) }
+                return data
+            }
+        }
+        throw StravaError.notConnected
     }
 
     public func disconnect() async {
@@ -214,28 +274,16 @@ public final class StravaClient: @unchecked Sendable {
         onTokens?(nil)
     }
 
-    private func authorized(_ url: URL, method: String = "GET") async throws -> URLRequest {
-        var req = URLRequest(url: url)
-        req.httpMethod = method
-        req.setValue("Bearer \(try await accessToken())", forHTTPHeaderField: "Authorization")
-        return req
-    }
-
-    private func check(_ data: Data, _ status: Int) throws {
-        if status == 429 { throw StravaError.rateLimited }
-        if status == 401 { throw StravaError.notConnected }
-        guard (200..<300).contains(status) else { throw StravaError.http(status, String(decoding: data.prefix(300), as: UTF8.self)) }
-    }
-
-    /// Activities that started after `after` (unix), newest pages first; up to `pages` × 100.
-    public func activities(after: Int, pages: Int = 3) async throws -> [StravaActivity] {
+    /// Every activity that started after `after` (unix). Strava returns them oldest first with `after`, so
+    /// it pages until the end (up to `pages` × 100) instead of stopping at the oldest few hundred.
+    public func activities(after: Int, pages: Int = 20) async throws -> [StravaActivity] {
         var out: [StravaActivity] = []
         for page in 1...max(1, pages) {
             var c = URLComponents(string: "https://www.strava.com/api/v3/athlete/activities")!
             c.queryItems = [URLQueryItem(name: "after", value: String(after)), URLQueryItem(name: "per_page", value: "100"),
                             URLQueryItem(name: "page", value: String(page))]
-            let (data, status) = try await transport.send(try await authorized(c.url!))
-            try check(data, status)
+            let url = c.url!
+            let data = try await send { URLRequest(url: url) }
             guard let list = try? JSONDecoder().decode([StravaActivity].self, from: data) else { throw StravaError.badResponse }
             out += list
             if list.count < 100 { break }
@@ -261,17 +309,20 @@ public final class StravaClient: @unchecked Sendable {
     /// Uploads a FIT file of the workout; returns the upload id to poll.
     public func upload(_ track: WorkoutTrack, name: String? = nil, description: String? = nil) async throws -> StravaUploadStatus {
         let boundary = "pulso-\(UUID().uuidString)"
-        var req = try await authorized(URL(string: "https://www.strava.com/api/v3/uploads")!, method: "POST")
-        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         let w = track.workout
         var fields: [(String, String)] = [("data_type", "fit"), ("external_id", Self.externalID(for: w)),
                                           ("name", name ?? w.sport)]
         let desc = description ?? String(format: "Esfuerzo %.1f · %d kcal · registrado con Pulso", w.strain, Int(w.kcal.rounded()))
         fields.append(("description", desc))
         if ["Elíptica"].contains(w.sport) { fields.append(("trainer", "1")) }
-        req.httpBody = Self.multipart(boundary: boundary, fields: fields, file: FITEncoder.encode(track), filename: "pulso-\(w.start).fit")
-        let (data, status) = try await transport.send(req)
-        try check(data, status)
+        let body = Self.multipart(boundary: boundary, fields: fields, file: FITEncoder.encode(track), filename: "pulso-\(w.start).fit")
+        let data = try await send {
+            var req = URLRequest(url: URL(string: "https://www.strava.com/api/v3/uploads")!)
+            req.httpMethod = "POST"
+            req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            req.httpBody = body
+            return req
+        }
         guard let s = try? JSONDecoder().decode(StravaUploadStatus.self, from: data) else { throw StravaError.badResponse }
         // A duplicate is reported in the very first reply; keep it as a status so callers can link the
         // existing activity instead of failing.
@@ -280,8 +331,7 @@ public final class StravaClient: @unchecked Sendable {
     }
 
     public func uploadStatus(id: Int) async throws -> StravaUploadStatus {
-        let (data, status) = try await transport.send(try await authorized(URL(string: "https://www.strava.com/api/v3/uploads/\(id)")!))
-        try check(data, status)
+        let data = try await send { URLRequest(url: URL(string: "https://www.strava.com/api/v3/uploads/\(id)")!) }
         guard let s = try? JSONDecoder().decode(StravaUploadStatus.self, from: data) else { throw StravaError.badResponse }
         return s
     }

@@ -256,7 +256,7 @@ struct ECGStrip: View {
     let peaks: [Int]
 
     var body: some View {
-        let filtered = ECGAnalyzer.filter(recording.samples, rate: recording.sampleRate)
+        let filtered = ECGAnalyzer.displaySignal(recording.samples, rate: recording.sampleRate)
         let rows = max(1, Int(ceil(recording.durationSeconds / 10)))
         VStack(spacing: 8) {
             ForEach(0..<rows, id: \.self) { r in

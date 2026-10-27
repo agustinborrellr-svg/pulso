@@ -90,6 +90,26 @@ public enum ECGAnalyzer {
         return movingAverage(hp, max(1, Int(rate * 0.02)))
     }
 
+    /// Running median with a centred window of `n` samples.
+    static func movingMedian(_ x: [Double], _ n: Int) -> [Double] {
+        guard n > 1, x.count > 2 else { return x }
+        let h = n / 2
+        return x.indices.map { i in
+            var w = Array(x[max(0, i - h)...min(x.count - 1, i + h)])
+            w.sort()
+            return w[w.count / 2]
+        }
+    }
+
+    /// Signal for display and print: only the baseline is removed (200 ms then 600 ms running medians, the
+    /// classic method), so wave amplitudes stay true to 10 mm/mV. The detection filter (`filter`) smooths
+    /// and shrinks the QRS by 15–35 %, which is fine for finding beats but not for a printed strip.
+    public static func displaySignal(_ samples: [Float], rate: Double) -> [Double] {
+        let x = samples.map(Double.init)
+        let baseline = movingMedian(movingMedian(x, max(3, Int(rate * 0.2))), max(3, Int(rate * 0.6)))
+        return zip(x, baseline).map { $0 - $1 }
+    }
+
     /// Pan–Tompkins-style QRS detection: derivative → square → 150 ms moving integration → adaptive
     /// threshold. Each contiguous region above the threshold is one QRS; the R peak is the dominant
     /// deflection inside it (taking the whole region avoids locking onto ripples on its rising edge,
@@ -177,11 +197,19 @@ public enum ECGAnalyzer {
         return Template(beat: avg, r: pre, correlations: corr)
     }
 
-    /// P wave present: a positive bump 80–250 ms before R, clearly above the flat segment before it.
-    static func hasPWave(_ t: Template, rate: Double) -> Bool {
-        let base = Stats.medianOf(Array(t.beat[0..<max(1, Int(rate * 0.04))]))
-        let a = t.r - Int(rate * 0.25), b = t.r - Int(rate * 0.08)
-        guard a >= 0, b > a else { return false }
+    /// P wave present: a positive bump 80–250 ms before R, clearly above the flat segment before it. At fast
+    /// rates the window starts after the previous beat's T wave (QT ≈ 0.40·√RR, Bazett) so a T wave is never
+    /// taken for a P wave; if too little room is left the answer is unknown (nil), not "absent".
+    static func hasPWave(_ t: Template, rate: Double, meanRRms: Double? = nil) -> Bool? {
+        var a = t.r - Int(rate * 0.25)
+        let b = t.r - Int(rate * 0.08)
+        if let rr = meanRRms {
+            let rrS = rr / 1000
+            let tEnd = t.r - Int(rate * rrS) + Int(rate * (0.40 * rrS.squareRoot() + 0.04))
+            a = max(a, tEnd)
+        }
+        guard a >= 0, b - a >= Int(rate * 0.06) else { return nil }
+        let base = Stats.medianOf(Array(t.beat[max(0, a - Int(rate * 0.04))..<max(a, a - Int(rate * 0.04) + 1)]))
         let pAmp = (t.beat[a...b].max() ?? base) - base
         let rAmp = abs(t.beat[t.r] - base)
         return pAmp >= 0.03 && pAmp >= 0.06 * rAmp
@@ -229,12 +257,13 @@ public enum ECGAnalyzer {
         if abs(Double(peaks.count) - expectedBeats) > expectedBeats * 0.2 { quality -= 0.2 }
         if ampMean < 0.05 { quality -= 0.5 } // < 50 µV: no contact
         quality = max(0, min(1, quality))
-        let pWave = tmpl.map { hasPWave($0, rate: rate) }
+        let pWave = tmpl.flatMap { hasPWave($0, rate: rate, meanRRms: meanRR) }
 
         // Irregular: beat-to-beat chaos (high normalised RMSSD with a random-looking sequence) and no
-        // P wave; very chaotic rhythms are flagged even if a P-like bump survives the averaging.
+        // P wave. A clear P wave rules it out: breathing makes a healthy rhythm vary a lot at the wrist
+        // (respiratory sinus arrhythmia), and that must not read as atrial fibrillation.
         let chaotic = nrmssd >= 0.10 && (tpr ?? 0) >= 0.45
-        let veryChaotic = nrmssd >= 0.20 && (tpr ?? 0) >= 0.55
+        let veryChaotic = nrmssd >= 0.20 && (tpr ?? 0) >= 0.55 && pWave != true
         let rhythm: Rhythm
         if quality < 0.45 || hr < 35 || hr > 160 {
             rhythm = .inconclusive

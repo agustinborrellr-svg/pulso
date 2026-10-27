@@ -362,6 +362,7 @@ struct NightHRChart: View {
                     .lineStyle(StrokeStyle(lineWidth: 1.4))
             }
         }
+        .chartYScale(domain: .automatic(includesZero: false))
         .chartYAxis {
             AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { v in
                 AxisGridLine().foregroundStyle(Theme.hairline)

@@ -6,6 +6,7 @@ import PulsoAnalytics
 /// Strain of the selected day: dial, target, energy, heart-rate zones, activities and the week.
 struct StrainDetailView: View {
     @EnvironmentObject var model: AppModel
+    @State private var adding = false
 
     var body: some View {
         DetailScreen(title: model.cycleTitle(model.selectedDay)) {
@@ -23,6 +24,7 @@ struct StrainDetailView: View {
                 EmptyState(icon: "flame", title: "Sin esfuerzo", message: "Todavía no hay datos de este día.")
             }
         }
+        .sheet(isPresented: $adding) { AddActivitySheet() }
     }
 
     private func hero(_ d: DaySummary) -> some View {
@@ -99,6 +101,10 @@ struct StrainDetailView: View {
                 Text("Hoy no hay actividades. Los entrenos se detectan solos; también puedes grabar uno en En vivo.")
                     .font(.subheadline).foregroundStyle(Theme.secondary)
             }
+            Button { adding = true } label: {
+                ActionRow(icon: "plus", title: "Agregar actividad")
+            }
+            .buttonStyle(.plain)
             ForEach(list) { w in
                 NavigationLink {
                     WorkoutDetailView(workout: w)
