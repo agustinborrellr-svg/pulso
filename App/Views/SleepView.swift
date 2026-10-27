@@ -273,6 +273,7 @@ struct SleepEditSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+            Group {
                 Section {
                     DatePicker("Me dormí", selection: $start)
                     DatePicker("Me desperté", selection: $end)
@@ -285,8 +286,11 @@ struct SleepEditSheet: View {
                         Button("Eliminar este sueño", role: .destructive) { confirmDelete = true }
                     }
                 }
-            }
-            .navigationTitle(session == nil ? "Añadir sueño" : "Ajustar sueño")
+                        }
+            .listRowBackground(Theme.card)
+        }
+        .pulsoList()
+            .pulsoTitle(session == nil ? "Añadir sueño" : "Ajustar sueño")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }

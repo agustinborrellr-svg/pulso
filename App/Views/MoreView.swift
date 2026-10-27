@@ -20,6 +20,7 @@ struct MoreView: View {
     var body: some View {
         NavigationStack {
             List {
+            Group {
                 strapSection
                 Section("Tú") {
                     Button {
@@ -122,10 +123,13 @@ struct MoreView: View {
                         .font(.footnote)
                         .foregroundStyle(Theme.secondary)
                 }
-            }
+                        }
+            .listRowBackground(Theme.card)
+        }
+        .pulsoList()
             .scrollContentBackground(.hidden)
             .background(PulsoBackground())
-            .navigationTitle("Más")
+            .pulsoTitle("Más")
             .fullScreenCover(isPresented: $showGuide) { GuideView() }
 
         }
@@ -373,6 +377,7 @@ struct ProfileEditor: View {
 
     var body: some View {
         Form {
+            Group {
             Section("Datos personales") {
                 TextField("Nombre", text: $profile.name)
                 Stepper("Año de nacimiento: \(String(profile.birthYear))", value: $profile.birthYear, in: 1930...2015)
@@ -410,8 +415,11 @@ struct ProfileEditor: View {
             } footer: {
                 Text("Cada noche se ajusta con el esfuerzo del día, la deuda acumulada y las siestas.")
             }
+                    }
+            .listRowBackground(Theme.card)
         }
-        .navigationTitle("Perfil")
+        .pulsoList()
+        .pulsoTitle("Perfil")
         .onAppear { manualMax = profile.maxHROverride != nil }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
@@ -450,13 +458,14 @@ struct JournalEditor: View {
             .padding()
         }
         .background(PulsoBackground())
-        .navigationTitle("Diario")
+        .pulsoTitle("Diario")
     }
 }
 
 struct PairingGuideView: View {
     var body: some View {
         List {
+            Group {
             Section {
                 step(1, "Libera la pulsera", "La WHOOP 5.0 solo admite un emparejamiento a la vez. En la app de WHOOP, desvincula la pulsera (o desinstala la app).")
                 step(2, "Olvida el emparejamiento antiguo", "iPhone → Ajustes → Bluetooth → toca (i) junto a la WHOOP → Omitir dispositivo.")
@@ -473,8 +482,11 @@ struct PairingGuideView: View {
                 Text("Bueno saber")
             }
             .font(.footnote)
+                    }
+            .listRowBackground(Theme.card)
         }
-        .navigationTitle("Emparejar")
+        .pulsoList()
+        .pulsoTitle("Emparejar")
     }
 
     private func step(_ n: Int, _ title: String, _ text: String) -> some View {
@@ -500,13 +512,14 @@ struct ConnectionLogView: View {
         List(Array(model.log.reversed().enumerated()), id: \.offset) { item in
             Text(item.element).font(.caption.monospaced())
         }
-        .navigationTitle("Registro")
+        .pulsoTitle("Registro")
     }
 }
 
 struct MethodologyView: View {
     var body: some View {
         List {
+            Group {
             item("Datos de la pulsera", "Cada segundo la WHOOP 5.0 guarda FC, intervalos R-R, gravedad y movimiento, temperatura de la piel, SpO₂ (de noche), pasos y su propio estado de sueño. Pulso lo descarga por Bluetooth con el protocolo documentado por la comunidad open source y lo guarda en el iPhone.")
             item("VFC (RMSSD)", "Raíz cuadrática media de las diferencias entre latidos consecutivos (Task Force 1996), tras filtrar artefactos (±20 % de la mediana local). Solo se usan pares de latidos consecutivos reales. El valor nocturno se mide en las ventanas de sueño profundo, como hace WHOOP.")
             item("FC en reposo", "Media de la FC en esas mismas ventanas de sueño profundo (si no hay, el percentil 10 de la noche).")
@@ -524,8 +537,11 @@ struct MethodologyView: View {
             item("Hora de acostarse", "Tu necesidad de esta noche dividida entre tu eficiencia de sueño habitual, más 15 minutos para dormirte, contada hacia atrás desde tu próxima alarma (o tu hora habitual de despertar).")
             item("ECG", "Detección de latidos tipo Pan-Tompkins, latido medio para medir la calidad de la señal y buscar la onda P, e irregularidad de los intervalos R-R. Ritmo irregular = intervalos caóticos y sin onda P. Es orientativo y no sustituye a un médico.")
             item("Privacidad", "Sin cuentas, sin servidores, sin analítica. Tus datos no salen del iPhone salvo que los exportes tú o conectes Strava (solo se envían los entrenos).")
+                    }
+            .listRowBackground(Theme.card)
         }
-        .navigationTitle("Metodología")
+        .pulsoList()
+        .pulsoTitle("Metodología")
     }
 
     private func item(_ title: String, _ text: String) -> some View {
@@ -566,8 +582,7 @@ struct OnboardingView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 6)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.red)
+                .buttonStyle(PrimaryCapsuleStyle())
                 .padding(.horizontal)
                 .padding(.bottom)
             }
@@ -596,6 +611,7 @@ struct OnboardingView: View {
 
     private var profileForm: some View {
         Form {
+            Group {
             Section {
                 TextField("Nombre", text: $profile.name)
                 Stepper("Año de nacimiento: \(String(profile.birthYear))", value: $profile.birthYear, in: 1930...2015)
@@ -611,15 +627,20 @@ struct OnboardingView: View {
             } footer: {
                 Text("Se usa para zonas cardiacas, calorías y VO₂máx. Puedes cambiarlo luego.")
             }
+                    }
+            .listRowBackground(Theme.card)
         }
+        .pulsoList()
         .scrollContentBackground(.hidden)
     }
 
     private var pairing: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                StrapIllustration(ledBlue: true, showSensors: false, tapHint: true)
+                    .frame(height: 220)
                 Text("Emparejar, cuando quieras").font(.title2.bold())
-                Text("Pulso no se conecta a ninguna pulsera por su cuenta. Cuando quieras emparejar, ve a Más → Pulsera → Buscar pulseras cercanas y elige la tuya de la lista.")
+                Text("Pulso no se conecta a ninguna pulsera por su cuenta. Cuando quieras, toca el icono de la pulsera arriba a la derecha en Inicio y sigue los pasos.")
                     .foregroundStyle(Theme.secondary)
                 Label("Usa una pulsera que no esté vinculada a tu cuenta de WHOOP (solo admite un emparejamiento).", systemImage: "1.circle.fill")
                 Label("En Ajustes → Bluetooth, omite la WHOOP si aparece.", systemImage: "2.circle.fill")

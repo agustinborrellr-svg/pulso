@@ -18,6 +18,7 @@ struct NotificationsView: View {
 
     var body: some View {
         Form {
+            Group {
             ForEach(groups, id: \.0) { group in
                 Section(group.0) {
                     ForEach(group.1, id: \.self) { kind in
@@ -41,8 +42,11 @@ struct NotificationsView: View {
             } footer: {
                 Text("Los avisos que pueden esperar (batería, tendencias…) se guardan hasta el final de las horas de silencio. El informe al despertar, la hora de acostarse y las alarmas no se ven afectados.")
             }
+                    }
+            .listRowBackground(Theme.card)
         }
-        .navigationTitle("Avisos")
+        .pulsoList()
+        .pulsoTitle("Avisos")
         .onAppear {
             guard !loaded else { return }
             loaded = true

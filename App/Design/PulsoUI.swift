@@ -488,3 +488,22 @@ extension Fmt {
         return (wd, f.string(from: d))
     }
 }
+
+// MARK: - Navigation and list styling
+
+extension View {
+    /// Centred caps title in the navigation bar (the back button still shows the screen's name).
+    func pulsoTitle(_ title: String) -> some View {
+        navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) { Caps(title, size: 14) }
+            }
+    }
+
+    /// Lists and forms on the slate background.
+    func pulsoList() -> some View {
+        scrollContentBackground(.hidden)
+            .background(PulsoBackground())
+    }
+}

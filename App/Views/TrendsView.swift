@@ -17,37 +17,23 @@ struct TrendsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    Picker("Vista", selection: $mode) {
-                        Text("Inteligencia").tag(1)
-                        Text("Tendencias").tag(0)
+                    HStack(spacing: 28) {
+                        tab("Inteligencia", 1)
+                        tab("Tendencias", 0)
+                        Spacer()
                     }
-                    .pickerStyle(.segmented)
                     if mode == 1 {
                         IntelligenceContent()
                     } else {
-                    Picker("Periodo", selection: $range) {
-                        Text("7 días").tag(7)
-                        Text("30 días").tag(30)
-                        Text("90 días").tag(90)
-                        Text("1 año").tag(365)
+                    ForEach(TrendMetric.Group.allCases, id: \.self) { g in
+                        SectionHeading(text: g.rawValue)
+                        ForEach(TrendMetric.allCases.filter { $0.group == g }) { m in
+                            WeeklyTrendCard(metric: m)
+                        }
+                        if g == .strain {
+                            TrainingLoadCard(points: model.trainingLoad.filter { $0.day >= DayKey.shift(model.currentDayKey, days: -89) })
+                        }
                     }
-                    .pickerStyle(.segmented)
-
-                    averages
-                    TrendChart(title: "Recuperación", unit: "%", days: window, color: Theme.green, style: .bars,
-                               value: { $0.recovery }, colorFor: { Theme.recoveryColor($0) }, domain: 0...100)
-                    TrendChart(title: "VFC", unit: "ms", days: window, color: Theme.hrv, style: .line, value: { $0.hrv })
-                    TrendChart(title: "FC en reposo", unit: "lpm", days: window, color: Theme.red, style: .line, value: { $0.rhr })
-                    TrendChart(title: "Esfuerzo", unit: "", days: window, color: Theme.strain, style: .bars, value: { $0.strain }, domain: 0...21)
-                    TrainingLoadCard(points: model.trainingLoad.filter { p in window.first.map { p.day >= $0.day } ?? false })
-                    TrendChart(title: "Horas de sueño", unit: "h", days: window, color: Theme.sleep, style: .bars,
-                               value: { $0.sleepMinutes.map { $0 / 60 } }, reference: { $0.sleepNeedMinutes.map { $0 / 60 } })
-                    TrendChart(title: "Respiración", unit: "rpm", days: window, color: Theme.hrv, style: .line, value: { $0.respRate })
-                    TrendChart(title: "Temperatura de la piel (desviación)", unit: "°C", days: window, color: Theme.yellow, style: .line,
-                               value: { $0.skinTempDeviation })
-                    TrendChart(title: "Estrés medio", unit: "", days: window, color: Theme.stress, style: .bars, value: { $0.stressAvg },
-                               colorFor: { Theme.stressColor($0) }, domain: 0...3)
-                    TrendChart(title: "VO₂máx estimado", unit: "", days: window, color: Theme.strain, style: .line, value: { $0.vo2max })
                     if model.profile.cycleTracking { CycleCard(days: model.days) }
                     WeeklyCard(days: model.days)
                     insightsCard
@@ -57,8 +43,21 @@ struct TrendsView: View {
                 .padding(.bottom, 24)
             }
             .background(PulsoBackground())
-            .navigationTitle("Análisis")
+            .pulsoTitle("Análisis")
         }
+    }
+
+    private func tab(_ title: String, _ m: Int) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) { mode = m }
+        } label: {
+            VStack(spacing: 8) {
+                Caps(title, size: 13, color: mode == m ? .white : Theme.secondary, weight: .semibold)
+                Rectangle().fill(mode == m ? Color.white : Color.clear).frame(height: 2)
+            }
+            .fixedSize()
+        }
+        .buttonStyle(.plain)
     }
 
     private var averages: some View {

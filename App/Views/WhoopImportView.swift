@@ -22,6 +22,7 @@ struct WhoopImportView: View {
 
     var body: some View {
         List {
+            Group {
             Section {
                 Text("En la app de WHOOP: *Más → Ajustes de la app → Exportar datos*. Te llega un .zip por correo: ábrelo en Archivos (se descomprime solo) y elige aquí los CSV que quieras.")
                     .font(.subheadline)
@@ -89,8 +90,11 @@ struct WhoopImportView: View {
             if let r = result {
                 resultSection(r)
             }
+                    }
+            .listRowBackground(Theme.card)
         }
-        .navigationTitle("Importar de WHOOP")
+        .pulsoList()
+        .pulsoTitle("Importar de WHOOP")
         .navigationBarTitleDisplayMode(.inline)
         .fileImporter(isPresented: $picking, allowedContentTypes: [.commaSeparatedText, .plainText, .text],
                       allowsMultipleSelection: true) { r in

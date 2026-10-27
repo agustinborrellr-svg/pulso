@@ -10,6 +10,7 @@ struct ECGListView: View {
 
     var body: some View {
         List {
+            Group {
             Section {
                 if model.ecgAvailable {
                     Button {
@@ -62,8 +63,11 @@ struct ECGListView: View {
                     for i in idx { model.deleteECG(model.ecgRecordings[i]) }
                 }
             }
+                    }
+            .listRowBackground(Theme.card)
         }
-        .navigationTitle("Electrocardiograma")
+        .pulsoList()
+        .pulsoTitle("Electrocardiograma")
         .fullScreenCover(isPresented: $recording) {
             ECGRecordView(simulated: simulate) { recording = false }
                 .environmentObject(model)
@@ -193,7 +197,7 @@ struct ECGDetailView: View {
     var body: some View {
         ScrollView { ECGDetailContent(recording: recording) }
             .background(PulsoBackground())
-            .navigationTitle("ECG")
+            .pulsoTitle("ECG")
             .navigationBarTitleDisplayMode(.inline)
     }
 }

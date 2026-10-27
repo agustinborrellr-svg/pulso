@@ -9,6 +9,7 @@ struct AlarmsView: View {
 
     var body: some View {
         List {
+            Group {
             if let status = model.alarmStatus {
                 Section {
                     Label(status, systemImage: model.alarmRinging ? "alarm.waves.left.and.right" : "alarm")
@@ -54,8 +55,11 @@ struct AlarmsView: View {
                     Label("Cómo funciona la alarma inteligente", systemImage: "questionmark.circle")
                 }
             }
+                    }
+            .listRowBackground(Theme.card)
         }
-        .navigationTitle("Despertador")
+        .pulsoList()
+        .pulsoTitle("Despertador")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -134,6 +138,7 @@ struct AlarmEditor: View {
 
     var body: some View {
         Form {
+            Group {
             Section {
                 if !perDay {
                     DatePicker(alarm.mode == .fixed ? "Hora" : "No más tarde de", selection: $time, displayedComponents: .hourAndMinute)
@@ -222,8 +227,11 @@ struct AlarmEditor: View {
                     }
                 }
             }
+                    }
+            .listRowBackground(Theme.card)
         }
-        .navigationTitle(model.alarms.contains(where: { $0.id == alarm.id }) ? "Editar alarma" : "Nueva alarma")
+        .pulsoList()
+        .pulsoTitle(model.alarms.contains(where: { $0.id == alarm.id }) ? "Editar alarma" : "Nueva alarma")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             time = Calendar.current.date(bySettingHour: alarm.hour, minute: alarm.minute, second: 0, of: Date()) ?? Date()
@@ -273,6 +281,7 @@ struct AlarmEditor: View {
 struct SmartAlarmHelp: View {
     var body: some View {
         List {
+            Group {
             Section {
                 Text("Durante la ventana de despertar, Pulso descarga cada par de minutos lo último que ha medido la pulsera (movimiento, pulso, su propio estado de sueño) y busca señales de sueño ligero: te mueves, el pulso sube sobre el mínimo de la noche o el ritmo se vuelve irregular, como en el sueño REM.")
                 Text("Si no encuentra un buen momento, vibra igualmente a la hora final. La pulsera tiene además su propia alarma programada a esa hora, por si el iPhone está lejos.")
@@ -283,8 +292,11 @@ struct SmartAlarmHelp: View {
                 Text("Una ventana de 30 minutos funciona bien para la mayoría.")
                 Text("La vibración progresiva empieza suave y va subiendo: es la más agradable para despertar.")
             }
+                    }
+            .listRowBackground(Theme.card)
         }
+        .pulsoList()
         .font(.subheadline)
-        .navigationTitle("Alarma inteligente")
+        .pulsoTitle("Alarma inteligente")
     }
 }

@@ -15,6 +15,7 @@ struct LabView: View {
 
     var body: some View {
         Form {
+            Group {
             Section {
                 Toggle("Grabar tramas", isOn: $capturing)
                     .onChange(of: capturing) { _, on in model.strap.setCapture(on, all: captureAll) }
@@ -86,8 +87,11 @@ struct LabView: View {
                 LabeledContent("Firmware", value: model.identity.firmware.isEmpty ? "–" : model.identity.firmware)
                 NavigationLink("Registro de conexión") { ConnectionLogView() }
             }
+                    }
+            .listRowBackground(Theme.card)
         }
-        .navigationTitle("Laboratorio")
+        .pulsoList()
+        .pulsoTitle("Laboratorio")
         .onDisappear {
             if capturing { model.strap.setCapture(false, all: false) }
         }

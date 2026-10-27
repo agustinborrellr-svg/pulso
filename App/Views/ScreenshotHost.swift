@@ -1,5 +1,6 @@
 import SwiftUI
 import PulsoStore
+import PulsoAnalytics
 import PulsoFeatures
 import PulsoIntelligence
 
@@ -9,7 +10,7 @@ enum ShotScreen: String, Identifiable {
     case alarms, alarmEditor, notifications, integrations, ecg, ecgDetail, bedtime, lab, workout, onboarding, whatif, intelDetail
     case guide, guideData, guideRecovery, guideAlarm, whoopImport
     case recovery, strain, stress, trendRecovery, trendStrain, trendHRV, device, pairing, deviceAdvanced
-    case sleepQuestion
+    case sleepQuestion, vo2, plan, addActivity
 
     var id: String { rawValue }
 
@@ -29,6 +30,11 @@ extension AppModel {
     /// Demo data, sample alarms and a ready flag for the screenshot script.
     func prepareScreenshots(_ done: @escaping () -> Void) {
         hasOnboarded = true
+        if planGoals.isEmpty {
+            savePlan([PlanGoal(kind: .zonesLight, target: 150), PlanGoal(kind: .zonesHard, target: 30),
+                      PlanGoal(kind: .sleepHours, target: 8 * 60), PlanGoal(kind: .steps, target: 8000),
+                      PlanGoal(kind: .habitNo, target: 1, habit: "alcohol"), PlanGoal(kind: .habitYes, target: 4, habit: "meditation")])
+        }
         if alarms.isEmpty {
             alarms = [
                 AlarmConfig(id: "shot-1", label: "Trabajo", hour: 7, minute: 15, weekdays: [2, 3, 4, 5, 6], mode: .smart, windowMinutes: 30,
@@ -107,6 +113,9 @@ struct ShotDestination: View {
                 case .trendHRV: TrendDetailView(metric: .hrv)
                 case .device, .deviceAdvanced: DeviceView()
                 case .pairing: PairingFlowView()
+                case .vo2: VO2MaxView()
+                case .plan: WeeklyPlanView()
+                case .addActivity: AddActivitySheet()
                 case .sleepQuestion:
                     let now = Int(Date().timeIntervalSince1970)
                     DetailScreen(title: "Inicio") {

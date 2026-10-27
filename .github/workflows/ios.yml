@@ -172,7 +172,7 @@ jobs:
           ls "$DATA/Documents" || true
           sleep 4
           n=1
-          for S in today sleep sleepQuestion; do
+          for S in today health vo2 plan strain addActivity trends live more alarms alarmEditor notifications integrations ecg workout onboarding; do
             xcrun simctl terminate "$UDID" $BID || true
             sleep 1
             xcrun simctl launch "$UDID" $BID -PulsoScreenshots YES -PulsoScreen $S -AppleLanguages "(es)" -AppleLocale es_ES

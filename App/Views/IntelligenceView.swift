@@ -219,7 +219,7 @@ struct MetricDetailView: View {
             .padding(16)
         }
         .background(PulsoBackground())
-        .navigationTitle(metric.name)
+        .pulsoTitle(metric.name)
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -430,7 +430,7 @@ struct WhatIfView: View {
             .padding(16)
         }
         .background(PulsoBackground())
-        .navigationTitle("Simulador")
+        .pulsoTitle("Simulador")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             guard !loaded, let o = model.intelligence?.outlook else { return }

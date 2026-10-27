@@ -12,6 +12,7 @@ struct IntegrationsView: View {
 
     var body: some View {
         Form {
+            Group {
             if let status = model.importStatus {
                 Section { Label(status, systemImage: "info.circle").font(.footnote) }
             }
@@ -92,8 +93,11 @@ struct IntegrationsView: View {
             } header: {
                 Text("Archivos")
             }
+                    }
+            .listRowBackground(Theme.card)
         }
-        .navigationTitle("Conexiones")
+        .pulsoList()
+        .pulsoTitle("Conexiones")
     }
 
     private func settingToggle(_ title: String, _ key: WritableKeyPath<FeatureSettings, Bool>) -> some View {
@@ -129,6 +133,7 @@ struct StravaSetupView: View {
 
     var body: some View {
         Form {
+            Group {
             Section {
                 step(1, "Abre strava.com/settings/api en el navegador (con tu cuenta de Strava).")
                 step(2, "Crea una aplicación: nombre «Pulso», categoría «Data Importer», web «http://localhost».")
@@ -153,8 +158,11 @@ struct StravaSetupView: View {
                 }
                 .disabled(clientID.trimmingCharacters(in: .whitespaces).isEmpty || secret.trimmingCharacters(in: .whitespaces).isEmpty)
             }
+                    }
+            .listRowBackground(Theme.card)
         }
-        .navigationTitle("Configurar Strava")
+        .pulsoList()
+        .pulsoTitle("Configurar Strava")
         .onAppear {
             clientID = strava.credentials.clientID
             secret = strava.credentials.clientSecret
@@ -172,11 +180,15 @@ struct StravaSetupView: View {
 struct ExportHelpView: View {
     var body: some View {
         List {
+            Group {
             Text("Abre cualquier entreno (pestaña Hoy → Esfuerzo → toca el entreno) y pulsa «Exportar FIT / TCX». Puedes enviarlo a Garmin Connect, TrainingPeaks, Intervals.icu, Runalyze, Final Surge o guardarlo en Archivos.")
             Text("FIT es el formato nativo de Garmin y el que mejor importan todas estas plataformas. TCX es una alternativa en texto.")
             Text("Para exportar todos tus datos (días, entrenos y cada segundo), usa Más → Datos → Preparar exportación CSV.")
+                    }
+            .listRowBackground(Theme.card)
         }
+        .pulsoList()
         .font(.subheadline)
-        .navigationTitle("Exportar entrenos")
+        .pulsoTitle("Exportar entrenos")
     }
 }
