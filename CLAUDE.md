@@ -90,6 +90,17 @@ docs/PROTOCOLO.md       referencia del protocolo BLE de la WHOOP 5.0
 - AccentColor era casi negro (botones invisibles en hojas): ahora blanco. Capturas en es_ES y sin
   pedir permisos.
 
+## Estado (2026-10-27, interfaz nueva)
+
+- Interfaz rehecha con el estilo de las capturas de referencia de Gus (WHOOP): fondo pizarra, títulos en
+  mayúsculas espaciadas, tarjetas, flechas ▲▼ vs tu media. Componentes en `App/Design/PulsoUI.swift`.
+- Pestañas: Inicio (`Home/HomeView`: diales, panel personalizable, esfuerzo-recuperación, estrés, coach),
+  Salud (`Health/HealthView`: Edad Pulso, ritmo, monitor de salud, hábitos), Análisis, En vivo, Más.
+- Detalles: `RecoveryDetailView`, `SleepDetailView` (fases seleccionables), `StrainDetailView`,
+  `StressMonitorView`, `Trends/TrendDetailView` (S/M/6M, navegación, tocar para leer), `Device/DeviceView`
+  + `PairingFlowView`. Lógica probada en PulsoKit: `TrendSeries`, `PulsoAge`.
+- Ojo con Swift Charts y ejes categóricos: fijar `.chartXScale(domain:)` o el orden sale mal.
+
 ## Compilar y dejarlo verde
 
 1. Comprueba que hay Git (`git --version`). Si no hay historial (`git log` falla): `git init -b main`, `git add -A` y un commit.
