@@ -16,6 +16,13 @@ struct AgeTrendCard: View {
         }
     }
 
+    /// Both your Edad Pulso and your real age in view, with room for the labels.
+    private func yDomain(_ pts: [(day: String, age: Double)]) -> ClosedRange<Double> {
+        let values = pts.map(\.age) + [Double(model.profile.age)]
+        let lo = (values.min() ?? 0) - 1.5, hi = (values.max() ?? 1) + 1.5
+        return lo...hi
+    }
+
     var body: some View {
         let pts = points
         if pts.count >= 2 {
@@ -40,7 +47,7 @@ struct AgeTrendCard: View {
                     }
                 }
                 .chartXScale(domain: pts.map(\.day))
-                .chartYScale(domain: .automatic(includesZero: false))
+                .chartYScale(domain: yDomain(pts))
                 .chartXAxis {
                     AxisMarks(values: pts.enumerated().filter { $0.offset % 6 == 0 }.map(\.element.day)) { v in
                         AxisValueLabel { Text(Fmt.shortDay(v.as(String.self) ?? "")).font(.system(size: 9)).foregroundStyle(Theme.secondary) }

@@ -63,9 +63,22 @@ struct NotificationsView: View {
                 Label(kind.label, systemImage: kind.icon)
             }
             if prefs.isOn(kind) {
-                Toggle(isOn: Binding(get: { prefs.buzzes(kind) }, set: { prefs.strapBuzz[kind] = $0 })) {
-                    Text("Vibrar también la pulsera").font(.caption).foregroundStyle(Theme.secondary)
+                // A compact chip instead of a second full-size switch (two switches stacked looked like one).
+                let on = prefs.buzzes(kind)
+                Button {
+                    prefs.strapBuzz[kind] = !on
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: on ? "checkmark.circle.fill" : "circle")
+                        Text("Vibrar también la pulsera")
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(on ? Theme.better : Theme.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background((on ? Theme.better : Color.white).opacity(0.1), in: Capsule())
                 }
+                .buttonStyle(.borderless)
                 .padding(.leading, 34)
             }
         }
