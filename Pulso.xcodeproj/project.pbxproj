@@ -21,10 +21,14 @@
 		218166DCE7B27B0A2DD4BF15 /* HealthExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049D6A771E25C447562AEB4C /* HealthExporter.swift */; };
 		25DD41775A86B539D7091A0B /* PulsoUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B8CA0883E1DEAC80C6505A /* PulsoUI.swift */; };
 		2902879EC6B28E9A313EB1A7 /* PulsoAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = BC439BBC127CE8F349C0E7BA /* PulsoAnalytics */; };
+		30B7D15E2EDD560429EE8610 /* LiveToolsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F1F7E70238E2E9C5503EB11 /* LiveToolsViews.swift */; };
+		315ACB70AA65EAE35909FF31 /* AnalysisExtras.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08ACF90F7A6696897B92102D /* AnalysisExtras.swift */; };
 		378E2EF8B819B2F13C93435F /* PulsoWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 147066976F825EC37E180D8B /* PulsoWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		382C6437F48B3C4E8794153E /* AppModel+LiveTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0E1264DB682C2047BC5EF2B /* AppModel+LiveTools.swift */; };
 		3898325454148FFC9C09DEB8 /* AppModel+Integrations.swift in Sources */ = {isa = PBXBuildFile; fileRef = C503C8997F985D7830590883 /* AppModel+Integrations.swift */; };
 		409D00D09EB3F215AB48191C /* IntegrationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B571906E4B79EDFE8EFB1F3 /* IntegrationsView.swift */; };
 		478DBA92649DE0D238C3EF9C /* PulsoIntelligence in Frameworks */ = {isa = PBXBuildFile; productRef = 69EB1A84EDF7EC44415AD012 /* PulsoIntelligence */; };
+		48DBFEAAD91B32F898E61D9B /* AppModel+Backups.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D613820EAB6E5FBD202DAC9 /* AppModel+Backups.swift */; };
 		491F9D83AA1C5E9A7582B200 /* ScreenshotHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1183B3B45AF7B42BEB185F1 /* ScreenshotHost.swift */; };
 		4F82FFD8F50A9C4411C8C1D2 /* AppModel+Intelligence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FA5FA79CF962FD0E9C9894 /* AppModel+Intelligence.swift */; };
 		5065E109D9B59DB5FE889B17 /* AppMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1A9EBEA35EEB9D012522A0 /* AppMode.swift */; };
@@ -52,6 +56,7 @@
 		8DBE1C6BB50DC3274C07E853 /* PulsoFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = 7C50D970881B2336E0D252C3 /* PulsoFeatures */; };
 		9279693D6004DF6417213423 /* AppModel+WhoopImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9719244373411EDA28B0B0BA /* AppModel+WhoopImport.swift */; };
 		9A67114F66AB01B5E7C44392 /* SleepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB407F8648481A39B5E40EF5 /* SleepView.swift */; };
+		9E825A3F93383D3F0F685492 /* StravaBuiltIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99F5A3BC8976E79A2A7308D /* StravaBuiltIn.swift */; };
 		A0C504DC34A0BC013711B01F /* StrapManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF38BA3BF430C3D8648D340B /* StrapManager.swift */; };
 		A5A092E7EF1F7B04D2637CD7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1E7C1A9FFD218203A2C9FCC /* Assets.xcassets */; };
 		A97CA0EA67BAA203FDB808ED /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3898427913C7120A8F0272D8 /* SwiftUI.framework */; };
@@ -108,6 +113,7 @@
 		058E282DF080510D9A019857 /* AppModel+Alarms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Alarms.swift"; sourceTree = "<group>"; };
 		064AFFADF4B66E2B2C7202D1 /* AddActivitySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddActivitySheet.swift; sourceTree = "<group>"; };
 		06B8CA0883E1DEAC80C6505A /* PulsoUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulsoUI.swift; sourceTree = "<group>"; };
+		08ACF90F7A6696897B92102D /* AnalysisExtras.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisExtras.swift; sourceTree = "<group>"; };
 		0F3DC5A42BA8A4BADF3BE76E /* AppModel+Demo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Demo.swift"; sourceTree = "<group>"; };
 		11087717362B58950669102A /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		1443BEDDB403CC475550F874 /* Pulso.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Pulso.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -117,6 +123,8 @@
 		1CF0170FEA524F8ADCD58BC9 /* AlarmsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmsView.swift; sourceTree = "<group>"; };
 		1D1A9EBEA35EEB9D012522A0 /* AppMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMode.swift; sourceTree = "<group>"; };
 		2392A2F04BF40C64240F84A4 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		2D613820EAB6E5FBD202DAC9 /* AppModel+Backups.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Backups.swift"; sourceTree = "<group>"; };
+		2F1F7E70238E2E9C5503EB11 /* LiveToolsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveToolsViews.swift; sourceTree = "<group>"; };
 		307D9B110CF3B0638ABB3DBA /* StravaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StravaService.swift; sourceTree = "<group>"; };
 		365C60DF1EDF99A64A3F77F5 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		3898427913C7120A8F0272D8 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -150,6 +158,7 @@
 		B1E7C1A9FFD218203A2C9FCC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B2A75C5CE7713B6A837323C9 /* TrendDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendDetailView.swift; sourceTree = "<group>"; };
 		BAC2BB99291300E6532DA892 /* WhoopImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopImportView.swift; sourceTree = "<group>"; };
+		C0E1264DB682C2047BC5EF2B /* AppModel+LiveTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+LiveTools.swift"; sourceTree = "<group>"; };
 		C46DE8E45CB470E5130FE5D6 /* PulsoKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PulsoKit; path = Packages/PulsoKit; sourceTree = SOURCE_ROOT; };
 		C503C8997F985D7830590883 /* AppModel+Integrations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Integrations.swift"; sourceTree = "<group>"; };
 		C541C819922FB262D1C70685 /* SleepQuestionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepQuestionCard.swift; sourceTree = "<group>"; };
@@ -158,6 +167,7 @@
 		CE86511B89CA2744344363BE /* StrainDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrainDetailView.swift; sourceTree = "<group>"; };
 		CF9DBA0290D4A8B60878C853 /* TrendMetric.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendMetric.swift; sourceTree = "<group>"; };
 		D1183B3B45AF7B42BEB185F1 /* ScreenshotHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotHost.swift; sourceTree = "<group>"; };
+		D99F5A3BC8976E79A2A7308D /* StravaBuiltIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StravaBuiltIn.swift; sourceTree = "<group>"; };
 		E939C87F93579B4FB3C7B491 /* AppModel+Workouts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Workouts.swift"; sourceTree = "<group>"; };
 		EE6BDCECB7512E289ABE721F /* IntelligenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceView.swift; sourceTree = "<group>"; };
 		EEE35576CE0CAEAC011BFBCC /* VO2MaxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VO2MaxView.swift; sourceTree = "<group>"; };
@@ -299,6 +309,7 @@
 				7FF91A8F4F1FF8E1C89FB6C0 /* AlarmBackup.swift */,
 				8CB7ACF6CD2CDD29DC59CA80 /* Keychain.swift */,
 				365C60DF1EDF99A64A3F77F5 /* NotificationService.swift */,
+				D99F5A3BC8976E79A2A7308D /* StravaBuiltIn.swift */,
 				307D9B110CF3B0638ABB3DBA /* StravaService.swift */,
 				922F90409F3846A9F3965840 /* VoiceCoach.swift */,
 			);
@@ -317,12 +328,14 @@
 			isa = PBXGroup;
 			children = (
 				1CF0170FEA524F8ADCD58BC9 /* AlarmsView.swift */,
+				08ACF90F7A6696897B92102D /* AnalysisExtras.swift */,
 				F25DDB647492817FC6DC66D1 /* BedtimeView.swift */,
 				A64EAE06663BC70D64B2C18E /* ECGView.swift */,
 				606ADA2594C918C41A1C5114 /* GuideView.swift */,
 				7B571906E4B79EDFE8EFB1F3 /* IntegrationsView.swift */,
 				EE6BDCECB7512E289ABE721F /* IntelligenceView.swift */,
 				56920E1410B972C2828F9517 /* LabView.swift */,
+				2F1F7E70238E2E9C5503EB11 /* LiveToolsViews.swift */,
 				673D2D69F4A2BA0DF7310097 /* LiveView.swift */,
 				F0F5307F0B496F78D6CEE4C3 /* MoreView.swift */,
 				1BAA35F53258C2512C5C5A25 /* NotificationsView.swift */,
@@ -400,12 +413,14 @@
 				11087717362B58950669102A /* AppModel.swift */,
 				058E282DF080510D9A019857 /* AppModel+Alarms.swift */,
 				9D97BD4A2354F19625BDB43B /* AppModel+Alerts.swift */,
+				2D613820EAB6E5FBD202DAC9 /* AppModel+Backups.swift */,
 				3DAD1FDE9D240585A9FB4CF5 /* AppModel+Bedtime.swift */,
 				0F3DC5A42BA8A4BADF3BE76E /* AppModel+Demo.swift */,
 				4682CF202FFB386AFDDD3C77 /* AppModel+Diagnostics.swift */,
 				759E973D6AB94AEE832D905E /* AppModel+ECG.swift */,
 				C503C8997F985D7830590883 /* AppModel+Integrations.swift */,
 				F0FA5FA79CF962FD0E9C9894 /* AppModel+Intelligence.swift */,
+				C0E1264DB682C2047BC5EF2B /* AppModel+LiveTools.swift */,
 				729BA767EEBCB9A245BC00B4 /* AppModel+Naps.swift */,
 				9719244373411EDA28B0B0BA /* AppModel+WhoopImport.swift */,
 				E939C87F93579B4FB3C7B491 /* AppModel+Workouts.swift */,
@@ -524,15 +539,18 @@
 				D17F8AFED7E926FF34FFD846 /* AgeTrendCard.swift in Sources */,
 				FBC1DAF6A25D6FAD52B629B4 /* AlarmBackup.swift in Sources */,
 				B22EA2E3DFFA78E36B248934 /* AlarmsView.swift in Sources */,
+				315ACB70AA65EAE35909FF31 /* AnalysisExtras.swift in Sources */,
 				5065E109D9B59DB5FE889B17 /* AppMode.swift in Sources */,
 				8083260824C6E4DF1E6A80F1 /* AppModel+Alarms.swift in Sources */,
 				06380F20CB314170E9DAB681 /* AppModel+Alerts.swift in Sources */,
+				48DBFEAAD91B32F898E61D9B /* AppModel+Backups.swift in Sources */,
 				B558C891F36E99AE7AC9D0C7 /* AppModel+Bedtime.swift in Sources */,
 				DBC004974ECE86C6D9A8E747 /* AppModel+Demo.swift in Sources */,
 				7AA299176873D0A166160DAD /* AppModel+Diagnostics.swift in Sources */,
 				1E3FAE6A1EA4A54D2681F14C /* AppModel+ECG.swift in Sources */,
 				3898325454148FFC9C09DEB8 /* AppModel+Integrations.swift in Sources */,
 				4F82FFD8F50A9C4411C8C1D2 /* AppModel+Intelligence.swift in Sources */,
+				382C6437F48B3C4E8794153E /* AppModel+LiveTools.swift in Sources */,
 				D42A5C3F3FE889EED5495A47 /* AppModel+Naps.swift in Sources */,
 				9279693D6004DF6417213423 /* AppModel+WhoopImport.swift in Sources */,
 				1635FD0137264C861147A992 /* AppModel+Workouts.swift in Sources */,
@@ -549,6 +567,7 @@
 				541F11AB3780605F53186899 /* IntelligenceView.swift in Sources */,
 				168B5D31F86DE726CB4DC749 /* Keychain.swift in Sources */,
 				D24A55204E1ADC4E25064FC9 /* LabView.swift in Sources */,
+				30B7D15E2EDD560429EE8610 /* LiveToolsViews.swift in Sources */,
 				7534AB1B677AAB47BFF9E7C7 /* LiveView.swift in Sources */,
 				72C4FDA58821B05CC57D2BAC /* MoreView.swift in Sources */,
 				633AB00BAA23E7FCC48C54E3 /* NotificationService.swift in Sources */,
@@ -564,6 +583,7 @@
 				9A67114F66AB01B5E7C44392 /* SleepView.swift in Sources */,
 				525DBE4CAFACD944CA73FAB5 /* StrainDetailView.swift in Sources */,
 				A0C504DC34A0BC013711B01F /* StrapManager.swift in Sources */,
+				9E825A3F93383D3F0F685492 /* StravaBuiltIn.swift in Sources */,
 				B9F8E0400D91BC45D0890F2B /* StravaService.swift in Sources */,
 				7891AEA7B2BB7A8F1CB34B99 /* Theme.swift in Sources */,
 				12B4AD8F077B841DEC5540AA /* TodayView.swift in Sources */,
