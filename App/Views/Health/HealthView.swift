@@ -52,8 +52,8 @@ struct HealthView: View {
                 Caps("Ritmo de envejecimiento", size: 12)
                 Spacer()
                 if let p = r.pace {
-                    DeltaChip(text: p < 1 ? "más lento que tu norma" : (p > 1 ? "más rápido que tu norma" : "como tu norma"),
-                              delta: Delta(p, 1, higherIsBetter: false, tolerance: 0.01))
+                    DeltaChip(text: p < 0.95 ? "más lento que tu norma" : (p > 1.05 ? "más rápido que tu norma" : "como tu norma"),
+                              delta: Delta(p, 1, higherIsBetter: false, tolerance: 0.05))
                 }
             }
             HStack {
