@@ -11,6 +11,7 @@ enum ShotScreen: String, Identifiable {
     case guide, guideData, guideRecovery, guideAlarm, whoopImport
     case recovery, strain, stress, trendRecovery, trendStrain, trendHRV, device, pairing, deviceAdvanced
     case sleepQuestion, vo2, plan, addActivity
+    case scan, coherence, poincare, orthostatic, explorer, calendar, monthly, storage
 
     var id: String { rawValue }
 
@@ -59,16 +60,37 @@ extension AppModel {
         }
     }
 
-    /// Feeds a plausible live heart rate (for the live-screen screenshot).
-    func startDemoLiveFeed() {
-        var t = 0.0
+    /// Feeds a plausible live heart rate (for the live-screen screenshots). `resting`: seated and breathing
+    /// slowly, with five minutes of beats already in, so the scan, Poincaré and coherence have something to show.
+    func startDemoLiveFeed(resting: Bool = false) {
+        func rr(at s: Double) -> Double {
+            resting ? 880 + 70 * sin(2 * .pi * 6 / 60 * s) + Double.random(in: -12...12) : 60000 / (152 + 12 * sin(s / 25))
+        }
+        let now = Date().timeIntervalSince1970
+        if resting {
+            var t = now - 300
+            while t < now {
+                let v = rr(at: t)
+                t += v / 1000
+                liveBeats.append(.init(t: t, rr: v))
+            }
+            saveLiveTest(LiveTestRecord(date: Date().addingTimeInterval(-86400 * 2), kind: .scan, value: 64, hr: 71, rmssd: 38, resp: 14.2, stress: 1.1, detail: "Algo activado"))
+            saveLiveTest(LiveTestRecord(date: Date().addingTimeInterval(-86400), kind: .scan, value: 82, hr: 66, rmssd: 52, resp: 13.1, stress: 0.5, detail: "En calma"))
+            saveLiveTest(LiveTestRecord(date: Date().addingTimeInterval(-3600 * 20), kind: .orthostatic, value: 17, hr: 79, rmssd: 31, detail: "62→79 lpm"))
+        }
+        var clock = now
         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
-                t += 1
-                let hr = Int(152 + 12 * sin(t / 25) + Double.random(in: -3...3))
-                let rr = [Int(60000 / Double(hr))]
-                self.handleLive(heartRate: hr, rr: rr, at: Date())
+                var beats: [Int] = []
+                let end = Date().timeIntervalSince1970
+                while clock < end {
+                    let v = rr(at: clock)
+                    clock += v / 1000
+                    beats.append(Int(v))
+                }
+                let hr = Int(60000 / Double(max(1, beats.last ?? 800)))
+                self.handleLive(heartRate: hr, rr: beats, at: Date())
             }
         }
     }
@@ -123,6 +145,14 @@ struct ShotDestination: View {
                                                                 minutesAwake: 4, minutesLight: 38, minutesDeep: 8))
                     }
                 case .whatif: WhatIfView()
+                case .scan: ScanView()
+                case .coherence: CoherenceView()
+                case .poincare: PoincareView()
+                case .orthostatic: OrthostaticTestView()
+                case .explorer: RelationExplorerView()
+                case .calendar: CalendarRecordsView()
+                case .monthly: MonthlyReportView()
+                case .storage: StorageView()
                 case .intelDetail:
                     if let m = model.intelligence?.metric("forecast") { MetricDetailView(metric: m) } else { Text("Calculando…") }
                 default: EmptyView()

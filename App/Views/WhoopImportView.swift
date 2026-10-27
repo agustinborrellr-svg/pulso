@@ -24,7 +24,7 @@ struct WhoopImportView: View {
         List {
             Group {
             Section {
-                Text("En la app de WHOOP: *Más → Ajustes de la app → Exportar datos*. Te llega un .zip por correo: ábrelo en Archivos (se descomprime solo) y elige aquí los CSV que quieras.")
+                Text("En la app de tu pulsera anterior: *Ajustes → Exportar datos*. Te llega un .zip por correo: ábrelo en Archivos (se descomprime solo) y elige aquí los CSV que quieras.")
                     .font(.subheadline)
             }
 
@@ -37,7 +37,7 @@ struct WhoopImportView: View {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(f.name)
-                                Text("No es un archivo de WHOOP: no se importará").font(.caption).foregroundStyle(Theme.yellow)
+                                Text("No es un archivo de exportación compatible: no se importará").font(.caption).foregroundStyle(Theme.yellow)
                             }
                         } icon: {
                             Image(systemName: "questionmark.circle").foregroundStyle(Theme.yellow)
@@ -94,7 +94,7 @@ struct WhoopImportView: View {
             .listRowBackground(Theme.card)
         }
         .pulsoList()
-        .pulsoTitle("Importar de WHOOP")
+        .pulsoTitle("Importar historial")
         .navigationBarTitleDisplayMode(.inline)
         .fileImporter(isPresented: $picking, allowedContentTypes: [.commaSeparatedText, .plainText, .text],
                       allowsMultipleSelection: true) { r in
@@ -193,7 +193,7 @@ struct WhoopImportView: View {
     }
 
     private func fileLine(_ f: WhoopExport.FileReport) -> String {
-        guard f.kind != nil else { return "\(f.name): no es de WHOOP, ignorado" }
+        guard f.kind != nil else { return "\(f.name): no es compatible, ignorado" }
         var s = "\(f.name): \(f.used) de \(f.rows) filas"
         if f.skipped > 0 { s += " (\(f.skipped) vacías o sin datos)" }
         return s

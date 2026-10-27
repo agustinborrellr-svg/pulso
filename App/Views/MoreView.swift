@@ -13,7 +13,6 @@ struct MoreView: View {
     @State private var confirmErase = false
     @State private var confirmForget = false
     @State private var pendingStrap: DiscoveredStrap?
-    @State private var confirmDemo = false
     @State private var diagnosticsURL: URL?
     @State private var showGuide = false
 
@@ -119,7 +118,7 @@ struct MoreView: View {
                     } label: {
                         Label("Cómo se calcula cada métrica", systemImage: "function")
                     }
-                    Text("Pulso es un proyecto personal no afiliado a WHOOP, Inc. No es un dispositivo médico: todas las métricas son estimaciones de bienestar.")
+                    Text("Pulso no es un dispositivo médico: todas las métricas son estimaciones de bienestar.")
                         .font(.footnote)
                         .foregroundStyle(Theme.secondary)
                 }
@@ -158,12 +157,12 @@ struct MoreView: View {
                     .font(.title2)
                     .foregroundStyle(model.strapState.isConnected ? Theme.green : Theme.secondary)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(model.identity.name.isEmpty ? "WHOOP 5.0" : model.identity.name).font(.headline)
+                    Text(model.identity.name.isEmpty ? "Pulse Band 5.0" : Fmt.bandName(model.identity.name)).font(.headline)
                     StrapStatusLine()
                 }
             }
             if case .pairingRefused = model.strapState {
-                Text("La pulsera no acepta el emparejamiento. Sigue la guía: suele estar todavía vinculada a la app de WHOOP o a un emparejamiento antiguo del iPhone.")
+                Text("La pulsera no acepta el emparejamiento. Sigue la guía: suele estar todavía vinculada a otra app o a un emparejamiento antiguo del iPhone.")
                     .font(.footnote)
                     .foregroundStyle(Theme.yellow)
             }
@@ -173,7 +172,7 @@ struct MoreView: View {
             if !model.identity.serial.isEmpty { LabeledContent("Número de serie", value: model.identity.serial) }
             if !model.identity.firmware.isEmpty { LabeledContent("Firmware", value: model.identity.firmware) }
             if !model.identity.hardware.isEmpty {
-                LabeledContent("Modelo", value: model.identity.isMG ? "WHOOP MG (\(model.identity.hardware))" : "WHOOP 5.0 (\(model.identity.hardware))")
+                LabeledContent("Modelo", value: model.identity.isMG ? "Pulse Band MG (\(model.identity.hardware))" : "Pulse Band 5.0 (\(model.identity.hardware))")
             }
             LabeledContent("Última sincronización", value: Fmt.relative(model.lastSync))
             LabeledContent("Datos guardados", value: Self.storedText(model.rawSampleCount))
@@ -265,7 +264,7 @@ struct MoreView: View {
             }
             Button("Cancelar", role: .cancel) { pendingStrap = nil }
         } message: {
-            Text("Una WHOOP solo admite un emparejamiento. Asegúrate de que no es la pulsera vinculada a tu cuenta de WHOOP.")
+            Text("La pulsera solo admite un emparejamiento. Asegúrate de que no está vinculada a otra app.")
         }
     }
 
@@ -281,30 +280,18 @@ struct MoreView: View {
 
     private var dataSection: some View {
         Section {
+            // Demo data only exists for the CI screenshots; if an old install still has it, offer to remove it.
             if model.demoActive {
                 Button(role: .destructive) {
                     model.clearDemo()
                 } label: {
-                    Label("Quitar datos de demostración", systemImage: "sparkles")
-                }
-            } else {
-                Button {
-                    if model.rawSampleCount > 0 { confirmDemo = true } else { model.loadDemo() }
-                } label: {
-                    Label(model.analyzing ? "Preparando demo… \(Int(model.analysisProgress * 100))%" : "Cargar datos de demostración",
-                          systemImage: "sparkles")
-                }
-                .disabled(model.analyzing)
-                .confirmationDialog("Ya tienes datos reales. La demo se mezclaría con ellos y para quitarla hay que borrar todo.",
-                                    isPresented: $confirmDemo, titleVisibility: .visible) {
-                    Button("Cargar igualmente") { model.loadDemo() }
-                    Button("Cancelar", role: .cancel) {}
+                    Label("Quitar datos de ejemplo", systemImage: "sparkles")
                 }
             }
             NavigationLink {
                 WhoopImportView()
             } label: {
-                Label("Importar de WHOOP (CSV)", systemImage: "square.and.arrow.down")
+                Label("Importar historial (CSV)", systemImage: "square.and.arrow.down")
             }
             Button {
                 exportURLs = model.exportFiles()
@@ -341,17 +328,10 @@ struct MoreView: View {
                 Label(model.analyzing ? "Analizando… \(Int(model.analysisProgress * 100))%" : "Recalcular todo", systemImage: "wand.and.stars")
             }
             .disabled(model.analyzing)
-            Picker(selection: Binding(get: { model.profile.rawRetentionDays }, set: { v in
-                var p = model.profile
-                p.rawRetentionDays = v
-                model.saveProfile(p)
-            })) {
-                Text("30 días").tag(30)
-                Text("120 días").tag(120)
-                Text("1 año").tag(365)
-                Text("Siempre").tag(0)
+            NavigationLink {
+                StorageView()
             } label: {
-                Label("Guardar datos por segundo", systemImage: "internaldrive")
+                Label("Almacenamiento y copias automáticas", systemImage: "internaldrive")
             }
             Button(role: .destructive) {
                 confirmErase = true
@@ -364,7 +344,7 @@ struct MoreView: View {
         } header: {
             Text("Datos")
         } footer: {
-            Text("La demo genera cinco semanas simuladas (noches buenas y malas, entrenos, unos días de «incubar algo») para probar todo sin pulsera. Todo se guarda solo en tu iPhone. La copia de seguridad incluye todo (también cada segundo de datos); guárdala en Archivos o iCloud Drive. Para importar de WHOOP, exporta tus datos desde su app y sube los CSV que quieras (ciclos, sueño, entrenos, diario): verás tu historial y tus líneas base estarán listas desde el primer día.")
+            Text("Todo se guarda en tu iPhone y nunca se borra solo. Pulso hace copias automáticas cada día y cada semana, y otra antes de importar, restaurar o borrar. Para traer tu historial de otra pulsera, exporta sus CSV y súbelos en «Importar historial»: tus líneas base estarán listas desde el primer día.")
         }
     }
 }
@@ -467,8 +447,8 @@ struct PairingGuideView: View {
         List {
             Group {
             Section {
-                step(1, "Libera la pulsera", "La WHOOP 5.0 solo admite un emparejamiento a la vez. En la app de WHOOP, desvincula la pulsera (o desinstala la app).")
-                step(2, "Olvida el emparejamiento antiguo", "iPhone → Ajustes → Bluetooth → toca (i) junto a la WHOOP → Omitir dispositivo.")
+                step(1, "Libera la pulsera", "La pulsera solo admite un emparejamiento a la vez. Si la usabas con otra app, desvincúlala allí (o desinstala esa app).")
+                step(2, "Olvida el emparejamiento antiguo", "iPhone → Ajustes → Bluetooth → toca (i) junto a la pulsera → Omitir dispositivo.")
                 step(3, "Modo emparejamiento", "Toca la pulsera varias veces seguidas hasta que los LED parpadeen en azul.")
                 step(4, "Empareja con Pulso", "En Más → Pulsera, pulsa «Buscar pulseras cercanas», elige la tuya por su nombre y acepta la solicitud de emparejamiento de iOS.")
             } header: {
@@ -520,8 +500,8 @@ struct MethodologyView: View {
     var body: some View {
         List {
             Group {
-            item("Datos de la pulsera", "Cada segundo la WHOOP 5.0 guarda FC, intervalos R-R, gravedad y movimiento, temperatura de la piel, SpO₂ (de noche), pasos y su propio estado de sueño. Pulso lo descarga por Bluetooth con el protocolo documentado por la comunidad open source y lo guarda en el iPhone.")
-            item("VFC (RMSSD)", "Raíz cuadrática media de las diferencias entre latidos consecutivos (Task Force 1996), tras filtrar artefactos (±20 % de la mediana local). Solo se usan pares de latidos consecutivos reales. El valor nocturno se mide en las ventanas de sueño profundo, como hace WHOOP.")
+            item("Datos de la pulsera", "Cada segundo la pulsera guarda FC, intervalos R-R, gravedad y movimiento, temperatura de la piel, SpO₂ (de noche), pasos y su propio estado de sueño. Pulso lo descarga por Bluetooth con el protocolo documentado por la comunidad open source y lo guarda en el iPhone.")
+            item("VFC (RMSSD)", "Raíz cuadrática media de las diferencias entre latidos consecutivos (Task Force 1996), tras filtrar artefactos (±20 % de la mediana local). Solo se usan pares de latidos consecutivos reales. El valor nocturno se mide en las ventanas de sueño profundo, donde el pulso es más estable.")
             item("FC en reposo", "Media de la FC en esas mismas ventanas de sueño profundo (si no hay, el percentil 10 de la noche).")
             item("Respiración", "Arritmia sinusal respiratoria: el ritmo cardiaco se acelera al inspirar. Se busca la frecuencia dominante (0,1–0,5 Hz) del tacograma R-R remuestreado a 4 Hz.")
             item("Detección y fases del sueño", "Quietud (acelerómetro), caída de la FC y el propio estado de sueño de la pulsera detectan el periodo. Las fases (despierto/ligero/profundo/REM) salen de FC, variabilidad de FC, VFC y movimiento por minuto, suavizadas con un modelo oculto de Markov (Viterbi).")
@@ -601,7 +581,7 @@ struct OnboardingView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 27, style: .continuous))
                 .shadow(color: Theme.red.opacity(0.4), radius: 20)
             Text("Pulso").font(.largeTitle.bold())
-            Text("Tu WHOOP 5.0, sin la nube. Recuperación, esfuerzo, sueño y estrés calculados en tu iPhone, con cada fórmula a la vista.")
+            Text("Tu Pulse Band, sin la nube. Recuperación, esfuerzo, sueño y estrés calculados en tu iPhone, con cada fórmula a la vista.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.secondary)
                 .padding(.horizontal, 24)
@@ -642,12 +622,55 @@ struct OnboardingView: View {
                 Text("Emparejar, cuando quieras").font(.title2.bold())
                 Text("Pulso no se conecta a ninguna pulsera por su cuenta. Cuando quieras, toca el icono de la pulsera arriba a la derecha en Inicio y sigue los pasos.")
                     .foregroundStyle(Theme.secondary)
-                Label("Usa una pulsera que no esté vinculada a tu cuenta de WHOOP (solo admite un emparejamiento).", systemImage: "1.circle.fill")
-                Label("En Ajustes → Bluetooth, omite la WHOOP si aparece.", systemImage: "2.circle.fill")
+                Label("Usa una pulsera que no esté vinculada a otra app (solo admite un emparejamiento).", systemImage: "1.circle.fill")
+                Label("En Ajustes → Bluetooth, omite la pulsera si aparece.", systemImage: "2.circle.fill")
                 Label("Toca la pulsera varias veces hasta que parpadee en azul.", systemImage: "3.circle.fill")
                 Label("Elígela en la lista y acepta la solicitud de emparejamiento de iOS.", systemImage: "4.circle.fill")
             }
             .padding(24)
         }
+    }
+}
+
+/// What «datos por segundo» are, how much room they take and where the automatic copies live.
+struct StorageView: View {
+    @EnvironmentObject var model: AppModel
+    @State private var summary = ""
+
+    var body: some View {
+        List {
+            Section {
+                Picker(selection: Binding(get: { model.profile.rawRetentionDays }, set: { v in
+                    var p = model.profile
+                    p.rawRetentionDays = v
+                    model.saveProfile(p)
+                })) {
+                    Text("Siempre (recomendado)").tag(0)
+                    Text("1 año").tag(365)
+                    Text("120 días").tag(120)
+                    Text("30 días").tag(30)
+                } label: {
+                    Label("Guardar datos por segundo", systemImage: "waveform.path.ecg")
+                }
+            } footer: {
+                Text("La pulsera mide cada segundo: pulso, intervalos entre latidos, movimiento, temperatura, SpO₂ y pasos. Son los datos en bruto con los que Pulso calcula todo lo demás. Guardarlos permite recalcular el historial cuando mejoran los algoritmos y ver gráficas al detalle. Ocupan unos 4–5 MB por día (unos 1,7 GB al año). Si eliges un límite, solo se borra el detalle segundo a segundo más antiguo: tus puntuaciones, sueños, entrenos, diario e importaciones se guardan siempre.")
+            }
+            Section {
+                Text(summary.isEmpty ? "Calculando…" : summary)
+                    .font(.subheadline)
+                if let dir = AppModel.backupsFolder, let url = URL(string: "shareddocuments://" + dir.path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)!) {
+                    Link(destination: url) {
+                        Label("Abrir en Archivos", systemImage: "folder")
+                    }
+                }
+            } header: {
+                Text("Copias automáticas")
+            } footer: {
+                Text("Cada día: copia ligera (todo menos el detalle por segundo), se guardan 14. Cada semana: copia completa, se guardan 3. Y una copia completa antes de importar, restaurar o borrar. Están en Archivos → En mi iPhone → Pulso → Copias de seguridad, y entran en la copia de iCloud del iPhone. Para restaurar una: Más → Restaurar una copia.")
+            }
+        }
+        .pulsoList()
+        .pulsoTitle("Almacenamiento")
+        .onAppear { summary = model.storageSummary }
     }
 }

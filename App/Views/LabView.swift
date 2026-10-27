@@ -62,7 +62,7 @@ struct LabView: View {
             } header: {
                 Text("Vibración")
             } footer: {
-                Text("Prueba otras formas de onda de la pulsera. La pareja 47/152 es la de las notificaciones de WHOOP. Solo hace vibrar: no cambia nada en la pulsera.")
+                Text("Prueba otras formas de onda de la pulsera. La pareja 47/152 es la de las notificaciones normales de la pulsera. Solo hace vibrar: no cambia nada en la pulsera.")
             }
 
             Section {

@@ -122,7 +122,7 @@ struct StrainDetailView: View {
                         }
                         Spacer()
                         if w.source == .auto || w.source == .whoop {
-                            Caps(w.source == .auto ? "Auto" : "WHOOP", size: 9, color: Theme.secondary)
+                            Caps(w.source == .auto ? "Auto" : "Importado", size: 9, color: Theme.secondary)
                                 .padding(.horizontal, 6).padding(.vertical, 3)
                                 .background(Theme.cardHighlight, in: RoundedRectangle(cornerRadius: 4))
                         }

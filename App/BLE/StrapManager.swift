@@ -772,11 +772,11 @@ extension StrapManager: CBCentralManagerDelegate {
             // Leaving `.scanning` here would orphan the scan (its stop paths check that state).
             if !unsupportedLogged {
                 unsupportedLogged = true
-                log("Se ha encontrado una WHOOP 4.0: esta app es para WHOOP 5.0 / MG, la ignoro")
+                log("Se ha encontrado una pulsera de generación anterior: Pulso necesita una Pulse Band 5.0 / MG, la ignoro")
             }
             return
         }
-        let name = (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? peripheral.name ?? "WHOOP"
+        let name = (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? peripheral.name ?? "Pulse Band"
         let isNew = discovered[peripheral.identifier] == nil
         discovered[peripheral.identifier] = (peripheral, DiscoveredStrap(id: peripheral.identifier, name: name, rssi: RSSI.intValue))
         if isNew { log("Pulsera encontrada: \(name) (no se conecta hasta que la elijas)") }
@@ -824,7 +824,7 @@ extension StrapManager: CBPeripheralDelegate {
         }
         if !services.contains(where: { $0.uuid == StrapUUID.service }) {
             if services.contains(where: { $0.uuid == StrapUUID.gen4Service }) {
-                state = .unsupported("Esta app es para WHOOP 5.0 / MG. Se ha encontrado una WHOOP 4.0.")
+                state = .unsupported("Pulso necesita una Pulse Band 5.0 o MG. La pulsera encontrada es de una generación anterior.")
             }
         }
         for s in services {
@@ -870,7 +870,7 @@ extension StrapManager: CBPeripheralDelegate {
             if !bonded {
                 if insufficient {
                     state = .pairingRefused
-                    log("La pulsera rechaza el emparejamiento (probablemente sigue vinculada a la app de WHOOP)")
+                    log("La pulsera rechaza el emparejamiento (probablemente sigue vinculada a la app de su fabricante)")
                     handshakeFailed("emparejamiento rechazado")
                 } else {
                     log("Escritura fallida: \(error.localizedDescription)")

@@ -21,12 +21,12 @@ struct ECGListView: View {
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 6) {
-                        Label(model.identity.isMG ? "ECG de la WHOOP MG: pendiente" : "Tu pulsera no tiene ECG",
+                        Label(model.identity.isMG ? "ECG de la Pulse Band MG: pendiente" : "Tu pulsera no tiene ECG",
                               systemImage: "waveform.path.ecg.rectangle")
                             .font(.headline)
                         Text(model.identity.isMG
                              ? "Tu pulsera es una MG, pero su protocolo de ECG aún no está documentado. Con el Laboratorio puedes capturar las tramas y, cuando se conozca el formato, se activa aquí sin cambiar nada más."
-                             : "El electrocardiograma necesita los electrodos de la WHOOP MG. Todo está preparado: cuando tengas una, aparecerá aquí el botón para grabar.")
+                             : "El electrocardiograma necesita los electrodos de la Pulse Band MG. Todo está preparado: cuando tengas una, aparecerá aquí el botón para grabar.")
                             .font(.caption)
                             .foregroundStyle(Theme.secondary)
                     }
@@ -94,7 +94,7 @@ struct ECGRow: View {
 
     private var source: String {
         switch recording.source {
-        case .whoopMG: return "WHOOP MG"
+        case .whoopMG: return "Pulse Band MG"
         case .appleWatch: return "Apple Watch"
         case .simulated: return "simulado"
         }

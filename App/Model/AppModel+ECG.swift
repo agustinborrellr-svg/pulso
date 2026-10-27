@@ -12,7 +12,7 @@ extension AppModel {
         guard ecgSession == nil else { return }
         let rate = simulated ? 512 : mgDecoder.sampleRate
         guard rate > 0 else {
-            errorMessage = "Tu pulsera no puede hacer electrocardiogramas. Hace falta una WHOOP MG (y que se conozca su protocolo de ECG)."
+            errorMessage = "Tu pulsera no puede hacer electrocardiogramas. Hace falta una Pulse Band MG (y que se conozca su protocolo de ECG)."
             return
         }
         let session = ECGSessionBuilder(start: Int(Date().timeIntervalSince1970), sampleRate: rate, targetSeconds: 30)
@@ -90,7 +90,7 @@ extension AppModel {
         let a = ECGAnalyzer.analyze(full)
         let label: String
         switch full.source {
-        case .whoopMG: label = "WHOOP MG"
+        case .whoopMG: label = "Pulse Band MG"
         case .appleWatch: label = "Apple Watch"
         case .simulated: label = "Simulación (no es un registro real)"
         }

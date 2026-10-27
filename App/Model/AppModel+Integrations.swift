@@ -56,6 +56,10 @@ extension AppModel {
     }
 
     func uploadToStrava(_ w: Workout) {
+        guard SportCatalog.named(w.sport).shareable else {
+            importStatus = "«\(w.sport)» se queda solo en tu iPhone."
+            return
+        }
         guard strava.connected else {
             importStatus = "Conecta Strava en Más → Conexiones."
             return
@@ -76,6 +80,10 @@ extension AppModel {
     }
 
     func saveWorkoutToHealth(_ w: Workout) {
+        guard SportCatalog.named(w.sport).shareable else {
+            importStatus = "«\(w.sport)» se queda solo en tu iPhone."
+            return
+        }
         let track = workoutTrack(w)
         health.requestAuthorization { [weak self] _ in
             self?.health.saveWorkout(w, heartRate: track.heartRate) { uuid in
@@ -199,6 +207,7 @@ extension AppModel {
             return false
         }
         try? FileManager.default.removeItem(atPath: dest)
+        safetyBackup(reason: "restaurar")
         do {
             try FileManager.default.moveItem(at: tmp, to: URL(fileURLWithPath: dest))
             errorMessage = "Copia lista. Cierra Pulso del todo y vuelve a abrirla para restaurarla."

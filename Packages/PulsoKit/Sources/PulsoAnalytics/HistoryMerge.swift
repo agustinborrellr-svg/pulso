@@ -24,16 +24,32 @@ public enum HistoryMerge {
     /// Imported nights as sleep periods (bed and wake times; stages unknown, counted as light sleep) so the
     /// timing analyses — regularity, social jet lag, rhythm — can use the WHOOP history too.
     public static func sleeps(from imported: [DaySummary], excluding measured: Set<String>) -> [SleepSession] {
-        imported.compactMap { d -> SleepSession? in
-            guard !measured.contains(d.day), let a = d.sleepStart, let b = d.sleepEnd, b - a >= 3600, b - a <= 16 * 3600 else { return nil }
-            let minutes = (b - a) / 60
-            var s = SleepSession(start: a, end: b, stages: Array(repeating: .light, count: minutes))
-            s.minutesLight = d.sleepMinutes ?? Double(minutes)
-            s.minutesAwake = max(0, Double(minutes) - (d.sleepMinutes ?? Double(minutes)))
-            s.rhr = d.rhr
-            s.hrv = d.hrv
-            s.respRate = d.respRate
-            return s
+        imported.compactMap { d in measured.contains(d.day) ? nil : summarySleep(d) }
+    }
+
+    /// A night rebuilt from a day's totals (imported days, or days whose minute-by-minute session is missing):
+    /// stage minutes, disturbances and vitals, with every minute marked light because the order is unknown.
+    public static func summarySleep(_ d: DaySummary) -> SleepSession? {
+        guard let a = d.sleepStart, let b = d.sleepEnd, b - a >= 3600, b - a <= 16 * 3600 else { return nil }
+        let minutes = (b - a) / 60
+        let asleep = min(Double(minutes), d.sleepMinutes ?? Double(minutes))
+        var s = SleepSession(start: a, end: b, stages: Array(repeating: .light, count: minutes))
+        let deep = d.deepMinutes ?? 0, rem = d.remMinutes ?? 0
+        if deep + rem > 0, let light = d.lightMinutes {
+            s.minutesLight = light
+            s.minutesDeep = deep
+            s.minutesREM = rem
+            s.minutesAwake = d.awakeMinutes ?? max(0, Double(minutes) - light - deep - rem)
+        } else {
+            s.minutesLight = asleep
+            s.minutesAwake = max(0, Double(minutes) - asleep)
         }
+        s.disturbances = d.disturbances ?? 0
+        s.rhr = d.rhr
+        s.hrv = d.hrv
+        s.respRate = d.respRate
+        s.spo2 = d.spo2
+        s.skinTemp = d.skinTemp
+        return s
     }
 }

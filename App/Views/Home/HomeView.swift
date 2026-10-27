@@ -111,7 +111,7 @@ struct HomeView: View {
                        title: model.strapState.isConnected ? "Recopilando datos" : "Conecta tu pulsera",
                        message: model.strapState.isConnected
                            ? "Tu primera recuperación aparece tras la primera noche. Las líneas base se calibran en 4 noches."
-                           : "Toca el icono de la pulsera arriba a la derecha para emparejar tu WHOOP 5.0.")
+                           : "Toca el icono de la pulsera arriba a la derecha para emparejar tu Pulse Band.")
             if model.rawSampleCount > 0 {
                 Button("Analizar datos descargados") { model.recompute(fromDay: nil) }
                     .buttonStyle(PrimaryCapsuleStyle())

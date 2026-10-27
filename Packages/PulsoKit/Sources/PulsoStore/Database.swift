@@ -112,8 +112,17 @@ public final class PulsoDatabase {
         }
         try sql.transaction {
             try sql.run("""
-            INSERT OR REPLACE INTO samples(ts,hr,rr,gx,gy,gz,dyn,temp,spo2,steps,act,sstate,quality,poor,off)
+            INSERT INTO samples(ts,hr,rr,gx,gy,gz,dyn,temp,spo2,steps,act,sstate,quality,poor,off)
             VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(ts) DO UPDATE SET
+                hr = COALESCE(excluded.hr, samples.hr), rr = COALESCE(excluded.rr, samples.rr),
+                gx = COALESCE(excluded.gx, samples.gx), gy = COALESCE(excluded.gy, samples.gy),
+                gz = COALESCE(excluded.gz, samples.gz), dyn = COALESCE(excluded.dyn, samples.dyn),
+                temp = COALESCE(excluded.temp, samples.temp), spo2 = COALESCE(excluded.spo2, samples.spo2),
+                steps = COALESCE(excluded.steps, samples.steps), act = COALESCE(excluded.act, samples.act),
+                sstate = COALESCE(excluded.sstate, samples.sstate), quality = COALESCE(excluded.quality, samples.quality),
+                poor = CASE WHEN excluded.hr IS NOT NULL THEN excluded.poor ELSE samples.poor END,
+                off = CASE WHEN excluded.hr IS NOT NULL THEN excluded.off ELSE samples.off END
             """, rows)
         }
     }
@@ -392,9 +401,26 @@ public final class PulsoDatabase {
     // MARK: - Backup
 
     /// Writes a consistent, compacted copy of the whole database to `path` (overwrites it).
+    /// A consistent snapshot of everything (VACUUM INTO works while the database is in use).
     public func backup(to path: String) throws {
         if FileManager.default.fileExists(atPath: path) { try FileManager.default.removeItem(atPath: path) }
         try sql.run("VACUUM INTO ?", [.text(path)])
+    }
+
+    /// A small snapshot: every summary, sleep, workout, import, journal entry, setting and ECG, without the
+    /// raw per-second data (a few MB instead of hundreds). It restores like a full one.
+    public func backupLight(to path: String) throws {
+        try backup(to: path)
+        let copy = try SQLiteConnection(path: path)
+        try copy.execute("DELETE FROM samples; DELETE FROM live_hr; PRAGMA journal_mode=DELETE; VACUUM;")
+    }
+
+    /// Bytes on disk of the database and its write-ahead log.
+    public static func diskSize(path: String) -> Int64 {
+        ["", "-wal", "-shm"].reduce(0) { total, suffix in
+            let size = (try? FileManager.default.attributesOfItem(atPath: path + suffix)[.size] as? NSNumber)?.int64Value ?? 0
+            return total + size
+        }
     }
 
     /// True if `path` is a readable Pulso database (used before restoring a backup over the live one).

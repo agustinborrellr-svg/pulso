@@ -93,8 +93,13 @@ public enum Recovery {
         }
         let composite = Stats.clamp(terms.reduce(0) { $0 + $1.weight * $1.z } / wsum, -3, 3)
         // Softer than before: one bad night lands in the 20s–30s, not at 1–2 %.
-        let score = Stats.clamp(100 * Stats.logistic(1.15 * (composite + 0.35)), 3, 99)
+        let score = curve(composite: composite)
         return Result(score: score.rounded(), calibrating: false, contributors: contributors, skinTempDeviation: tempDev)
+    }
+
+    /// Composite z (sum of the contributors' impacts) → recovery %.
+    public static func curve(composite: Double) -> Double {
+        Stats.clamp(100 * Stats.logistic(1.15 * (Stats.clamp(composite, -3, 3) + 0.35)), 3, 99)
     }
 
     public enum Band: String { case red, yellow, green }

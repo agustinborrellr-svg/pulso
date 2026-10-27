@@ -28,6 +28,9 @@ struct LiveWorkout: Equatable {
     var laps: [Int] = []
     /// Interval plan being followed, if any.
     var planID: String?
+    /// Zone 1…5 to stay in (vibrates when you leave it), nil = off.
+    var targetZone: Int?
+    var lapStats: [LiveMetrics.Lap] = []
 }
 
 /// App-wide state. All published properties live on the main actor; heavy analysis runs on a
@@ -66,6 +69,11 @@ final class AppModel: ObservableObject {
     @Published var liveWorkout: LiveWorkout?
     var liveRR: [Double] = []
     var lastLiveAt: Date?
+    /// Last ~6 minutes of beats (time + R-R) for the scan, Poincaré, coherence and tests.
+    var liveBeats: [LiveMetrics.Beat] = []
+    /// Load added by the live stream since the last download (live day strain).
+    var liveExtraLoad = 0.0
+    var zoneGuard: LiveMetrics.ZoneGuard?
 
     // Features
     @Published var settings: FeatureSettings
@@ -127,6 +135,7 @@ final class AppModel: ObservableObject {
         let database = db
         strap.persist = { samples in try database.insert(samples) }
         migrateLegacyAlarm()
+        migrateRetentionDefault()
         reload()
         // Numbers computed by an older version of the algorithms are recomputed from the raw seconds
         // (imports, journal, manual sleeps and workouts are kept).
@@ -135,6 +144,7 @@ final class AppModel: ObservableObject {
             try? db.set(DayEngine.derivedVersion, for: DayEngine.derivedVersionKey)
         }
         startTicker()
+        autoBackupIfDue()
         NotificationService.shared.setup()
         NotificationService.shared.onAction = { [weak self] action, category, id in
             self?.handleNotificationAction(action, category: category, id: id)
@@ -232,6 +242,7 @@ final class AppModel: ObservableObject {
             // Days imported from WHOOP fill the history where the strap has nothing of its own.
             let imported = try db.importedDays().filter { $0.day >= from }
             days = HistoryMerge.days(measured: measured, imported: imported, profile: profile)
+            liveExtraLoad = 0
             let journal = try db.allJournal()
             insights = Insights.compute(journal: journal, days: days)
             trainingLoad = TrainingLoad.series(days, through: DayKey.string(Date()))
@@ -377,6 +388,7 @@ final class AppModel: ObservableObject {
     private var lastRecompute: Date?
 
     func appBecameActive() {
+        autoBackupIfDue()
         strap.connect()
         strap.sync(force: false)
         let stale = lastRecompute.map { Date().timeIntervalSince($0) > 15 * 60 } ?? true
@@ -428,6 +440,7 @@ final class AppModel: ObservableObject {
     func stopWorkout(save: Bool) {
         guard let w = liveWorkout else { return }
         liveWorkout = nil
+        zoneGuard = nil
         intervalRunner = nil
         intervalStatus = nil
         voice.finish()
@@ -555,6 +568,7 @@ final class AppModel: ObservableObject {
     }
 
     func eraseEverything() {
+        safetyBackup(reason: "borrar")
         try? db.eraseAll()
         profile = db.profile
         lastSync = nil
@@ -695,6 +709,8 @@ extension AppModel: StrapManagerDelegate {
         if let firstKeep = livePoints.firstIndex(where: { $0.date >= cutoff }), firstKeep > 0 {
             livePoints.removeFirst(firstKeep)
         }
+        appendLiveBeats(rr: rr, at: date)
+        trackLive(heartRate: heartRate, dt: min(5, lastLiveAt.map { date.timeIntervalSince($0) } ?? 1))
         liveRR += rr.map(Double.init)
         if liveRR.count > 120 { liveRR.removeFirst(liveRR.count - 120) }
         let runs = HRV.clean([Array(liveRR.suffix(60))])

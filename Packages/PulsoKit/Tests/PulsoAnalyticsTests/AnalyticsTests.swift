@@ -184,7 +184,7 @@ final class AnalyticsTests: XCTestCase {
     Hora de inicio del ciclo,Hora de finalización del ciclo,Zona horaria del ciclo,Hora de inicio del entrenamiento,Hora de finalización del entrenamiento,Duración (min),Nombre de la actividad,Esfuerzo de actividad,Energía quemada (cal),FC máx. (lpm),FC promedio (lpm),Zona FC 1%,Zona FC 2%,Zona FC 3%,Zona FC 4%,Zona FC 5%,GPS habilitado
     2026-10-25 01:14:24,2026-10-26 01:19:37,UTC+01:00,2026-10-25 11:01:00,2026-10-25 11:44:00,43,HIIT,9.4,84.0,125,84,8,0,0,0,0,false
     2026-10-24 01:24:22,2026-10-25 02:14:24,UTC+02:00,2026-10-25 00:40:00,2026-10-25 01:15:59,35,Natación,6.6,189.0,165,108,47,12,4,0,0,false
-    2026-10-23 01:00:00,2026-10-24 01:24:22,UTC+02:00,2026-10-23 18:00:00,2026-10-23 18:30:00,30,Conducir,1.0,40.0,95,80,0,0,0,0,0,false
+    2026-10-23 01:00:00,2026-10-24 01:24:22,UTC+02:00,2026-10-23 18:00:00,2026-10-23 18:30:00,30,Paracaidismo,1.0,40.0,95,80,0,0,0,0,0,false
     """
 
     static let esJournal = #"""
@@ -249,7 +249,12 @@ final class AnalyticsTests: XCTestCase {
         XCTAssertEqual(hiit.externalID("whoop"), String(hiit.start))
         XCTAssertTrue(hiit.source.isExternal)
         XCTAssertEqual(b.workouts.first { $0.durationMinutes == 30 }?.sport, "Actividad")
-        XCTAssertEqual(b.workouts.first { $0.durationMinutes == 30 }?.notes, "WHOOP: Conducir")
+        XCTAssertEqual(b.workouts.first { $0.durationMinutes == 30 }?.notes, "Importado: Paracaidismo")
+        XCTAssertEqual(WhoopExport.sportName("Driving"), "Conducir")
+        XCTAssertEqual(WhoopExport.sportName("Ice Bath"), "Baño de hielo")
+        XCTAssertEqual(WhoopExport.sportName("Spin"), "Spinning")
+        XCTAssertEqual(WhoopExport.sportName("Table Tennis"), "Pimpón")
+        XCTAssertEqual(WhoopExport.sportName("Functional Fitness"), "Entrenamiento funcional")
         XCTAssertEqual(b.workouts.first { $0.strain == 6.6 }?.sport, "Natación")
 
         XCTAssertEqual(Set(b.journal.map(\.day)), ["2026-10-24"])

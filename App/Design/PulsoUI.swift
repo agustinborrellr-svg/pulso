@@ -507,3 +507,13 @@ extension View {
             .background(PulsoBackground())
     }
 }
+
+extension Fmt {
+    /// The strap's Bluetooth name as shown in Pulso: "Pulse Band 4A0123" (the radio name keeps the maker's prefix).
+    static func bandName(_ raw: String) -> String {
+        let t = raw.trimmingCharacters(in: .whitespaces)
+        guard let r = t.range(of: "whoop", options: [.caseInsensitive, .anchored]) else { return t }
+        let rest = t[r.upperBound...].trimmingCharacters(in: .whitespaces)
+        return rest.isEmpty ? "Pulse Band" : "Pulse Band \(rest)"
+    }
+}

@@ -47,7 +47,9 @@ extension AppModel {
 
     func markLap() {
         guard var w = liveWorkout else { return addMarker() }
-        w.laps.append(Int(Date().timeIntervalSince1970))
+        let now = Int(Date().timeIntervalSince1970)
+        w.lapStats.append(lapSummary(from: w.laps.last ?? Int(w.start.timeIntervalSince1970), to: now))
+        w.laps.append(now)
         liveWorkout = w
         strap.buzz(loops: 1)
         if settings.voiceCues { voice.say("Vuelta \(w.laps.count)") }

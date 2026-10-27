@@ -10,7 +10,12 @@ struct IntelligenceContent: View {
 
     var body: some View {
         VStack(spacing: 16) {
+            AnalysisTodayCard()
+            if let d = model.today ?? model.days.last(where: { $0.recovery != nil }) { WaterfallCard(day: d) }
             if let r = model.intelligence {
+                UnlockCard(report: r)
+                ImpactCard(items: r.habits)
+                AnalysisToolsLinks()
                 IntelTodayCard(report: r)
                 ForEach(r.sections) { section in
                     VStack(alignment: .leading, spacing: 10) {

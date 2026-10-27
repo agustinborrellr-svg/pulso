@@ -29,4 +29,27 @@ final class ImportedHistoryTests: XCTestCase {
         for m in all { print("  \(m.isAvailable ? "✓" : "·") \(m.name): \(m.summary.prefix(90))") }
         XCTAssertGreaterThanOrEqual(available.count, all.count / 2, "most of Inteligencia works from the import alone")
     }
+
+    func testImportedNightKeepsStagesAndVitals() {
+        var d = DaySummary(day: "2026-10-20")
+        d.sleepStart = 1_790_000_000
+        d.sleepEnd = 1_790_000_000 + 8 * 3600
+        d.sleepMinutes = 440
+        d.lightMinutes = 230; d.deepMinutes = 100; d.remMinutes = 110; d.awakeMinutes = 40
+        d.disturbances = 7; d.spo2 = 96; d.respRate = 15.2; d.rhr = 52
+        let s = HistoryMerge.summarySleep(d)!
+        XCTAssertEqual(s.minutesDeep, 100)
+        XCTAssertEqual(s.minutesREM, 110)
+        XCTAssertEqual(s.asleepMinutes, 440)
+        XCTAssertEqual(s.restorativeMinutes, 210)
+        XCTAssertEqual(s.disturbances, 7)
+        XCTAssertEqual(s.spo2, 96)
+        // Without a stage split: all asleep time is light, the rest awake.
+        d.deepMinutes = nil; d.remMinutes = nil; d.lightMinutes = nil
+        let t = HistoryMerge.summarySleep(d)!
+        XCTAssertEqual(t.minutesLight, 440)
+        XCTAssertEqual(t.minutesAwake, 40)
+        d.sleepEnd = d.sleepStart! + 600
+        XCTAssertNil(HistoryMerge.summarySleep(d))
+    }
 }

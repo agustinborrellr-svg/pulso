@@ -49,7 +49,7 @@ struct DeviceView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Caps(connected ? "Conectado a" : (model.strap.hasSavedStrap ? "Sin conexión" : "Sin pulsera"), size: 11,
                      color: connected ? Theme.green : Theme.worse, weight: .semibold)
-                Text(model.identity.name.isEmpty ? (model.identity.serial.isEmpty ? "WHOOP 5.0" : "WHOOP \(model.identity.serial)") : model.identity.name)
+                Text(model.identity.name.isEmpty ? (model.identity.serial.isEmpty ? "Pulse Band 5.0" : "Pulse Band \(model.identity.serial)") : Fmt.bandName(model.identity.name))
                     .font(.system(size: 19, weight: .bold))
                     .tracking(1)
                     .foregroundStyle(.white)
@@ -108,7 +108,7 @@ struct DeviceView: View {
                                 Text("%").font(.system(size: 18, weight: .bold))
                             }
                             .foregroundStyle(.white)
-                            Caps(model.identity.isMG ? "WHOOP MG" : "WHOOP 5.0", size: 11, color: Theme.secondary, weight: .semibold)
+                            Caps(model.identity.isMG ? "Pulse Band MG" : "Pulse Band 5.0", size: 11, color: Theme.secondary, weight: .semibold)
                         }
                         ZStack(alignment: .bottom) {
                             Capsule().fill(Color.white.opacity(0.12))
@@ -155,7 +155,7 @@ struct DeviceView: View {
     private var stateMessage: some View {
         switch model.strapState {
         case .pairingRefused:
-            notice("La pulsera no acepta el emparejamiento: suele seguir vinculada a la app de WHOOP o a un emparejamiento antiguo del iPhone.",
+            notice("La pulsera no acepta el emparejamiento: suele seguir vinculada a la app de su fabricante o a un emparejamiento antiguo del iPhone.",
                    color: Theme.yellow)
         case .bluetoothOff:
             notice("El Bluetooth del iPhone está apagado.", color: Theme.yellow)
@@ -191,7 +191,7 @@ struct DeviceView: View {
             .padding(.vertical, 18)
             Button { pairing = true } label: {
                 ActionRow(icon: "applewatch.radiowaves.left.and.right", title: model.strap.hasSavedStrap ? "Vincula otra pulsera" : "Vincula una pulsera",
-                          detail: "Empareja una WHOOP con Pulso. Nunca se conecta sola: tú eliges cuál.")
+                          detail: "Empareja una Pulse Band con Pulso. Nunca se conecta sola: tú eliges cuál.")
             }
             .buttonStyle(.plain)
             Button { model.syncNow() } label: {
@@ -291,7 +291,7 @@ struct PairingFlowView: View {
             }
             Button("Cancelar", role: .cancel) { pending = nil }
         } message: {
-            Text("Una WHOOP solo admite un emparejamiento. Asegúrate de que no es la pulsera vinculada a tu cuenta de WHOOP.")
+            Text("La pulsera solo admite un emparejamiento. Asegúrate de que no está vinculada a otra app.")
         }
     }
 
@@ -315,7 +315,7 @@ struct PairingFlowView: View {
 
     private var prepare: some View {
         stepLayout(title: "Libera tu pulsera",
-                   text: "Una WHOOP solo admite un emparejamiento. Desvincúlala de la app de WHOOP y, en el iPhone, ve a Ajustes → Bluetooth y toca «Omitir este dispositivo».",
+                   text: "La pulsera solo admite un emparejamiento. Desvincúlala de cualquier otra app y, en el iPhone, ve a Ajustes → Bluetooth y toca «Omitir este dispositivo».",
                    primary: "Hecho") { withAnimation { step = 1 } } art: {
             StrapIllustration(ledBlue: false, showSensors: true)
         }
@@ -350,7 +350,7 @@ struct PairingFlowView: View {
                     HStack(spacing: 14) {
                         Image(systemName: "applewatch.radiowaves.left.and.right").font(.title2).foregroundStyle(Theme.link)
                         VStack(alignment: .leading, spacing: 3) {
-                            Caps(s.name, size: 14)
+                            Caps(Fmt.bandName(s.name), size: 14)
                             Text(MoreView.signal(s.rssi)).font(.caption).foregroundStyle(Theme.secondary)
                         }
                         Spacer()
@@ -382,7 +382,7 @@ struct PairingFlowView: View {
         let refused = model.strapState == .pairingRefused
         stepLayout(title: ready ? "¡Conectada!" : (refused ? "No se ha podido emparejar" : "Emparejando…"),
                    text: ready ? "Tu pulsera ya está con Pulso. La primera descarga empieza sola."
-                       : (refused ? "Suele ser porque sigue vinculada a la app de WHOOP o a un emparejamiento antiguo. Revisa el primer paso y vuelve a intentarlo."
+                       : (refused ? "Suele ser porque sigue vinculada a otra app o a un emparejamiento antiguo. Revisa el primer paso y vuelve a intentarlo."
                            : "Acepta la solicitud de emparejamiento de iOS si aparece. Puede tardar unos segundos."),
                    primary: ready ? "Empezar" : (refused ? "Volver a intentar" : "Ver el registro")) {
             if ready { dismiss() } else if refused { withAnimation { step = 0 } } else { help = true }
@@ -411,64 +411,128 @@ struct StrapIllustration: View {
     var body: some View {
         GeometryReader { geo in
             let w = min(geo.size.width, geo.size.height * 1.1)
+            let loopW = w * 0.80, loopH = w * 0.50, band = w * 0.13
             ZStack {
-                // Band.
+                // Contact shadow on the "table".
                 Ellipse()
-                    .stroke(
-                        LinearGradient(colors: [Color(white: 0.16), Color(white: 0.07)], startPoint: .top, endPoint: .bottom),
-                        style: StrokeStyle(lineWidth: w * 0.16)
-                    )
-                    .overlay(
-                        Ellipse()
-                            .stroke(style: StrokeStyle(lineWidth: w * 0.15, dash: [2, 3]))
-                            .foregroundStyle(Color.white.opacity(0.05))
-                    )
-                    .frame(width: w * 0.78, height: w * 0.58)
-                    .rotationEffect(.degrees(-18))
-                // Pod.
-                RoundedRectangle(cornerRadius: w * 0.06, style: .continuous)
-                    .fill(LinearGradient(colors: [Color(white: 0.24), Color(white: 0.08)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: w * 0.06, style: .continuous)
-                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                    )
-                    .frame(width: w * 0.44, height: w * 0.2)
-                    .overlay {
-                        if showSensors {
-                            HStack(spacing: w * 0.02) {
-                                ForEach(0..<4, id: \.self) { _ in
-                                    RoundedRectangle(cornerRadius: 2).fill(Color(white: 0.35)).frame(width: w * 0.045, height: w * 0.06)
-                                }
-                            }
-                        } else {
-                            Text("PULSO").font(.system(size: w * 0.035, weight: .heavy)).tracking(2).foregroundStyle(Color.white.opacity(0.25))
-                        }
-                    }
-                    .overlay(alignment: .leading) {
-                        Capsule()
-                            .fill(ledBlue ? Theme.link : Color(white: 0.3))
-                            .frame(width: w * 0.05, height: w * 0.014)
-                            .shadow(color: ledBlue ? Theme.link : .clear, radius: pulse ? 10 : 2)
-                            .opacity(ledBlue ? (pulse ? 1 : 0.35) : 1)
-                            .offset(x: w * 0.03, y: w * 0.07)
-                    }
-                    .rotationEffect(.degrees(-18))
-                    .offset(y: -w * 0.2)
+                    .fill(Color.black.opacity(0.55))
+                    .frame(width: loopW * 0.95, height: loopH * 0.28)
+                    .blur(radius: w * 0.03)
+                    .offset(y: loopH * 0.62)
+                // Back of the loop (farther, darker).
+                BandHalf(back: true, loopW: loopW, loopH: loopH, band: band)
+                // Front of the loop, with the clasp.
+                BandHalf(back: false, loopW: loopW, loopH: loopH, band: band)
+                Clasp(w: w)
+                    .offset(y: loopH / 2 + w * 0.005)
+                // Sensor pod sitting on top of the loop.
+                pod(w)
+                    .offset(y: -loopH / 2 - w * 0.01)
                 if tapHint {
                     VStack(spacing: 0) {
                         Circle().fill(Theme.link).frame(width: 12, height: 12)
                             .scaleEffect(pulse ? 1.3 : 0.9)
                         Rectangle().fill(Theme.link.opacity(0.7))
-                            .frame(width: 1.5, height: w * 0.35)
+                            .frame(width: 1.5, height: w * 0.28)
                             .mask(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .bottom))
                     }
-                    .offset(y: -w * 0.05)
+                    .offset(y: -loopH / 2 + w * 0.16)
                 }
             }
+            .rotationEffect(.degrees(-10))
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .onAppear {
             withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) { pulse = true }
         }
+    }
+
+    private func pod(_ w: CGFloat) -> some View {
+        let podW = w * 0.40, podH = w * 0.19, r = w * 0.055
+        let shape = RoundedRectangle(cornerRadius: r, style: .continuous)
+        return ZStack {
+            // Body.
+            shape
+                .fill(LinearGradient(colors: [Color(white: 0.20), Color(white: 0.06)], startPoint: .top, endPoint: .bottom))
+            // Brushed-metal bezel.
+            shape
+                .strokeBorder(AngularGradient(colors: [Color(white: 0.75), Color(white: 0.25), Color(white: 0.55), Color(white: 0.18), Color(white: 0.75)],
+                                              center: .center), lineWidth: w * 0.011)
+            // Glass top with a soft reflection.
+            RoundedRectangle(cornerRadius: r * 0.75, style: .continuous)
+                .fill(LinearGradient(colors: [Color(white: 0.16), Color(white: 0.03)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .padding(w * 0.016)
+            Capsule()
+                .fill(LinearGradient(colors: [Color.white.opacity(0.22), Color.white.opacity(0)], startPoint: .top, endPoint: .bottom))
+                .frame(width: podW * 0.7, height: podH * 0.22)
+                .offset(y: -podH * 0.24)
+                .blur(radius: 1.5)
+            if showSensors {
+                HStack(spacing: w * 0.018) {
+                    ForEach(0..<4, id: \.self) { i in
+                        Circle()
+                            .fill(RadialGradient(colors: [i == 1 ? Color.green.opacity(0.7) : Color(white: 0.45), Color(white: 0.12)],
+                                                 center: .center, startRadius: 0, endRadius: w * 0.025))
+                            .frame(width: w * 0.04, height: w * 0.04)
+                    }
+                }
+            } else {
+                Text("PULSO")
+                    .font(.system(size: w * 0.032, weight: .heavy))
+                    .tracking(3)
+                    .foregroundStyle(Color.white.opacity(0.28))
+            }
+            // Status LED.
+            Capsule()
+                .fill(ledBlue ? Theme.link : Color(white: 0.28))
+                .frame(width: w * 0.045, height: w * 0.012)
+                .shadow(color: ledBlue ? Theme.link : .clear, radius: pulse ? 10 : 2)
+                .opacity(ledBlue ? (pulse ? 1 : 0.35) : 1)
+                .offset(x: -podW * 0.30, y: podH * 0.30)
+        }
+        .frame(width: podW, height: podH)
+        .shadow(color: .black.opacity(0.6), radius: w * 0.02, y: w * 0.015)
+        .rotation3DEffect(.degrees(28), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
+    }
+}
+
+/// One half of the knit band loop: a thick arc with woven texture and lit edges.
+private struct BandHalf: View {
+    let back: Bool
+    let loopW: CGFloat
+    let loopH: CGFloat
+    let band: CGFloat
+
+    var body: some View {
+        let from: CGFloat = back ? 0.5 : 0, to: CGFloat = back ? 1 : 0.5
+        let arc = Ellipse().trim(from: from, to: to)
+        ZStack {
+            arc.stroke(LinearGradient(colors: back ? [Color(white: 0.10), Color(white: 0.05)] : [Color(white: 0.09), Color(white: 0.20), Color(white: 0.11)],
+                                      startPoint: .top, endPoint: .bottom),
+                       style: StrokeStyle(lineWidth: band, lineCap: .butt))
+            // Knit: two offset rows of tiny stitches.
+            arc.stroke(Color.white.opacity(back ? 0.035 : 0.07), style: StrokeStyle(lineWidth: band * 0.85, lineCap: .butt, dash: [1.2, 2.4]))
+            arc.stroke(Color.black.opacity(0.35), style: StrokeStyle(lineWidth: band * 0.6, lineCap: .butt, dash: [0.8, 2.8], dashPhase: 1.8))
+            // Stitched edges.
+            Ellipse().trim(from: from, to: to)
+                .stroke(Color.white.opacity(back ? 0.06 : 0.16), style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+                .frame(width: loopW + band * 0.8, height: loopH + band * 0.8)
+            Ellipse().trim(from: from, to: to)
+                .stroke(Color.white.opacity(back ? 0.04 : 0.12), style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+                .frame(width: loopW - band * 0.8, height: loopH - band * 0.8)
+        }
+        .frame(width: loopW, height: loopH)
+    }
+}
+
+/// Small metal clasp at the front of the loop.
+private struct Clasp: View {
+    let w: CGFloat
+    var body: some View {
+        RoundedRectangle(cornerRadius: w * 0.012, style: .continuous)
+            .fill(LinearGradient(colors: [Color(white: 0.62), Color(white: 0.28), Color(white: 0.5)], startPoint: .leading, endPoint: .trailing))
+            .overlay(RoundedRectangle(cornerRadius: w * 0.012, style: .continuous).stroke(Color.white.opacity(0.35), lineWidth: 0.5))
+            .frame(width: w * 0.06, height: w * 0.15)
+            .shadow(color: .black.opacity(0.5), radius: 3, y: 2)
     }
 }

@@ -11,8 +11,16 @@ final class StravaService: ObservableObject {
 
     private(set) var client: StravaClient
 
+    /// The user's own API app if they entered one, otherwise the one built into Pulso.
+    static func effectiveCredentials(saved: StravaCredentials?) -> StravaCredentials {
+        if let saved, saved.isComplete { return saved }
+        return StravaCredentials(clientID: StravaBuiltIn.clientID, clientSecret: StravaBuiltIn.clientSecret)
+    }
+
+    var hasBuiltIn: Bool { StravaCredentials(clientID: StravaBuiltIn.clientID, clientSecret: StravaBuiltIn.clientSecret).isComplete }
+
     init() {
-        let creds = Keychain.get(StravaCredentials.self, for: "strava.credentials") ?? StravaCredentials(clientID: "", clientSecret: "")
+        let creds = Self.effectiveCredentials(saved: Keychain.get(StravaCredentials.self, for: "strava.credentials"))
         let tokens = Keychain.get(StravaTokens.self, for: "strava.tokens")
         credentials = creds
         connected = tokens != nil
@@ -32,14 +40,16 @@ final class StravaService: ObservableObject {
     }
 
     func saveCredentials(clientID: String, clientSecret: String) {
-        let c = StravaCredentials(clientID: clientID, clientSecret: clientSecret)
-        Keychain.set(c, for: "strava.credentials")
+        let own = StravaCredentials(clientID: clientID, clientSecret: clientSecret)
+        Keychain.set(own, for: "strava.credentials")
+        let c = Self.effectiveCredentials(saved: own)
         credentials = c
         client = StravaClient(credentials: c, tokens: client.tokens)
         attachTokenSink()
     }
 
     var authorizeURL: URL { client.authorizeURL() }
+    var appAuthorizeURL: URL { client.authorizeURL(app: true) }
 
     func complete(callback url: URL) async {
         guard let code = StravaClient.code(fromCallback: url) else {

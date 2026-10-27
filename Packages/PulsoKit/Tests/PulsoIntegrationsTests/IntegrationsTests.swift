@@ -130,6 +130,13 @@ final class IntegrationsTests: XCTestCase {
         XCTAssertEqual(SportCatalog.named("Ciclismo").fitSport, 2)
         XCTAssertEqual(SportCatalog.fromHealth("yoga").name, "Yoga")
         XCTAssertEqual(Set(SportCatalog.names).count, SportCatalog.all.count, "unique names")
+        XCTAssertGreaterThan(SportCatalog.all.count, 70)
+        XCTAssertEqual(SportCatalog.fromStrava("Squash").name, "Squash")
+        XCTAssertEqual(SportCatalog.fromStrava("Kayaking").name, "Kayak / piragüismo")
+        XCTAssertEqual(SportCatalog.named("Sin catalogar").name, "Actividad")
+        XCTAssertFalse(SportCatalog.named("Intimidad").shareable)
+        XCTAssertTrue(SportCatalog.named("Bailar de fiesta").shareable)
+        XCTAssertEqual(Set(SportCatalog.all.flatMap(\.strava)).count, SportCatalog.all.flatMap(\.strava).count, "each Strava type maps to one sport")
     }
 
     // MARK: HR broadcast
@@ -155,6 +162,9 @@ final class IntegrationsTests: XCTestCase {
         XCTAssertTrue(url.contains("client_id=12345"))
         XCTAssertTrue(url.contains("redirect_uri=pulso://localhost/strava"))
         XCTAssertTrue(url.contains("activity:write"))
+        let app = c.authorizeURL(app: true).absoluteString
+        XCTAssertTrue(app.hasPrefix("strava://oauth/mobile/authorize?"))
+        XCTAssertTrue(app.contains("client_id=12345") && app.contains("redirect_uri=pulso://localhost/strava"))
         XCTAssertEqual(StravaClient.code(fromCallback: URL(string: "pulso://localhost/strava?state=&code=abc123&scope=read")!), "abc123")
         XCTAssertNil(StravaClient.code(fromCallback: URL(string: "pulso://localhost/strava?state=&error=access_denied")!))
     }

@@ -57,7 +57,8 @@ public struct Profile: Codable, Equatable, Sendable {
     public var sleepNeedHours: Double = 8.0
     public var healthKitEnabled: Bool = false
     /// Days of raw per-second data to keep on the phone (summaries are kept forever).
-    public var rawRetentionDays: Int = 120
+    /// Days of raw per-second data kept (0 = forever). Summaries are always kept.
+    public var rawRetentionDays: Int = 0
     /// Opt-in menstrual-cycle estimate from the nightly skin-temperature shift.
     public var cycleTracking: Bool = false
 

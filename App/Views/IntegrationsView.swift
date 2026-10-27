@@ -51,25 +51,36 @@ struct IntegrationsView: View {
                     Button("Desconectar Strava", role: .destructive) {
                         Task { await strava.disconnect() }
                     }
+                } else if strava.credentials.isComplete {
+                    Button {
+                        connect()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text(connecting ? "Conectando…" : "Conectar con Strava").font(.headline)
+                            Spacer()
+                        }
+                        .padding(.vertical, 6)
+                    }
+                    .listRowBackground(Color(red: 0.99, green: 0.32, blue: 0.0))
+                    .foregroundStyle(.white)
+                    .disabled(connecting)
+                    DisclosureGroup("Avanzado") {
+                        NavigationLink("Usar mi propia app de la API de Strava") { StravaSetupView(strava: strava) }
+                    }
                 } else {
                     NavigationLink {
                         StravaSetupView(strava: strava)
                     } label: {
-                        Label(strava.credentials.isComplete ? "Datos de la app de Strava guardados" : "1 · Configurar (una vez)",
-                              systemImage: strava.credentials.isComplete ? "checkmark.circle.fill" : "key")
+                        Label("Configurar Strava (una vez)", systemImage: "key")
                     }
-                    Button {
-                        connect()
-                    } label: {
-                        Label(connecting ? "Conectando…" : "2 · Conectar con Strava", systemImage: "link")
-                    }
-                    .disabled(!strava.credentials.isComplete || connecting)
                 }
                 if let s = strava.status { Text(s).font(.caption).foregroundStyle(Theme.secondary) }
             } header: {
                 Text("Strava")
             } footer: {
-                Text("Los entrenos se suben como archivo FIT con tu pulso segundo a segundo, esfuerzo y calorías. Las actividades que grabes con otros dispositivos se importan y se combinan con los datos de la pulsera sin duplicarse.")
+                Text(strava.connected ? "Los entrenos se suben como archivo FIT con tu pulso segundo a segundo, esfuerzo y calorías. Las actividades que grabes con otros dispositivos se importan y se combinan con los datos de la pulsera sin duplicarse."
+                     : "Toca «Conectar con Strava»: se abre la app de Strava (o su web si no la tienes), pulsas «Autorizar» y vuelves solo a Pulso. Nada más.")
             }
 
             // Broadcast
@@ -81,7 +92,7 @@ struct IntegrationsView: View {
             } header: {
                 Text("Otras apps y máquinas")
             } footer: {
-                Text("El iPhone aparece como «Pulso HR», un pulsómetro Bluetooth estándar: Zwift, Peloton, Kinomap, cintas y bicis del gimnasio, ciclocomputadores y cualquier app que lea pulsómetros pueden usar tu WHOOP. Funciona mejor con Pulso abierta.")
+                Text("El iPhone aparece como «Pulso HR», un pulsómetro Bluetooth estándar: Zwift, Peloton, Kinomap, cintas y bicis del gimnasio, ciclocomputadores y cualquier app que lea pulsómetros pueden usar tu pulsera. Funciona mejor con Pulso abierta.")
             }
 
             Section {
@@ -109,6 +120,20 @@ struct IntegrationsView: View {
     }
 
     private func connect() {
+        connecting = true
+        // With the Strava app installed, authorise there (already logged in). It comes back through
+        // pulso://localhost/strava, handled in PulsoApp.onOpenURL.
+        if UIApplication.shared.canOpenURL(URL(string: "strava://")!) {
+            UIApplication.shared.open(strava.appAuthorizeURL) { opened in
+                if !opened { webConnect() }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { connecting = false }
+            }
+            return
+        }
+        webConnect()
+    }
+
+    private func webConnect() {
         connecting = true
         Task {
             defer { connecting = false }

@@ -96,7 +96,10 @@ struct RootView: View {
         .onOpenURL { url in
             // Fallback for the Strava OAuth redirect if it arrives outside the auth session.
             if url.scheme == "pulso", url.path.contains("strava") {
-                Task { await model.strava.complete(callback: url) }
+                Task {
+                    await model.strava.complete(callback: url)
+                    if model.strava.connected { model.importExternalIfDue(force: true) }
+                }
             }
         }
         .fullScreenCover(item: $shot) { screen in
@@ -137,8 +140,10 @@ struct RootView: View {
             }
             if screen == .live {
                 model.startWorkout(sport: "Carrera", plan: IntervalPlan.presets.first)
+                model.setTargetZone(3)
                 model.startDemoLiveFeed()
             }
+            if [.scan, .coherence, .poincare, .orthostatic].contains(screen) { model.startDemoLiveFeed(resting: true) }
         }
     }
 }

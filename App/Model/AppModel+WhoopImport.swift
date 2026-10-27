@@ -16,6 +16,7 @@ extension AppModel {
     /// files again changes nothing).
     func importWhoop(_ files: [WhoopExport.File]) -> WhoopImportSummary {
         let bundle = WhoopExport.read(files)
+        safetyBackup(reason: "importar")
         var s = WhoopImportSummary(files: bundle.files)
         do {
             s.stored = try WhoopExport.store(bundle, in: db)

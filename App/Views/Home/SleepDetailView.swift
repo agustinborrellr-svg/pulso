@@ -12,23 +12,35 @@ struct SleepDetailView: View {
 
     var body: some View {
         DetailScreen(title: model.cycleTitle(model.selectedDay)) {
-            if let day = model.selected, let s = model.sleep(for: day) {
+            if let day = model.selected, let s = model.sleep(for: day) ?? HistoryMerge.summarySleep(day) {
+                let detailed = model.sleep(for: day) != nil
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("El sueño de anoche").font(.system(size: 22, weight: .semibold)).foregroundStyle(.white)
                         Text("\(model.cycleTitle(day.day).capitalized) vs. los 30 días anteriores").font(.caption).foregroundStyle(Theme.secondary)
                     }
                     Spacer()
-                    Button { editing = s } label: {
-                        HStack(spacing: 6) { Caps("Editar", size: 11); Image(systemName: "pencil") }
+                    if detailed {
+                        Button { editing = s } label: {
+                            HStack(spacing: 6) { Caps("Editar", size: 11); Image(systemName: "pencil") }
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.white)
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.white)
                 }
-                hoursCard(day, s)
+                if !detailed {
+                    PCard {
+                        Label(day.source == "strap" ? "Esta noche solo tiene el resumen: no hay detalle minuto a minuto para dibujar las fases."
+                              : "Noche importada: se ven los totales de cada fase, pero no su detalle minuto a minuto.",
+                              systemImage: "info.circle")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.secondary)
+                    }
+                }
+                hoursCard(day, s, detailed: detailed)
                 needCard(day)
                 regularityCard(day)
-                efficiencyCard(day, s)
+                efficiencyCard(day, s, detailed: detailed)
                 vitalsCard(s)
                 naps
                 SectionHeading(text: "Tendencias semanales")
@@ -54,7 +66,7 @@ struct SleepDetailView: View {
 
     // MARK: Hours + stages
 
-    private func hoursCard(_ d: DaySummary, _ s: SleepSession) -> some View {
+    private func hoursCard(_ d: DaySummary, _ s: SleepSession, detailed: Bool) -> some View {
         let u = usual(.sleepHours, d)
         let total = max(1, s.inBedMinutes)
         let items: [(SleepStage, Double)] = [(.awake, s.minutesAwake), (.light, s.minutesLight), (.deep, s.minutesDeep), (.rem, s.minutesREM)]
@@ -65,8 +77,10 @@ struct SleepDetailView: View {
                 DeltaMark(delta: Delta(d.sleepMinutes, u, higherIsBetter: true))
             }
             if let u { Text(Fmt.hmm(u)).font(.caption).foregroundStyle(Theme.secondary).padding(.top, -10) }
-            NightHRChart(session: s, highlight: stage)
-                .frame(height: 170)
+            if detailed {
+                NightHRChart(session: s, highlight: stage)
+                    .frame(height: 170)
+            }
             HStack {
                 Caps("Rango típico", size: 11, color: Theme.secondary, weight: .semibold)
                 Spacer()
@@ -90,8 +104,19 @@ struct SleepDetailView: View {
                             Spacer()
                             Text(Fmt.hmm(item.1)).font(.headline.monospacedDigit()).foregroundStyle(.white)
                         }
-                        StageStrip(session: s, stage: item.0, active: stage == item.0)
-                            .frame(height: 16)
+                        if detailed {
+                            StageStrip(session: s, stage: item.0, active: stage == item.0)
+                                .frame(height: 16)
+                        } else {
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    Capsule().fill(Color.white.opacity(0.08))
+                                    Capsule().fill(Theme.stageColor(item.0).opacity(stage == item.0 ? 1 : 0.6))
+                                        .frame(width: geo.size.width * min(1, item.1 / total))
+                                }
+                            }
+                            .frame(height: 10)
+                        }
                     }
                     .contentShape(Rectangle())
                 }
@@ -244,9 +269,9 @@ struct SleepDetailView: View {
 
     // MARK: Efficiency
 
-    private func efficiencyCard(_ d: DaySummary, _ s: SleepSession) -> some View {
+    private func efficiencyCard(_ d: DaySummary, _ s: SleepSession, detailed: Bool) -> some View {
         let u = usual(.efficiency, d)
-        let eff = d.sleepEfficiency.map { $0 * 100 }
+        let eff = (d.sleepEfficiency ?? (s.inBedMinutes > 0 ? s.efficiency : nil)).map { $0 * 100 }
         return PCard {
             CardHeader(title: "Eficiencia del sueño")
             HStack(spacing: 6) {
@@ -258,8 +283,10 @@ struct SleepDetailView: View {
                 Spacer()
                 Text(Fmt.hmm(s.asleepMinutes)).font(.subheadline.bold().monospacedDigit()).foregroundStyle(.white)
             }
-            AsleepStrip(session: s, awake: false).frame(height: 14)
-            AsleepStrip(session: s, awake: true).frame(height: 14)
+            if detailed {
+                AsleepStrip(session: s, awake: false).frame(height: 14)
+                AsleepStrip(session: s, awake: true).frame(height: 14)
+            }
             HStack {
                 Caps("Despierto", size: 11, color: Theme.secondary, weight: .semibold)
                 Spacer()

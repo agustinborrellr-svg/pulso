@@ -58,7 +58,7 @@ struct TodayView: View {
                        title: model.strapState.isConnected ? "Recopilando datos" : "Conecta tu pulsera",
                        message: model.strapState.isConnected
                            ? "Tu primera recuperación aparece tras la primera noche. Las líneas base se calibran en 4 noches."
-                           : "Ve a Más → Pulsera para emparejar tu WHOOP 5.0.")
+                           : "Ve a Más → Pulsera para emparejar tu Pulse Band.")
             if model.rawSampleCount > 0 {
                 Button {
                     model.recompute(fromDay: nil)
@@ -248,7 +248,7 @@ struct WorkoutRow: View {
                 .foregroundStyle(Theme.strain)
             VStack(alignment: .leading, spacing: 2) {
                 Text(workout.sport).font(.subheadline.bold()).foregroundStyle(.white)
-                Text("\(Fmt.time(workout.start)) · \(Fmt.hm(workout.durationMinutes)) · \(Int(workout.kcal)) kcal\(workout.source == .auto ? " · auto" : workout.source == .whoop ? " · WHOOP" : "")")
+                Text("\(Fmt.time(workout.start)) · \(Fmt.hm(workout.durationMinutes)) · \(Int(workout.kcal)) kcal\(workout.source == .auto ? " · auto" : workout.source == .whoop ? " · importado" : "")")
                     .font(.caption).foregroundStyle(Theme.secondary)
             }
             Spacer()

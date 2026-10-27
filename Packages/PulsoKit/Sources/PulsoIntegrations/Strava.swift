@@ -138,11 +138,11 @@ public final class StravaClient: @unchecked Sendable {
     public private(set) var rateLimitedUntil: Date?
     static let rateLimitPause: TimeInterval = 15 * 60
 
-    /// Page to open in an ASWebAuthenticationSession (callback scheme `pulso`). The web endpoint, not
-    /// /oauth/mobile/authorize: that one can hand off to the Strava app, which then returns to Pulso
-    /// outside the authentication session.
-    public func authorizeURL() -> URL {
-        var c = URLComponents(string: "https://www.strava.com/oauth/authorize")!
+    /// `app == false`: the web page for an ASWebAuthenticationSession (callback scheme `pulso`).
+    /// `app == true`: opens the Strava app itself (already logged in: one tap on «Autorizar»); it returns to
+    /// Pulso through the `pulso://localhost/strava` URL, handled by the app's onOpenURL.
+    public func authorizeURL(app: Bool = false) -> URL {
+        var c = URLComponents(string: app ? "strava://oauth/mobile/authorize" : "https://www.strava.com/oauth/authorize")!
         c.queryItems = [
             URLQueryItem(name: "client_id", value: credentials.clientID),
             URLQueryItem(name: "redirect_uri", value: Self.redirectURI),

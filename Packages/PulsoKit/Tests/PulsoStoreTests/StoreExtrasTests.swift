@@ -96,4 +96,59 @@ final class StoreExtrasTests: XCTestCase {
         XCTAssertFalse(PulsoDatabase.isValidBackup(path: junk))
         XCTAssertFalse(PulsoDatabase.isValidBackup(path: NSTemporaryDirectory() + "missing-\(UUID().uuidString)"))
     }
+
+    func testReDownloadNeverErasesStoredValues() throws {
+        let d = try db()
+        let full = HistorySample(unix: 1_790_000_000, heartRate: 60, rr: [1000], skinTempC: 34.5, spo2: 97, steps: 5)
+        try d.insert([full])
+        // Same second arriving again with less information (partial packet, other decoder, re-sync).
+        let partial = HistorySample(unix: 1_790_000_000, heartRate: nil, skinTempC: nil, spo2: nil)
+        try d.insert([partial])
+        let out = try d.samples(from: 1_789_999_999, to: 1_790_000_001)
+        XCTAssertEqual(out.count, 1)
+        XCTAssertEqual(out[0].hr, 60)
+        XCTAssertEqual(out[0].rr, [1000])
+        XCTAssertEqual(out[0].spo2, 97)
+        XCTAssertEqual(out[0].temp ?? 0, 34.5, accuracy: 0.001)
+        // New real values still win.
+        try d.insert([HistorySample(unix: 1_790_000_000, heartRate: 62)])
+        XCTAssertEqual(try d.samples(from: 1_789_999_999, to: 1_790_000_001)[0].hr, 62)
+        XCTAssertEqual(try d.samples(from: 1_789_999_999, to: 1_790_000_001)[0].spo2, 97)
+    }
+
+    func testLightBackupKeepsEverythingButSeconds() throws {
+        let d = try db()
+        var day = DaySummary(day: "2026-10-02")
+        day.recovery = 64
+        try d.save(day)
+        try d.insert([HistorySample(unix: 1_790_000_000, heartRate: 58)])
+        let path = NSTemporaryDirectory() + "pulso-light-\(UUID().uuidString).sqlite"
+        try d.backupLight(to: path)
+        XCTAssertTrue(PulsoDatabase.isValidBackup(path: path))
+        let copy = try PulsoDatabase(path: path)
+        XCTAssertEqual(try copy.day("2026-10-02")?.recovery, 64)
+        XCTAssertEqual(try copy.sampleCount(), 0)
+        XCTAssertEqual(try d.sampleCount(), 1, "the live database is untouched")
+        XCTAssertGreaterThan(PulsoDatabase.diskSize(path: path), 0)
+    }
+
+    func testBackupRotation() {
+        let base = Date(timeIntervalSince1970: 1_790_000_000)
+        XCTAssertEqual(BackupPolicy.plan(existing: [], now: base), .init(makeDaily: true, makeWeekly: true, delete: []))
+        let name = BackupPolicy.fileName(.safety, reason: "borrar", at: base)
+        XCTAssertEqual(BackupPolicy.parse(name)?.kind, .safety)
+        XCTAssertEqual(BackupPolicy.parse(name)?.date, base)
+        var names = (0..<20).map { BackupPolicy.fileName(.daily, at: base.addingTimeInterval(-Double($0) * 86400)) }
+        names += (0..<4).map { BackupPolicy.fileName(.weekly, at: base.addingTimeInterval(-Double($0) * 7 * 86400)) }
+        names += ["mi-copia.sqlite", "notas.txt"]
+        let plan = BackupPolicy.plan(existing: names, now: base.addingTimeInterval(3600))
+        XCTAssertFalse(plan.makeDaily)
+        XCTAssertFalse(plan.makeWeekly)
+        XCTAssertEqual(plan.delete.count, 20 - BackupPolicy.keepDaily + 4 - BackupPolicy.keepWeekly)
+        XCTAssertFalse(plan.delete.contains("mi-copia.sqlite"))
+        XCTAssertFalse(plan.delete.contains(names[0]), "the newest copy is kept")
+        let tomorrow = BackupPolicy.plan(existing: names, now: base.addingTimeInterval(86400))
+        XCTAssertTrue(tomorrow.makeDaily)
+        XCTAssertEqual(tomorrow.delete.filter { $0.contains("diaria") }.count, 20 - BackupPolicy.keepDaily + 1)
+    }
 }

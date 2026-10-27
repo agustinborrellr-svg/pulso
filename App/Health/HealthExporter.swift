@@ -149,25 +149,67 @@ final class HealthExporter {
     static func activityType(for sport: String) -> HKWorkoutActivityType {
         switch SportCatalog.named(sport).health {
         case "running": return .running
+        case "trackAndField": return .trackAndField
         case "cycling": return .cycling
         case "walking": return .walking
         case "hiking": return .hiking
         case "strength": return .traditionalStrengthTraining
+        case "functionalStrength": return .functionalStrengthTraining
+        case "core": return .coreTraining
         case "hiit": return .highIntensityIntervalTraining
         case "crossTraining": return .crossTraining
+        case "jumpRope": return .jumpRope
         case "swimming": return .swimming
+        case "waterPolo": return .waterPolo
         case "rowing": return .rowing
+        case "paddle": return .paddleSports
+        case "surfing": return .surfingSports
+        case "sailing": return .sailing
+        case "diving": return .waterSports
         case "yoga": return .yoga
         case "pilates": return .pilates
+        case "barre": return .barre
+        case "flexibility": return .flexibility
+        case "mindAndBody": return .mindAndBody
+        case "taiChi": return .taiChi
         case "elliptical": return .elliptical
-        case "paddle": return .racquetball
+        case "stairs": return .stairClimbing
+        case "paddleRacket": return .racquetball
         case "tennis": return .tennis
+        case "squash": return .squash
+        case "badminton": return .badminton
+        case "pickleball": return .pickleball
+        case "tableTennis": return .tableTennis
         case "soccer": return .soccer
         case "basketball": return .basketball
+        case "volleyball": return .volleyball
+        case "handball": return .handball
+        case "rugby": return .rugby
+        case "americanFootball": return .americanFootball
+        case "baseball": return .baseball
+        case "hockey": return .hockey
+        case "cricket": return .cricket
         case "climbing": return .climbing
         case "skiing": return .downhillSkiing
+        case "crossCountrySkiing": return .crossCountrySkiing
+        case "snowboarding": return .snowboarding
+        case "skating": return .skatingSports
+        case "boxing": return .boxing
+        case "kickboxing": return .kickboxing
+        case "martialArts": return .martialArts
+        case "wrestling": return .wrestling
+        case "fencing": return .fencing
+        case "gymnastics": return .gymnastics
         case "golf": return .golf
-        case "dance": return .socialDance
+        case "equestrian": return .equestrianSports
+        case "archery": return .archery
+        case "bowling": return .bowling
+        case "dance": return .cardioDance
+        case "socialDance": return .socialDance
+        case "wheelchair": return .wheelchairRunPace
+        case "play": return .play
+        case "fitnessGaming": return .fitnessGaming
+        case "recovery": return .preparationAndRecovery
         default: return .other
         }
     }
@@ -175,24 +217,67 @@ final class HealthExporter {
     static func healthKey(for type: HKWorkoutActivityType) -> String {
         switch type {
         case .running: return "running"
+        case .trackAndField: return "trackAndField"
         case .cycling, .handCycling: return "cycling"
         case .walking: return "walking"
         case .hiking: return "hiking"
-        case .traditionalStrengthTraining, .functionalStrengthTraining, .coreTraining: return "strength"
+        case .traditionalStrengthTraining: return "strength"
+        case .functionalStrengthTraining: return "functionalStrength"
+        case .coreTraining: return "core"
         case .highIntensityIntervalTraining, .mixedCardio: return "hiit"
         case .crossTraining: return "crossTraining"
+        case .jumpRope: return "jumpRope"
         case .swimming: return "swimming"
-        case .rowing, .paddleSports: return "rowing"
-        case .yoga, .mindAndBody: return "yoga"
-        case .pilates, .barre: return "pilates"
-        case .elliptical, .stairClimbing, .stairs, .stepTraining: return "elliptical"
-        case .tennis, .racquetball, .squash, .badminton, .tableTennis, .pickleball: return "tennis"
+        case .waterPolo: return "waterPolo"
+        case .rowing: return "rowing"
+        case .paddleSports: return "paddle"
+        case .surfingSports: return "surfing"
+        case .sailing: return "sailing"
+        case .waterSports, .underwaterDiving: return "diving"
+        case .yoga: return "yoga"
+        case .pilates: return "pilates"
+        case .barre: return "barre"
+        case .flexibility, .cooldown: return "flexibility"
+        case .mindAndBody: return "mindAndBody"
+        case .taiChi: return "taiChi"
+        case .elliptical: return "elliptical"
+        case .stairClimbing, .stairs, .stepTraining: return "stairs"
+        case .racquetball: return "paddleRacket"
+        case .tennis: return "tennis"
+        case .squash: return "squash"
+        case .badminton: return "badminton"
+        case .pickleball: return "pickleball"
+        case .tableTennis: return "tableTennis"
         case .soccer: return "soccer"
         case .basketball: return "basketball"
+        case .volleyball: return "volleyball"
+        case .handball: return "handball"
+        case .rugby, .australianFootball: return "rugby"
+        case .americanFootball: return "americanFootball"
+        case .baseball, .softball: return "baseball"
+        case .hockey, .lacrosse: return "hockey"
+        case .cricket: return "cricket"
         case .climbing: return "climbing"
-        case .downhillSkiing, .crossCountrySkiing, .snowboarding, .snowSports: return "skiing"
+        case .downhillSkiing, .snowSports: return "skiing"
+        case .crossCountrySkiing: return "crossCountrySkiing"
+        case .snowboarding: return "snowboarding"
+        case .skatingSports: return "skating"
+        case .boxing: return "boxing"
+        case .kickboxing: return "kickboxing"
+        case .martialArts: return "martialArts"
+        case .wrestling: return "wrestling"
+        case .fencing: return "fencing"
+        case .gymnastics: return "gymnastics"
         case .golf: return "golf"
-        case .socialDance, .cardioDance, .dance: return "dance"
+        case .equestrianSports: return "equestrian"
+        case .archery: return "archery"
+        case .bowling: return "bowling"
+        case .cardioDance, .dance: return "dance"
+        case .socialDance: return "socialDance"
+        case .wheelchairRunPace, .wheelchairWalkPace: return "wheelchair"
+        case .play: return "play"
+        case .fitnessGaming: return "fitnessGaming"
+        case .preparationAndRecovery: return "recovery"
         default: return "other"
         }
     }

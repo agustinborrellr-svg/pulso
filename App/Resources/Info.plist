@@ -25,7 +25,7 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Pulso se conecta por Bluetooth a tu pulsera WHOOP para descargar tus datos de frecuencia cardiaca, sueño y actividad.</string>
+	<string>Pulso se conecta por Bluetooth a tu pulsera para descargar tus datos de frecuencia cardiaca, sueño y actividad.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Pulso lee los entrenos de otras apps (Garmin, Strava, Nike…) y los ECG del Apple Watch para sumarlos a tu historial.</string>
 	<key>NSHealthUpdateUsageDescription</key>
@@ -72,6 +72,10 @@
 	</array>
 	<key>UIUserInterfaceStyle</key>
 	<string>Dark</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>strava</string>
+	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>

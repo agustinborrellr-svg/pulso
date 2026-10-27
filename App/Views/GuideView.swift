@@ -24,10 +24,10 @@ struct GuideView: View {
 
     static let pages: [Page] = [
         Page(id: 0, symbol: "waveform.path.ecg", color: Theme.red, kicker: "Pulso en 2 minutos",
-             title: "Tu WHOOP, sin la nube",
+             title: "Tu pulsera, sin la nube",
              text: "Pulso habla directamente con tu pulsera por Bluetooth, guarda cada segundo en tu iPhone y calcula todo aquí: recuperación, esfuerzo, sueño, estrés y entrenos.",
              points: [
-                ("lock.shield", "Nada sale del teléfono: ni cuenta, ni servidores, ni la app de WHOOP."),
+                ("lock.shield", "Nada sale del teléfono: ni cuenta, ni servidores, ni apps de terceros."),
                 ("function", "Cada número tiene su fórmula a la vista: toca cualquier métrica para ver de dónde sale."),
                 ("stethoscope", "Son estimaciones de bienestar, no un dispositivo médico."),
              ]),
@@ -45,7 +45,7 @@ struct GuideView: View {
              points: [
                 ("moon.stars", "4 noches para la primera recuperación."),
                 ("chart.line.uptrend.xyaxis", "2 a 4 semanas para que tus líneas base sean finas."),
-                ("square.and.arrow.down", "¿Vienes de WHOOP? Importa tu exportación en Más → Importar de WHOOP y empiezas con meses de historial."),
+                ("square.and.arrow.down", "¿Vienes de otra pulsera? Importa tu historial en Más → Importar historial y empiezas con meses de datos."),
              ]),
         Page(id: 3, symbol: "heart.circle", color: Theme.green, kicker: "Recuperación · 0–100 %",
              title: "¿Cómo de preparado estás hoy?",
@@ -57,7 +57,7 @@ struct GuideView: View {
              ]),
         Page(id: 4, symbol: "flame", color: Theme.strain, kicker: "Esfuerzo · 0–21",
              title: "Cuánto has cargado al cuerpo",
-             text: "Suma el tiempo que pasas con el pulso alto durante todo el día, entrenos y vida normal. La escala es como la de WHOOP: cada punto cuesta más que el anterior.",
+             text: "Suma el tiempo que pasas con el pulso alto durante todo el día, entrenos y vida normal. La escala es logarítmica: cada punto cuesta más que el anterior.",
              points: [
                 ("figure.walk", "0–9: día ligero o de descanso."),
                 ("figure.run", "10–17: entreno normal o día movido."),

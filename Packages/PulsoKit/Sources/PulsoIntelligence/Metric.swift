@@ -62,6 +62,15 @@ public struct MetricResult: Equatable, Identifiable, Sendable {
     }
 
     public var isAvailable: Bool { status == .ok && value != nil }
+
+    /// For a locked metric, how far along it is: what you have vs the first number in what it needs
+    /// ("14 noches…" → 14). Nil when the requirement is not a count.
+    public var unlock: (have: Int, need: Int)? {
+        guard case .insufficient(let need) = status else { return nil }
+        let digits = need.drop { !$0.isNumber }.prefix { $0.isNumber }
+        guard let n = Int(digits), n > 0 else { return nil }
+        return (min(sampleSize, n), n)
+    }
 }
 
 // MARK: - Statistics toolkit (no dependencies)

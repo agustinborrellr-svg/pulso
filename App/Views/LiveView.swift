@@ -10,6 +10,9 @@ struct LiveView: View {
     @State private var sport = "Carrera"
     @State private var planID = ""
     @State private var confirmStop = false
+    @State private var resp: Double?
+    @State private var stress: Double?
+    @State private var lastSlow = Date.distantPast
 
     static var sports: [String] { SportCatalog.names }
 
@@ -18,8 +21,25 @@ struct LiveView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     heartCard
+                    NavigationLink {
+                        ScanView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "dot.radiowaves.left.and.right").font(.title2)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Escanear").font(.headline)
+                                Text("60 s quieto: pulso, VFC, respiración y estrés frente a tu normal").font(.caption).opacity(0.8)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                        }
+                        .foregroundStyle(.black)
+                        .padding(16)
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+                    }
+                    .disabled(!model.strapState.isConnected)
                     if model.liveWorkout != nil { workoutCard } else { startCard }
-                    breathingCard
+                    toolsGrid
                     Button {
                         model.buzz()
                     } label: {
@@ -35,7 +55,18 @@ struct LiveView: View {
             .pulsoTitle("En vivo")
             .onAppear { model.setLive(true) }
             .onDisappear { if model.liveWorkout == nil { model.setLive(false) } }
+            .onChange(of: model.liveHR) { _, _ in refreshSlow() }
         }
+    }
+
+    /// Breathing rate and stress need ~1 minute of beats and a spectrum: every 10 s is plenty.
+    private func refreshSlow() {
+        guard Date().timeIntervalSince(lastSlow) >= 10 else { return }
+        lastSlow = Date()
+        let recent = model.beats(since: Date().addingTimeInterval(-90))
+        let scan = LiveMetrics.scan(recent, baseline: model.liveBaseline)
+        resp = scan?.respRate
+        stress = scan?.stress
     }
 
     private var zone: Int {
@@ -45,46 +76,113 @@ struct LiveView: View {
 
     private var heartCard: some View {
         Card {
-            HStack(alignment: .firstTextBaseline) {
-                Image(systemName: "heart.fill")
-                    .foregroundStyle(Theme.zoneColor(zone))
-                    .symbolEffect(.pulse, isActive: model.liveHR != nil)
-                Text(model.liveHR.map(String.init) ?? "--")
-                    .font(.system(size: 72, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.white)
-                Text("lpm").foregroundStyle(Theme.secondary)
+            HStack(alignment: .center, spacing: 14) {
+                BeatingHeart(bpm: model.liveHR, color: Theme.zoneColor(zone))
+                    .frame(width: 54, height: 54)
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(model.liveHR.map(String.init) ?? "--")
+                            .font(.system(size: 64, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(.white)
+                            .contentTransition(.numericText())
+                        Text("lpm").foregroundStyle(Theme.secondary)
+                    }
+                }
                 Spacer()
-                VStack(alignment: .trailing) {
+                VStack(alignment: .trailing, spacing: 2) {
                     Text(zone == 0 ? "Reposo" : "Zona \(zone)").font(.headline).foregroundStyle(Theme.zoneColor(zone))
                     if let hr = model.liveHR {
-                        let pct = Double(hr) / model.heartRateModel.maxHR * 100
-                        Text("\(Int(pct))% FC máx").font(.caption).foregroundStyle(Theme.secondary)
+                        Text("\(Int(Double(hr) / model.heartRateModel.maxHR * 100)) % FC máx").font(.caption).foregroundStyle(Theme.secondary)
                     }
                 }
             }
             if model.livePoints.count > 2 {
-                Chart(model.livePoints) { p in
+                let cut = Date().addingTimeInterval(-120)
+                Chart(model.livePoints.filter { $0.date >= cut }) { p in
+                    AreaMark(x: .value("t", p.date), yStart: .value("base", 40), yEnd: .value("FC", p.hr))
+                        .foregroundStyle(LinearGradient(colors: [Theme.red.opacity(0.35), Theme.red.opacity(0)], startPoint: .top, endPoint: .bottom))
+                        .interpolationMethod(.catmullRom)
                     LineMark(x: .value("t", p.date), y: .value("FC", p.hr))
                         .foregroundStyle(Theme.red)
                         .interpolationMethod(.catmullRom)
                 }
                 .chartYScale(domain: .automatic(includesZero: false))
+                .chartXScale(domain: cut...Date())
                 .chartXAxis(.hidden)
-                .frame(height: 120)
+                .frame(height: 110)
+                .animation(.linear(duration: 1), value: model.livePoints.count)
             } else {
                 Text(model.strapState.isConnected ? "Esperando latidos… (ponte bien la pulsera)" : "Conecta la pulsera para ver tu pulso en directo.")
                     .font(.footnote)
                     .foregroundStyle(Theme.secondary)
             }
-            HStack {
-                Label("VFC en vivo \(Fmt.int(model.liveRMSSD)) ms", systemImage: "waveform.path.ecg")
-                Spacer()
-                Label("FC máx \(Int(model.heartRateModel.maxHR))", systemImage: "arrow.up.heart")
+            let beats = Array(model.liveBeats.suffix(60))
+            if beats.count > 10 {
+                VStack(alignment: .leading, spacing: 4) {
+                    Caps("Tacograma · cada latido", size: 10, color: Theme.secondary, weight: .semibold)
+                    Chart(Array(beats.enumerated()), id: \.offset) { i, b in
+                        BarMark(x: .value("latido", i), yStart: .value("min", (beats.map(\.rr).min() ?? b.rr) - 20), yEnd: .value("R-R", b.rr), width: .ratio(0.6))
+                            .foregroundStyle(Theme.hrv.opacity(0.8))
+                    }
+                    .chartXAxis(.hidden)
+                    .chartYAxis {
+                        AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { v in
+                            AxisValueLabel { Text("\(v.as(Int.self) ?? 0)").font(.system(size: 9)).foregroundStyle(Theme.tertiary) }
+                        }
+                    }
+                    .chartYScale(domain: .automatic(includesZero: false))
+                    .frame(height: 70)
+                }
             }
-            .font(.caption)
-            .foregroundStyle(Theme.secondary)
+            HStack(spacing: 0) {
+                miniStat("VFC 60 s", Fmt.int(model.liveRMSSD), "ms", Theme.hrv)
+                miniStat("Respiración", Fmt.dec(resp), "rpm", Theme.link)
+                miniStat("Estrés", stress.map { String(format: "%.1f", $0) } ?? "–", "/3", Theme.stress)
+                miniStat("Esfuerzo hoy", Fmt.one(model.liveDayStrain), "", Theme.strain)
+            }
         }
+    }
+
+    private func miniStat(_ k: String, _ v: String, _ unit: String, _ c: Color) -> some View {
+        VStack(spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 1) {
+                Text(v).font(.headline.monospacedDigit()).foregroundStyle(c)
+                Text(unit).font(.system(size: 9)).foregroundStyle(Theme.tertiary)
+            }
+            Text(k).font(.system(size: 10)).foregroundStyle(Theme.secondary).lineLimit(1).minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var toolsGrid: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeading(text: "Herramientas")
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                tool("Coherencia", "Biofeedback respirando", "waveform.path", Theme.hrv) { CoherenceView() }
+                tool("Respiración guiada", "6 por minuto", "wind", Theme.link) { BreathingView() }
+                tool("Poincaré", "Tu variabilidad, latido a latido", "circle.grid.cross", Theme.sleep) { PoincareView() }
+                tool("Test ortostático", "Tumbado → de pie, 5 min", "figure.stand", Theme.yellow) { OrthostaticTestView() }
+                tool("Recuperación FC", "Cuánto baja en 1–2 min", "arrow.down.heart", Theme.green) { RecoveryTestView() }
+                tool("FC máxima", "Test de esfuerzo máximo", "bolt.heart", Theme.red) { MaxHRTestView() }
+            }
+        }
+    }
+
+    private func tool<D: View>(_ title: String, _ sub: String, _ icon: String, _ c: Color, @ViewBuilder dest: @escaping () -> D) -> some View {
+        NavigationLink {
+            dest()
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: icon).font(.title2).foregroundStyle(c)
+                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
+                Text(sub).font(.caption2).foregroundStyle(Theme.secondary).lineLimit(2).multilineTextAlignment(.leading)
+            }
+            .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+            .padding(14)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
     }
 
     private var startCard: some View {
@@ -149,8 +247,35 @@ struct LiveView: View {
                     liveStat("FC media", w.hrCount > 0 ? "\(Int(w.hrSum / Double(w.hrCount)))" : "–", Theme.red)
                     liveStat("FC máx", w.maxHR > 0 ? "\(w.maxHR)" : "–", Theme.red)
                 }
-                if !w.laps.isEmpty {
-                    Text("\(w.laps.count) vuelta\(w.laps.count == 1 ? "" : "s")").font(.caption).foregroundStyle(Theme.secondary)
+                let m = model.heartRateModel
+                ZoneBandsChart(model: m, points: model.livePoints.filter { $0.date >= w.start.addingTimeInterval(-5) }, target: w.targetZone)
+                    .frame(height: 150)
+                Picker("Zona objetivo", selection: Binding(get: { w.targetZone ?? 0 }, set: { model.setTargetZone($0 == 0 ? nil : $0) })) {
+                    Text("Sin zona objetivo").tag(0)
+                    ForEach(1...5, id: \.self) { z in
+                        Text("Mantener zona \(z) · \(Int(m.zoneFloor(z)))–\(Int(z >= 5 ? m.maxHR : m.zoneFloor(z + 1))) lpm").tag(z)
+                    }
+                }
+                .pickerStyle(.menu)
+                .tint(.white)
+                if w.targetZone != nil {
+                    Text("Si te sales más de 10 s, la pulsera vibra: 3 toques = baja el ritmo, 1 toque = súbelo.")
+                        .font(.caption).foregroundStyle(Theme.secondary)
+                }
+                if !w.lapStats.isEmpty {
+                    VStack(spacing: 6) {
+                        ForEach(Array(w.lapStats.enumerated()), id: \.offset) { i, lap in
+                            HStack {
+                                Text("Vuelta \(i + 1)").font(.subheadline.weight(.semibold)).foregroundStyle(.white)
+                                Spacer()
+                                Text(Self.duration(lap.duration)).font(.subheadline.monospacedDigit()).foregroundStyle(Theme.secondary)
+                                Text("media \(Fmt.int(lap.avgHR))").font(.subheadline.monospacedDigit()).foregroundStyle(Theme.red)
+                                Text("máx \(Fmt.int(lap.maxHR))").font(.caption.monospacedDigit()).foregroundStyle(Theme.secondary)
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .background(Theme.cardHighlight, in: RoundedRectangle(cornerRadius: 10))
                 }
                 Button {
                     model.markLap()
@@ -184,24 +309,6 @@ struct LiveView: View {
     static func duration(_ s: TimeInterval) -> String {
         let t = Int(s)
         return t >= 3600 ? String(format: "%d:%02d:%02d", t / 3600, (t % 3600) / 60, t % 60) : String(format: "%02d:%02d", t / 60, t % 60)
-    }
-
-    private var breathingCard: some View {
-        NavigationLink {
-            BreathingView()
-        } label: {
-            HStack {
-                Image(systemName: "wind").font(.title2).foregroundStyle(Theme.hrv)
-                VStack(alignment: .leading) {
-                    Text("Respiración guiada").font(.headline).foregroundStyle(.white)
-                    Text("6 respiraciones/min con biofeedback de VFC").font(.caption).foregroundStyle(Theme.secondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").foregroundStyle(Theme.tertiary)
-            }
-            .padding(16)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 20))
-        }
     }
 }
 
