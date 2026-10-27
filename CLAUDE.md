@@ -113,6 +113,26 @@ docs/PROTOCOLO.md       referencia del protocolo BLE de la WHOOP 5.0
 - Paso 5 (subido SIN COMPILAR): restyle del resto (pulsoTitle/pulsoList), Análisis con pestañas.
 - 27-oct: GitHub Actions dejó de arrancar (facturación / minutos de Mac agotados en repo privado).
 
+## Estado (2026-10-27, noche: «hazlo todo»)
+
+- Repo **público** desde el 27-oct (minutos de Mac agotados en privado). Historial limpiado de logs con UDID.
+- **Sin menciones a WHOOP** en la app: la pulsera es «Pulse Band 5.0 / MG» (`Fmt.bandName`). Identificadores internos
+  (`WhoopProtocol`, `.whoop`, kv `whoop:`) se quedan. No reintroducir el nombre en textos visibles.
+- **Datos que nunca se pierden**: muestras con UPSERT `COALESCE` (una re-descarga parcial no borra valores), datos por
+  segundo «Siempre» por defecto (migración 120→0 una vez, kv `migration.retentionForever`), copias automáticas en
+  Documents/«Copias de seguridad» (visible en Archivos): diaria ligera ×14, semanal completa ×3, y completa antes de
+  importar/restaurar/borrar ×5 (`BackupPolicy`, `AppModel+Backups`). Más → Almacenamiento explica todo.
+- **En vivo**: `LiveMetrics` (escaneo 60 s vs calma, Poincaré, coherencia, ortostático, recuperación FC, FC máx,
+  `ZoneGuard`, vueltas). UI en `LiveView` + `LiveToolsViews.swift`; historial de tests en kv `live.tests`.
+- **Análisis**: `AnalysisTools` (cascada del %, `Relation`, rachas/récords, `MonthlyReport`) + `AnalysisExtras.swift`
+  (resumen de hoy, por desbloquear, lo que más te afecta, explorador, calendario, informe PDF).
+- **Strava en un toque**: `StravaBuiltIn.swift` vacío en el repo; CI lo rellena con los secretos `STRAVA_CLIENT_ID` /
+  `STRAVA_CLIENT_SECRET`. Conecta abriendo la app de Strava (`strava://oauth/mobile/authorize`, vuelve por
+  `pulso://localhost/strava`). Credenciales propias en Conexiones → Strava → Avanzado.
+- 81 actividades (`SportCatalog`); «Intimidad» nunca se manda a Strava ni a Salud (`Sport.shareable`).
+- Sueño de días importados: fases y constantes desde el resumen (`HistoryMerge.summarySleep`).
+- Datos de demostración fuera de la UI (solo capturas de CI). 142 tests del núcleo en verde.
+
 ## Compilar y dejarlo verde
 
 1. Comprueba que hay Git (`git --version`). Si no hay historial (`git log` falla): `git init -b main`, `git add -A` y un commit.

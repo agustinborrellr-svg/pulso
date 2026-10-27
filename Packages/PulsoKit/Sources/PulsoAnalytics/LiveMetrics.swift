@@ -333,6 +333,13 @@ public enum LiveMetrics {
         public var avgHR: Double?
         public var maxHR: Double?
         public var duration: Double { end - start }
+
+        public init(start: Double, end: Double, avgHR: Double?, maxHR: Double?) {
+            self.start = start
+            self.end = end
+            self.avgHR = avgHR
+            self.maxHR = maxHR
+        }
     }
 
     /// Splits a workout at the lap marks.

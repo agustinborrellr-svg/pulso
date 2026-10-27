@@ -45,22 +45,38 @@ struct AnalysisTodayCard: View {
 struct WaterfallCard: View {
     let day: DaySummary
 
+    struct Bar: Identifiable {
+        let label: String
+        let from: Double
+        let to: Double
+        /// 0 normal day, 1 adds, 2 takes away, 3 result.
+        let kind: Int
+        var id: String { label }
+    }
+
+    static func bars(_ steps: [RecoveryWaterfall.Step]) -> [Bar] {
+        var out = [Bar(label: "Día normal", from: 0, to: RecoveryWaterfall.neutral, kind: 0)]
+        var prev = RecoveryWaterfall.neutral
+        for s in steps {
+            out.append(Bar(label: s.label, from: prev, to: s.total, kind: s.points >= 0 ? 1 : 2))
+            prev = s.total
+        }
+        out.append(Bar(label: "Hoy", from: 0, to: prev, kind: 3))
+        return out
+    }
+
     var body: some View {
         let steps = RecoveryWaterfall.steps(day.contributors)
         if let score = day.recovery, !steps.isEmpty {
             PCard {
                 CardHeader(title: "Por qué este \(Int(score)) %", subtitle: "Desde un día normal para ti (\(Int(RecoveryWaterfall.neutral)) %), factor a factor")
-                let bars = [(label: "Día normal", from: 0.0, to: RecoveryWaterfall.neutral, kind: 0)]
-                    + steps.enumerated().map { i, s in
-                        (label: s.label, from: i == 0 ? RecoveryWaterfall.neutral : steps[i - 1].total, to: s.total, kind: s.points >= 0 ? 1 : 2)
-                    }
-                    + [(label: "Hoy", from: 0.0, to: steps.last!.total, kind: 3)]
-                Chart(Array(bars.enumerated()), id: \.offset) { _, b in
+                let bars = Self.bars(steps)
+                Chart(bars) { b in
                     BarMark(x: .value("factor", b.label), yStart: .value("de", b.from), yEnd: .value("a", b.to), width: .ratio(0.6))
                         .foregroundStyle(b.kind == 0 ? Color(white: 0.45) : b.kind == 1 ? Theme.better : b.kind == 2 ? Theme.worse : Theme.recoveryColor(score))
                         .cornerRadius(2)
                 }
-                .chartXScale(domain: bars.map(\.label))
+                .chartXScale(domain: bars.map { $0.label })
                 .chartYScale(domain: 0...100)
                 .chartXAxis {
                     AxisMarks { v in

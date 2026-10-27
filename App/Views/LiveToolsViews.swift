@@ -35,9 +35,12 @@ struct ZoneBandsChart: View {
 
     var body: some View {
         let lo = model.zoneFloor(1) - 15
+        let t1 = max(points.last?.date ?? Date(), Date())
+        let t0 = min(points.first?.date ?? t1.addingTimeInterval(-60), t1.addingTimeInterval(-60))
         Chart {
             ForEach(1...5, id: \.self) { z in
-                RectangleMark(yStart: .value("de", model.zoneFloor(z)), yEnd: .value("a", z >= 5 ? model.maxHR : model.zoneFloor(z + 1)))
+                RectangleMark(xStart: .value("t0", t0), xEnd: .value("t1", t1),
+                              yStart: .value("de", model.zoneFloor(z)), yEnd: .value("a", z >= 5 ? model.maxHR : model.zoneFloor(z + 1)))
                     .foregroundStyle(Theme.zoneColor(z).opacity(target == z ? 0.32 : 0.10))
             }
             ForEach(points) { p in
@@ -57,7 +60,7 @@ struct ZoneBandsChart: View {
 }
 
 /// Big round score.
-struct ScoreRing: View {
+struct LiveRing: View {
     let value: Double
     let text: String
     let color: Color
@@ -99,7 +102,7 @@ private struct PhaseClock: View {
         TimelineView(.periodic(from: start, by: 0.5)) { ctx in
             let el = min(seconds, ctx.date.timeIntervalSince(start))
             VStack(spacing: 14) {
-                ScoreRing(value: el / seconds, text: LiveView.duration(seconds - el), color: Theme.link)
+                LiveRing(value: el / seconds, text: LiveView.duration(seconds - el), color: Theme.link)
                     .frame(width: 200, height: 200)
                 Text(title).font(.title3.bold()).foregroundStyle(.white)
                 Text(hint).font(.footnote).foregroundStyle(Theme.secondary).multilineTextAlignment(.center)
@@ -207,7 +210,7 @@ struct ScanView: View {
         let color: Color = (r.stress ?? 0) < 1 ? Theme.green : (r.stress ?? 0) < 2 ? Theme.yellow : Theme.red
         return PCard {
             HStack(spacing: 18) {
-                ScoreRing(value: Double(r.state ?? 0) / 100, text: r.state.map(String.init) ?? "–", color: color)
+                LiveRing(value: Double(r.state ?? 0) / 100, text: r.state.map(String.init) ?? "–", color: color)
                     .frame(width: 120, height: 120)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(r.label).font(.title3.bold()).foregroundStyle(color)
