@@ -157,6 +157,8 @@ final class StrapManager: NSObject {
     private var lastVendorRealtime: Date?
     private var identity = StrapIdentity()
     private var discovered: [UUID: (peripheral: CBPeripheral, strap: DiscoveredStrap)] = [:]
+    /// Stops the current scan after a while; replaced on every new scan so an old timer never cuts a new one.
+    private var scanTimeout: DispatchWorkItem?
 
     /// Raw capture for the Laboratorio screen (accessed on the BLE queue).
     let recorder = FrameRecorder()
@@ -207,6 +209,7 @@ final class StrapManager: NSObject {
     func stopScan() {
         guard active else { return }
         queue.async {
+            self.scanTimeout?.cancel()
             self.central.stopScan()
             if self.state == .scanning { self.restoreStateAfterScan() }
         }
@@ -229,6 +232,7 @@ final class StrapManager: NSObject {
         guard active else { return }
         queue.async {
             guard let found = self.discovered[id] else { return }
+            self.scanTimeout?.cancel()
             self.central.stopScan()
             UserDefaults.standard.removeObject(forKey: Self.savedPeripheralKey)
             if let p = self.peripheral, p.identifier != id { self.central.cancelPeripheralConnection(p) }
@@ -391,13 +395,24 @@ final class StrapManager: NSObject {
         }
         wantsScan = false
         state = .scanning
+        // A strap already linked to this iPhone (bonded at system level, or connected by another app) stops
+        // advertising: list it too so it can still be chosen.
+        for p in central.retrieveConnectedPeripherals(withServices: [StrapUUID.service]) where discovered[p.identifier] == nil {
+            discovered[p.identifier] = (p, DiscoveredStrap(id: p.identifier, name: Fmt.bandName(p.name ?? "Pulse Band"), rssi: -50))
+            log("Pulsera ya conectada al iPhone: \(Fmt.bandName(p.name ?? "Pulse Band"))")
+        }
+        if !discovered.isEmpty { publishDiscovered() }
         central.scanForPeripherals(withServices: [StrapUUID.service, StrapUUID.gen4Service],
                                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
-        queue.asyncAfter(deadline: .now() + 45) { [weak self] in
+        scanTimeout?.cancel()
+        let timeout = DispatchWorkItem { [weak self] in
             guard let self, self.state == .scanning else { return }
             self.central.stopScan()
+            self.log("Búsqueda terminada")
             self.restoreStateAfterScan()
         }
+        scanTimeout = timeout
+        queue.asyncAfter(deadline: .now() + 45, execute: timeout)
     }
 
     private func attach(_ p: CBPeripheral) {
@@ -776,7 +791,7 @@ extension StrapManager: CBCentralManagerDelegate {
             }
             return
         }
-        let name = (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? peripheral.name ?? "Pulse Band"
+        let name = Fmt.bandName((advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? peripheral.name ?? "Pulse Band")
         let isNew = discovered[peripheral.identifier] == nil
         discovered[peripheral.identifier] = (peripheral, DiscoveredStrap(id: peripheral.identifier, name: name, rssi: RSSI.intValue))
         if isNew { log("Pulsera encontrada: \(name) (no se conecta hasta que la elijas)") }
