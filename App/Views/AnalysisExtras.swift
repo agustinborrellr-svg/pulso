@@ -72,7 +72,7 @@ struct WaterfallCard: View {
                 CardHeader(title: "Por qué este \(Int(score)) %", subtitle: "Desde un día normal para ti (\(Int(RecoveryWaterfall.neutral)) %), factor a factor")
                 let bars = Self.bars(steps)
                 Chart(bars) { b in
-                    BarMark(xStart: .value("de", b.from), xEnd: .value("a", max(b.to, b.from + 0.4)), y: .value("factor", b.label), height: .ratio(0.6))
+                    BarMark(xStart: .value("de", min(b.from, b.to)), xEnd: .value("a", max(b.from, b.to, min(b.from, b.to) + 0.6)), y: .value("factor", b.label), height: .ratio(0.6))
                         .foregroundStyle(b.kind == 0 ? Color(white: 0.45) : b.kind == 1 ? Theme.better : b.kind == 2 ? Theme.worse : Theme.recoveryColor(score))
                         .cornerRadius(2)
                 }
