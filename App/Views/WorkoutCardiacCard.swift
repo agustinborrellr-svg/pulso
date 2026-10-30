@@ -8,11 +8,17 @@ struct WorkoutCardiacCard: View {
     @EnvironmentObject var model: AppModel
     let workout: Workout
     @State private var result: WorkoutAnalysis.Result?
+    @State private var hasHeart = true
 
     var body: some View {
         Card {
             SectionTitle(title: "Análisis cardíaco", subtitle: "Con tus datos segundo a segundo")
-            if let r = result {
+            if result != nil, !hasHeart {
+                Text(workout.source.isExternal
+                     ? "Sin datos de pulso: entreno importado sin la pulsera puesta. No entra en la recuperación del pulso."
+                     : "Sin datos de pulso de la pulsera en este entreno.")
+                    .font(.caption).foregroundStyle(Theme.secondary)
+            } else if let r = result {
                 if let rec = r.recovery {
                     HStack {
                         stat("A 60 s", rec.drop60.map { "−\(Int($0.rounded()))" } ?? "–", "lpm")
@@ -51,17 +57,19 @@ struct WorkoutCardiacCard: View {
                 }
                 if let e = model.loadEvent(for: workout) {
                     Divider().overlay(Color.white.opacity(0.1))
-                    LabeledContent("Noches hasta normalizarte", value: e.recoveryNights.map { String(format: "%.1f", $0) } ?? "> 5")
+                    LabeledContent("Noches hasta normalizarte", value: e.recoveryNights.map { String(format: "%.1f", $0) } ?? (e.censored ? "≥ 5" : "sin medir"))
                     if let h = e.hrvChangePct { LabeledContent("VFC la noche siguiente", value: String(format: "%+.0f %%", h)) }
                     if e.chained { Text("Hubo otro día exigente antes de recuperarte: carga encadenada.").font(.caption2).foregroundStyle(Theme.yellow) }
                 }
             } else {
                 ProgressView()
             }
+            if hasHeart { HowCalculated(id: "hrr60", formula: "FCR60 = FC al terminar (media de los últimos 30 s) − FC 60 s después; τ por ajuste log-lineal de los 2 primeros minutos") }
         }
         .font(.subheadline)
         .task {
             let w = workout
+            hasHeart = model.workoutHasHeartData(w)
             result = model.workoutAnalysis(w)
         }
     }

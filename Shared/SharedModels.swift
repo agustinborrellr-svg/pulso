@@ -27,6 +27,7 @@ struct WidgetSnapshot: Codable, Equatable {
     var nextAlarm: Date?
     var headline: String?
 
+    /// Sample numbers for Xcode previews and the widget gallery only. Never a runtime fallback.
     static let placeholder = WidgetSnapshot(updated: Date(), day: "", recovery: 72, strain: 9.8, strainTarget: "14–18",
                                             sleepPerformance: 0.91, sleepMinutes: 452, hrv: 68, rhr: 52, battery: 64,
                                             nextAlarm: nil, headline: "Tu cuerpo está listo para rendir.")

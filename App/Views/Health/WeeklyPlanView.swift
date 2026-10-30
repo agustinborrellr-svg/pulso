@@ -114,7 +114,7 @@ struct WeeklyPlanView: View {
         let progress = model.planProgress
         DetailScreen(title: "Detalles del plan") {
             Caps("Plan actual", size: 11, color: Theme.secondary, weight: .semibold)
-            Text("Tu semana").font(.system(size: 28, weight: .bold)).foregroundStyle(.white)
+            Text("Tu semana").scaledFont(28, weight: .bold, relativeTo: .title1).foregroundStyle(.white)
             Text("Metas de lunes a domingo, comparadas con tu media de las 4 semanas anteriores. Ajústalas para que te supongan un reto razonable.")
                 .font(.subheadline).foregroundStyle(Color(white: 0.82))
             HStack(spacing: 14) {
@@ -168,7 +168,7 @@ struct GoalCard: View {
             }
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(PlanText.value(g.kind, progress.value)).font(.system(size: 26, weight: .bold)).monospacedDigit().foregroundStyle(.white)
+                    Text(PlanText.value(g.kind, progress.value)).scaledFont(26, weight: .bold, relativeTo: .title1).monospacedDigit().foregroundStyle(.white)
                     Caps("Esta semana", size: 9, color: Theme.secondary, weight: .semibold)
                     if let p = progress.previous {
                         Text("Media 4 semanas: \(PlanText.value(g.kind, p))").font(.caption).foregroundStyle(Theme.secondary)
@@ -178,7 +178,7 @@ struct GoalCard: View {
                 Image(systemName: "chevron.right.2").font(.title3.bold()).foregroundStyle(Theme.secondary)
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(g.kind == .bedtimeBefore ? "5 noches" : PlanText.target(g)).font(.system(size: 22, weight: .bold)).monospacedDigit().foregroundStyle(.white)
+                    Text(g.kind == .bedtimeBefore ? "5 noches" : PlanText.target(g)).scaledFont(22, weight: .bold, relativeTo: .title1).monospacedDigit().foregroundStyle(.white)
                     Caps(g.kind == .habitNo ? "Límite semanal" : "Objetivo semanal", size: 9, color: Theme.secondary, weight: .semibold)
                 }
             }

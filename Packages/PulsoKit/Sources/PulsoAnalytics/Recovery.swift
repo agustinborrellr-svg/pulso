@@ -169,7 +169,11 @@ public enum Stress {
             let es = epochs[i0..<i1].filter { $0.worn }
             guard es.count >= 4 else { continue }
             let calm = es.filter { ($0.motion ?? 0) < max(stillThreshold * 4, 0.1) && $0.stepsDelta < 15 }
-            guard calm.count >= 4,
+            // Heart rate stays up for minutes after walking: a window right after movement is recovery from
+            // activity, not stress (real data: evenings of short walks read as "high stress").
+            let before = epochs[max(0, i0 - 10)..<i0]
+            let recentSteps = before.reduce(0) { $0 + $1.stepsDelta } + es.reduce(0) { $0 + $1.stepsDelta }
+            guard calm.count >= 4, recentSteps < 40,
                   let hr = Stats.mean(es.compactMap { $0.hr }) else { continue }
             let runs = HRV.clean(Epochs.rrRuns(Epochs.slice(samples, from: t, to: t + 300), from: t, to: t + 300))
             out.append(StillWindow(ts: t, hr: hr, rmssd: HRV.rmssd(runs, minPairs: 40)))
@@ -177,11 +181,17 @@ public enum Stress {
         return out
     }
 
-    /// Calm reference of one day: 25th-percentile HR and 75th-percentile RMSSD of its still windows.
+    /// Reference of one day: median HR and median RMSSD of its still windows. A typical still moment of
+    /// yours scores low; against the calmest quartile (the old reference) almost every window read as stress.
     public static func calmReference(_ w: [StillWindow]) -> (hr: Double?, hrv: Double?) {
         guard w.count >= 6 else { return (nil, nil) }
-        return (Stats.percentile(w.map { $0.hr }, 25), Stats.percentile(w.compactMap { $0.rmssd }, 75))
+        return (Stats.median(w.map { $0.hr }), Stats.median(w.compactMap { $0.rmssd }))
     }
+
+    /// After a workout HR stays up and HRV down for a while: that is recovery from exercise, not stress.
+    public static let postWorkoutMinutes = 90
+    /// Previous strap days with a calm reference needed before stress is scored.
+    public static let minBaselineDays = 3
 
     public static func score(_ windows: [StillWindow], calmHR: Double, calmHRV: Double?) -> [Window] {
         windows.map { w in

@@ -31,12 +31,6 @@ struct ECGListView: View {
                             .foregroundStyle(Theme.secondary)
                     }
                 }
-                Button {
-                    simulate = true
-                    recording = true
-                } label: {
-                    Label("Probar con un ECG simulado", systemImage: "play.circle")
-                }
                 if model.profile.healthKitEnabled {
                     Button {
                         model.importAppleWatchECGs()
@@ -46,6 +40,19 @@ struct ECGListView: View {
                 }
             } footer: {
                 Text(Rhythm.disclaimer)
+            }
+
+            Section {
+                Button {
+                    simulate = true
+                    recording = true
+                } label: {
+                    Label("Ver una demostración", systemImage: "play.circle")
+                }
+            } header: {
+                Text("Demostración")
+            } footer: {
+                Text("Recorre el proceso con una señal sintética generada por la app. No mide tu corazón, se marca como DEMOSTRACIÓN y no se puede exportar como informe.")
             }
 
             Section("Historial") {
@@ -80,10 +87,12 @@ struct ECGRow: View {
 
     var body: some View {
         let rhythm = recording.rhythm.flatMap(Rhythm.init(rawValue:)) ?? .inconclusive
+        let demo = recording.source == .simulated
         HStack {
-            Image(systemName: icon(rhythm)).foregroundStyle(color(rhythm)).frame(width: 28)
+            Image(systemName: demo ? "play.rectangle" : icon(rhythm))
+                .foregroundStyle(demo ? Theme.secondary : color(rhythm)).frame(width: 28)
             VStack(alignment: .leading, spacing: 2) {
-                Text(rhythm.title).font(.subheadline.bold())
+                Text(demo ? "Demostración (señal sintética)" : rhythm.title).font(.subheadline.bold())
                 Text("\(Fmt.dayTitle(DayKey.string(ts: recording.start))) \(Fmt.time(recording.start)) · \(source)")
                     .font(.caption).foregroundStyle(Theme.secondary)
             }
@@ -96,7 +105,7 @@ struct ECGRow: View {
         switch recording.source {
         case .whoopMG: return "Pulse Band MG"
         case .appleWatch: return "Apple Watch"
-        case .simulated: return "simulado"
+        case .simulated: return "no es tu corazón"
         }
     }
 
@@ -131,7 +140,7 @@ struct ECGRecordView: View {
         NavigationStack {
             VStack(spacing: 24) {
                 if let r = result {
-                    ECGDetailContent(recording: r)
+                    ScrollView { ECGDetailContent(recording: r) }
                 } else if started {
                     Spacer()
                     ZStack {
@@ -141,19 +150,19 @@ struct ECGRecordView: View {
                             .rotationEffect(.degrees(-90))
                             .animation(.linear(duration: 1), value: model.ecgProgress)
                         VStack {
-                            Text("\(Int(30 - model.ecgProgress * 30))").font(.system(size: 64, weight: .bold, design: .rounded)).monospacedDigit()
+                            Text("\(Int(30 - model.ecgProgress * 30))").scaledFont(64, weight: .bold, design: .rounded, relativeTo: .largeTitle, maxScale: 1.3).monospacedDigit()
                             Text("segundos").foregroundStyle(Theme.secondary)
                         }
                     }
                     .frame(width: 220, height: 220)
-                    Text(simulated ? "Generando un ECG simulado…" : "No te muevas y mantén el dedo sobre la pulsera.")
+                    Text(simulated ? "Generando una señal sintética de demostración…" : "No te muevas y mantén el dedo sobre la pulsera.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(Theme.secondary)
                     Spacer()
                 } else {
                     Spacer()
-                    Image(systemName: "hand.point.up.left.fill").font(.system(size: 64)).foregroundStyle(Theme.red)
-                    Text(simulated ? "ECG simulado" : "Antes de empezar").font(.title2.bold())
+                    Image(systemName: "hand.point.up.left.fill").scaledFont(64, relativeTo: .largeTitle, maxScale: 1.3).foregroundStyle(Theme.red)
+                    Text(simulated ? "Demostración" : "Antes de empezar").font(.title2.bold())
                     Text(simulated
                          ? "Recorre todo el proceso con datos sintéticos: grabación, análisis, trazado y PDF. No es un registro real."
                          : "Siéntate, apoya el brazo en una mesa y toca el sensor de la pulsera con un dedo de la otra mano durante 30 segundos.")
@@ -210,12 +219,23 @@ struct ECGDetailContent: View {
     @State private var pdfURL: URL?
 
     var body: some View {
+        let demo = recording.source == .simulated
         VStack(alignment: .leading, spacing: 16) {
+            if demo {
+                Label("DEMOSTRACIÓN · señal sintética generada por la app. No es un registro de tu corazón ni un resultado médico.",
+                      systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.black)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.yellow, in: RoundedRectangle(cornerRadius: 10))
+            }
             if let a = analysis {
                 Card {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(a.rhythm.title).font(.title2.bold())
+                            if demo { Caps("El analizador lee en la demostración", size: 10, color: Theme.secondary) }
+                            Text(a.rhythm.title).font(demo ? .headline : .title2.bold())
                             Text("\(Fmt.dayTitle(DayKey.string(ts: recording.start))) · \(Fmt.time(recording.start))")
                                 .font(.caption).foregroundStyle(Theme.secondary)
                         }
@@ -228,15 +248,12 @@ struct ECGDetailContent: View {
                         }
                     }
                     Text(a.rhythm.explanation).font(.footnote).foregroundStyle(Theme.secondary)
-                    if recording.source == .simulated {
-                        Label("Registro simulado: no es tu corazón.", systemImage: "info.circle").font(.caption).foregroundStyle(Theme.yellow)
-                    }
                 }
             }
             if let f = full {
                 ECGStrip(recording: f, peaks: analysis?.rPeaks ?? [])
             }
-            if let url = pdfURL {
+            if let url = pdfURL, !demo {
                 ShareLink(item: url) {
                     Label("Compartir PDF para el médico", systemImage: "doc.richtext").frame(maxWidth: .infinity)
                 }

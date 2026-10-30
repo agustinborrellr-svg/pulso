@@ -32,7 +32,7 @@ struct AnalysisTodayCard: View {
     private func big(_ v: String, _ unit: String, _ k: String, _ c: Color) -> some View {
         VStack(spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: 1) {
-                Text(v).font(.system(size: 28, weight: .bold, design: .rounded)).monospacedDigit().foregroundStyle(c)
+                Text(v).scaledFont(28, weight: .bold, design: .rounded, relativeTo: .title1).monospacedDigit().foregroundStyle(c)
                 Text(unit).font(.caption).foregroundStyle(Theme.secondary)
             }
             Caps(k, size: 10, color: Theme.secondary, weight: .semibold)
@@ -80,7 +80,7 @@ struct WaterfallCard: View {
                 .chartXScale(domain: 0...100)
                 .chartYAxis {
                     AxisMarks { v in
-                        AxisValueLabel { Text(v.as(String.self) ?? "").font(.system(size: 11)).foregroundStyle(Theme.secondary) }
+                        AxisValueLabel { Text(v.as(String.self) ?? "").scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary) }
                     }
                 }
                 .frame(height: CGFloat(bars.count) * 30 + 20)
@@ -103,12 +103,13 @@ struct UnlockCard: View {
     let report: IntelligenceReport
 
     var body: some View {
-        let locked = report.sections.flatMap(\.metrics).filter { !$0.isAvailable }
+        // Locked = still waiting for data. "No se ve límite" or a night without a signal is a result, not locked.
+        let locked = report.sections.flatMap(\.metrics).filter(\.isLocked)
         if !locked.isEmpty {
             let sorted = locked.sorted { progress($0) > progress($1) }
             let total = report.sections.flatMap(\.metrics).count
             PCard {
-                CardHeader(title: "Por desbloquear", subtitle: "\(total - locked.count) de \(total) análisis listos. Lo que falta, según lo cerca que está:")
+                CardHeader(title: "Por desbloquear", subtitle: "\(total - locked.count) de \(total) análisis listos. Cada uno se activa solo cuando hay datos suficientes para que el resultado sea fiable; la barra es lo que llevas frente a lo que necesita.")
                 ForEach(sorted.prefix(6)) { m in
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
@@ -126,7 +127,9 @@ struct UnlockCard: View {
                         }
                         .frame(height: 6)
                         if case .insufficient(let need) = m.status {
-                            Text("Falta: \(need)").font(.caption2).foregroundStyle(Theme.tertiary)
+                            let left = m.unlock.map { $0.need - $0.have }
+                            Text(left.map { "Faltan \($0) · necesita \(need)" } ?? "Necesita \(need)")
+                                .font(.caption2).foregroundStyle(Theme.tertiary)
                         }
                     }
                 }
@@ -144,8 +147,11 @@ struct UnlockCard: View {
 struct ImpactCard: View {
     let items: [HabitImpact.Item]
 
+    private func clear(_ h: HabitImpact.Item) -> Bool { h.isClear }
+
     var body: some View {
-        let top = Array(items.sorted { abs($0.recoveryDelta) > abs($1.recoveryDelta) }.prefix(8))
+        // Clear associations first, then by size; an interval crossing zero is shown grey, never as an effect.
+        let top = Array(items.sorted { (clear($0) ? 1 : 0, abs($0.recoveryDelta)) > (clear($1) ? 1 : 0, abs($1.recoveryDelta)) }.prefix(8))
         if !top.isEmpty {
             let m = max(5, top.map { max(abs($0.interval.lowerBound), abs($0.interval.upperBound), abs($0.recoveryDelta)) }.max() ?? 5)
             PCard {
@@ -155,10 +161,12 @@ struct ImpactCard: View {
                         HStack {
                             Text(h.label.replacingOccurrences(of: "whoop:", with: "")).font(.subheadline).foregroundStyle(.white).lineLimit(1)
                             Spacer()
-                            Text((h.recoveryDelta >= 0 ? "+" : "−") + String(format: "%.0f", abs(h.recoveryDelta)))
+                            Text(clear(h) ? (h.recoveryDelta >= 0 ? "+" : "−") + String(format: "%.0f", abs(h.recoveryDelta)) : "no claro")
                                 .font(.subheadline.bold().monospacedDigit())
-                                .foregroundStyle(h.recoveryDelta >= 0 ? Theme.better : Theme.worse)
+                                .foregroundStyle(!clear(h) ? Theme.secondary : h.recoveryDelta >= 0 ? Theme.better : Theme.worse)
                         }
+                        Text(HabitText.counts(h))
+                            .font(.caption2.monospacedDigit()).foregroundStyle(Theme.tertiary)
                         GeometryReader { g in
                             let mid = g.size.width / 2
                             let scale = mid / m
@@ -169,7 +177,7 @@ struct ImpactCard: View {
                                     .frame(width: max(2, (h.interval.upperBound - h.interval.lowerBound) * scale), height: 2)
                                     .offset(x: mid + h.interval.lowerBound * scale, y: 0)
                                 RoundedRectangle(cornerRadius: 2)
-                                    .fill(h.recoveryDelta >= 0 ? Theme.better : Theme.worse)
+                                    .fill(!clear(h) ? Theme.secondary.opacity(0.5) : h.recoveryDelta >= 0 ? Theme.better : Theme.worse)
                                     .frame(width: max(2, abs(h.recoveryDelta) * scale), height: 10)
                                     .offset(x: h.recoveryDelta >= 0 ? mid : mid + h.recoveryDelta * scale)
                             }
@@ -177,8 +185,10 @@ struct ImpactCard: View {
                         .frame(height: 12)
                     }
                 }
-                Text("La línea fina es el margen de error (90 %). Si cruza el centro, aún no está claro. Son asociaciones, no causas.")
+                Text("La línea fina es el margen de error (90 %). " + HabitText.footnote(items.count))
                     .font(.caption2).foregroundStyle(Theme.tertiary)
+                HowCalculated(id: "habits", formula: "Diferencia de medias (Welch) con IC 90 %; p de Welch → q de Benjamini–Hochberg sobre los \(items.count) hábitos",
+                              n: items.map(\.n).max(), confidence: "Por hábito, según el menor de «días con» y «días sin»")
             }
         }
     }
@@ -218,12 +228,13 @@ struct RelationExplorerView: View {
     @EnvironmentObject var model: AppModel
     @State private var x: TrendMetric = .sleepHours
     @State private var y: TrendMetric = .recovery
-    @State private var nextDay = true
+    // Same day by default: a day's recovery already comes from the night that ends that morning.
+    @State private var nextDay = false
     @State private var range = 180
 
     var body: some View {
         let days = model.days.filter { range == 0 || $0.day >= DayKey.shift(model.currentDayKey, days: -range) }
-        let pairs = Relation.pairs(days.map { v(x, $0) }, days.map { v(y, $0) }, lag: nextDay ? 1 : 0)
+        let pairs = Relation.pairs(days: days.map(\.day), days.map { v(x, $0) }, days.map { v(y, $0) }, lagDays: nextDay ? 1 : 0)
         let fit = Relation.fit(pairs)
         ScrollView {
             VStack(spacing: 14) {
@@ -261,13 +272,18 @@ struct RelationExplorerView: View {
                         .chartYAxisLabel(y.title + (nextDay ? " · día siguiente" : ""))
                         .frame(height: 280)
                         if let f = fit {
-                            Text("\(f.strength) · r = \(String(format: "%.2f", f.r)) · \(f.n) días").font(.headline).foregroundStyle(.white)
-                            Text(sentence(f)).font(.subheadline).foregroundStyle(Theme.secondary)
+                            let ci = Association.fisherInterval(r: f.r, n: f.n)
+                            Text("\(headline(f, ci)) · r = \(String(format: "%.2f", f.r))").font(.headline).foregroundStyle(.white)
+                            Text("n = \(f.n) días" + (ci.map { String(format: " · IC 90 %% de r: %.2f a %.2f", $0.lowerBound, $0.upperBound) } ?? ""))
+                                .font(.caption.monospacedDigit()).foregroundStyle(Theme.secondary)
+                            Text(sentence(f, ci)).font(.subheadline).foregroundStyle(Theme.secondary)
                         }
                     } else {
                         Text("Aún no hay días con las dos métricas.").font(.subheadline).foregroundStyle(Theme.secondary)
                     }
                     Text("Que dos cosas vayan juntas no significa que una cause la otra.").font(.caption2).foregroundStyle(Theme.tertiary)
+                    HowCalculated(id: "relation", formula: "r de Pearson sobre pares (X del día D, Y del día D\(nextDay ? " + 1" : "")) emparejados por fecha; IC 90 % por transformación z de Fisher: tanh(atanh r ± 1,645/√(n − 3))",
+                                  n: pairs.count, confidence: "Según n y el ancho del intervalo")
                 }
             }
             .padding(16)
@@ -281,148 +297,17 @@ struct RelationExplorerView: View {
         m.value(d).map { m.isDuration ? $0 / 60 : $0 }
     }
 
-    private func sentence(_ f: Relation.Result) -> String {
-        guard f.n >= 10, abs(f.r) >= 0.1 else { return "Con estos datos no se ve que una mueva a la otra." }
-        let dir = f.slope > 0 ? "sube" : "baja"
-        return "Por cada unidad más de \(x.title.lowercased()), \(y.title.lowercased())\(nextDay ? " del día siguiente" : "") \(dir) de media \(String(format: "%.1f", abs(f.slope))) \(y.unit)."
-    }
-}
-
-// MARK: - Calendar, streaks and records
-
-struct CalendarRecordsView: View {
-    @EnvironmentObject var model: AppModel
-    @State private var metric: TrendMetric = .recovery
-    @State private var month = MonthlyReport.shiftMonth(String(DayKey.string(Date()).prefix(7)), 0)
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 14) {
-                PCard {
-                    Picker("Métrica", selection: $metric) {
-                        Text("Recup.").tag(TrendMetric.recovery)
-                        Text("Esfuerzo").tag(TrendMetric.strain)
-                        Text("Sueño").tag(TrendMetric.sleepPerformance)
-                        Text("Estrés").tag(TrendMetric.stress)
-                    }
-                    .pickerStyle(.segmented)
-                    HStack {
-                        Button { month = MonthlyReport.shiftMonth(month, -1) } label: { Image(systemName: "chevron.left") }
-                        Spacer()
-                        Caps(monthTitle(month), size: 14)
-                        Spacer()
-                        Button { month = MonthlyReport.shiftMonth(month, 1) } label: { Image(systemName: "chevron.right") }
-                            .disabled(month >= String(model.currentDayKey.prefix(7)))
-                    }
-                    .foregroundStyle(.white)
-                    monthGrid
-                }
-                streaks
-                records
-            }
-            .padding(16)
-        }
-        .background(PulsoBackground())
-        .pulsoTitle("Calendario")
+    /// "Relación" only when the 90 % interval of r leaves out 0.
+    private func headline(_ f: Relation.Result, _ ci: ClosedRange<Double>?) -> String {
+        guard f.n >= 10, let ci, !ci.contains(0) else { return f.n < 10 ? "Pocos datos" : "Sin relación clara" }
+        return f.strength
     }
 
-    private func monthTitle(_ m: String) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_ES")
-        f.dateFormat = "yyyy-MM"
-        guard let d = f.date(from: m) else { return m }
-        f.dateFormat = "LLLL yyyy"
-        return f.string(from: d)
-    }
-
-    private var monthGrid: some View {
-        let first = month + "-01"
-        let cal = Calendar.current
-        let firstDate = DayKey.date(first) ?? Date()
-        let count = cal.range(of: .day, in: .month, for: firstDate)?.count ?? 30
-        let offset = (cal.component(.weekday, from: firstDate) + 5) % 7 // Monday first
-        let byDay = Dictionary(model.days.map { ($0.day, $0) }, uniquingKeysWith: { a, _ in a })
-        return VStack(spacing: 6) {
-            HStack {
-                ForEach(["L", "M", "X", "J", "V", "S", "D"], id: \.self) { Text($0).font(.caption2).foregroundStyle(Theme.tertiary).frame(maxWidth: .infinity) }
-            }
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
-                ForEach(0..<(offset + count), id: \.self) { i in
-                    if i < offset {
-                        Color.clear.frame(height: 40)
-                    } else {
-                        let key = String(format: "%@-%02d", month, i - offset + 1)
-                        let v = byDay[key].flatMap { metric.value($0) }
-                        VStack(spacing: 1) {
-                            Text("\(i - offset + 1)").font(.system(size: 9)).foregroundStyle(.white.opacity(0.7))
-                            Text(v.map { metric == .stress ? String(format: "%.1f", $0) : "\(Int($0.rounded()))" } ?? "")
-                                .font(.system(size: 12, weight: .bold).monospacedDigit()).foregroundStyle(.white)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 40)
-                        .background(color(v).opacity(v == nil ? 0.06 : 0.85), in: RoundedRectangle(cornerRadius: 6))
-                    }
-                }
-            }
-        }
-    }
-
-    private func color(_ v: Double?) -> Color {
-        guard let v else { return .white }
-        switch metric {
-        case .recovery: return Theme.recoveryColor(v)
-        case .strain: return Theme.strain.opacity(0.35 + 0.65 * min(1, v / 21))
-        case .stress: return v < 1 ? Theme.stressLow : v < 2 ? Theme.stressMid : Theme.stressHigh
-        default: return v >= 85 ? Theme.green : v >= 70 ? Theme.yellow : Theme.red
-        }
-    }
-
-    private var streaks: some View {
-        let today = model.currentDayKey
-        let green = Records.streak(model.days, today: today) { $0.recovery.map { $0 >= 67 } }
-        let sleep7 = Records.streak(model.days, today: today) { $0.sleepMinutes.map { $0 >= 420 } }
-        let worn = Records.streak(model.days, today: today) { $0.wornMinutes > 600 ? true : ($0.recovery != nil ? true : nil) }
-        let active = Records.streak(model.days, today: today) { $0.strain.map { $0 >= 10 } }
-        return PCard {
-            CardHeader(title: "Rachas", subtitle: "Actual · mejor")
-            streakRow("Días en verde (≥ 67 %)", green)
-            streakRow("Noches de 7 h o más", sleep7)
-            streakRow("Días activos (esfuerzo ≥ 10)", active)
-            streakRow("Días con la pulsera", worn)
-        }
-    }
-
-    private func streakRow(_ t: String, _ s: Records.Streak) -> some View {
-        HStack {
-            Text(t).font(.subheadline).foregroundStyle(.white)
-            Spacer()
-            Text("\(s.current)").font(.headline.monospacedDigit()).foregroundStyle(s.current > 0 && s.current == s.best ? Theme.green : .white)
-            Text("· \(s.best)").font(.subheadline.monospacedDigit()).foregroundStyle(Theme.secondary)
-        }
-    }
-
-    private var records: some View {
-        PCard {
-            CardHeader(title: "Récords personales")
-            ForEach(Records.personalBests(model.days)) { r in
-                HStack {
-                    Text(r.title).font(.subheadline).foregroundStyle(.white)
-                    Spacer()
-                    Text(value(r)).font(.headline.monospacedDigit()).foregroundStyle(.white)
-                    Text(Fmt.shortDay(r.day)).font(.caption).foregroundStyle(Theme.secondary)
-                }
-            }
-        }
-    }
-
-    private func value(_ r: Records.Record) -> String {
-        switch r.title {
-        case "Noche más larga": return Fmt.hmm(r.value)
-        case "Mejor recuperación": return "\(Int(r.value)) %"
-        case "Día más exigente": return String(format: "%.1f", r.value)
-        case "Más pasos": return Fmt.thousands(r.value)
-        case "VO₂ máx más alto": return String(format: "%.1f", r.value)
-        default: return "\(Int(r.value.rounded()))"
-        }
+    private func sentence(_ f: Relation.Result, _ ci: ClosedRange<Double>?) -> String {
+        guard f.n >= 10 else { return "Hacen falta al menos 10 días con las dos métricas." }
+        guard let ci, !ci.contains(0) else { return "El intervalo de r incluye 0: con estos datos no se puede decir que vayan juntas." }
+        let dir = f.slope > 0 ? "más alto" : "más bajo"
+        return "Correlación: los días con una unidad más de \(x.title.lowercased()) tienen de media \(y.title.lowercased())\(nextDay ? " del día siguiente" : "") \(String(format: "%.1f", abs(f.slope))) \(y.unit) \(dir). No demuestra que una cause la otra."
     }
 }
 
@@ -494,8 +379,8 @@ struct MonthlyReportPage: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("PULSO · INFORME MENSUAL").font(.system(size: 11, weight: .bold)).tracking(2).foregroundStyle(sub)
-                Text(title).font(.system(size: 26, weight: .bold)).foregroundStyle(fg)
+                Text("PULSO · INFORME MENSUAL").scaledFont(11, weight: .bold, relativeTo: .caption1).tracking(2).foregroundStyle(sub)
+                Text(title).scaledFont(26, weight: .bold, relativeTo: .title1).foregroundStyle(fg)
                 Text("\(report.daysWithData) días con datos").font(.caption).foregroundStyle(sub)
             }
             HStack(spacing: 10) {
@@ -546,7 +431,7 @@ struct MonthlyReportPage: View {
     private func pill(_ v: String, _ k: String, _ c: Color) -> some View {
         VStack(spacing: 2) {
             Text(v).font(.headline.monospacedDigit()).foregroundStyle(fg)
-            Text(k).font(.system(size: 9)).foregroundStyle(sub)
+            Text(k).scaledFont(11, relativeTo: .caption1).foregroundStyle(sub)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)

@@ -9,6 +9,7 @@ struct SleepDetailView: View {
     @State private var stage: SleepStage? = .light
     @State private var editing: SleepSession?
     @State private var adding = false
+    @State private var addingNap = false
 
     var body: some View {
         DetailScreen(title: model.cycleTitle(model.selectedDay)) {
@@ -16,7 +17,7 @@ struct SleepDetailView: View {
                 let detailed = model.sleep(for: day) != nil
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("El sueño de anoche").font(.system(size: 22, weight: .semibold)).foregroundStyle(.white)
+                        Text("El sueño de anoche").scaledFont(22, weight: .semibold, relativeTo: .title1).foregroundStyle(.white)
                         Text("\(model.cycleTitle(day.day).capitalized) vs. los 30 días anteriores").font(.caption).foregroundStyle(Theme.secondary)
                     }
                     Spacer()
@@ -43,6 +44,8 @@ struct SleepDetailView: View {
                 efficiencyCard(day, s, detailed: detailed)
                 vitalsCard(s)
                 naps
+                ExplainerCard(title: "Bloque detectado y «tiempo en cama»",
+                              text: "La pulsera no sabe cuándo te metes en la cama: ve cuándo te quedas quieto y tu pulso baja. El bloque de sueño va de ahí hasta que te levantas. Lo que en las gráficas se llama tiempo en cama es ese bloque, por eso suele ser algo más corto que el rato real en la cama.")
                 SectionHeading(text: "Tendencias semanales")
                 ForEach([TrendMetric.sleepPerformance, .hoursVsNeed, .restorativeHours, .regularity, .timeInBed, .efficiency, .sleepDebt], id: \.self) { m in
                     WeeklyTrendCard(metric: m)
@@ -57,6 +60,7 @@ struct SleepDetailView: View {
         }
         .sheet(item: $editing) { SleepEditSheet(session: $0) }
         .sheet(isPresented: $adding) { SleepEditSheet(session: nil) }
+        .sheet(isPresented: $addingNap) { SleepEditSheet(session: nil, napDefault: true) }
     }
 
     private func usual(_ m: TrendMetric, _ d: DaySummary) -> Double? {
@@ -84,7 +88,7 @@ struct SleepDetailView: View {
             HStack {
                 Caps("Rango típico", size: 11, color: Theme.secondary, weight: .semibold)
                 Spacer()
-                Caps("Duración", size: 11, color: Theme.secondary, weight: .semibold)
+                Caps("Bloque detectado", size: 11, color: Theme.secondary, weight: .semibold)
                 Text(Fmt.hmm(s.inBedMinutes)).font(.headline.monospacedDigit()).foregroundStyle(.white)
             }
             ForEach(items, id: \.0) { item in
@@ -151,11 +155,10 @@ struct SleepDetailView: View {
     // MARK: Need
 
     private func needCard(_ d: DaySummary) -> some View {
-        let need = d.sleepNeedMinutes ?? model.profile.sleepNeedHours * 60
-        let slept = d.sleepMinutes ?? 0
         let base = model.profile.sleepNeedHours * 60
-        let debt = min(max(0, need - base), d.sleepDebtMinutes ?? 0)
-        let strainPart = max(0, need - base - debt)
+        let need = d.sleepNeedMinutes ?? base
+        let slept = d.sleepMinutes ?? 0
+        let adjust = need - base
         let pct = need > 0 ? slept / need * 100 : 0
         let u = usual(.hoursVsNeed, d)
         return PCard {
@@ -166,7 +169,7 @@ struct SleepDetailView: View {
             }
             if let u { Text("\(Int(u.rounded())) %").font(.caption).foregroundStyle(Theme.secondary).padding(.top, -10) }
             GeometryReader { geo in
-                let scale = geo.size.width / max(need, slept, 1)
+                let scale = geo.size.width / max(need, slept, base, 1)
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Caps("Horas de sueño", size: 11, color: Theme.secondary, weight: .semibold)
@@ -176,9 +179,8 @@ struct SleepDetailView: View {
                     RoundedRectangle(cornerRadius: 3).fill(LinearGradient(colors: [Theme.sleep.opacity(0.4), Theme.sleep], startPoint: .leading, endPoint: .trailing))
                         .frame(width: slept * scale, height: 14)
                     HStack(spacing: 0) {
-                        Rectangle().fill(Color(white: 0.35)).frame(width: base * scale)
-                        Rectangle().fill(Theme.strain).frame(width: strainPart * scale)
-                        Rectangle().fill(Color(white: 0.85)).frame(width: debt * scale)
+                        Rectangle().fill(Color(white: 0.35)).frame(width: min(base, need) * scale)
+                        Rectangle().fill(Theme.strain).frame(width: max(0, adjust) * scale)
                     }
                     .frame(height: 14)
                     .clipShape(RoundedRectangle(cornerRadius: 3))
@@ -192,11 +194,20 @@ struct SleepDetailView: View {
             .frame(height: 100)
             VStack(spacing: 8) {
                 needRow(Color(white: 0.35), "Tu base (perfil)", Fmt.hmm(base))
-                needRow(Theme.strain, "Esfuerzo reciente", "+\(Fmt.hmm(strainPart))")
-                needRow(Color(white: 0.85), "Deuda de sueño", "+\(Fmt.hmm(debt))")
+                needRow(Theme.strain, "Ajuste: esfuerzo, noches cortas y siestas", "\(adjust < 0 ? "−" : "+")\(Fmt.hmm(abs(adjust)))")
             }
             .padding(12)
             .background(Color.black.opacity(0.3), in: RoundedRectangle(cornerRadius: 8))
+            Divider().overlay(Theme.hairline)
+            HStack {
+                Image(systemName: "hourglass").foregroundStyle(Theme.secondary)
+                Caps("Deuda de sueño", size: 12)
+                Spacer()
+                Text(Fmt.hmm(d.sleepDebtMinutes)).font(.headline.monospacedDigit()).foregroundStyle(.white)
+                DeltaMark(delta: Delta(d.sleepDebtMinutes, usual(.sleepDebt, d), higherIsBetter: false))
+            }
+            Text("Lo que arrastras: cada noche se suma lo que te faltó respecto a lo necesario y se conserva la mitad de la deuda anterior; dormir de más la reduce (tope 12 h). Es la misma cifra en toda la app.")
+                .font(.caption).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -240,12 +251,12 @@ struct SleepDetailView: View {
                 .chartYAxis {
                     AxisMarks(position: .leading) { v in
                         AxisGridLine().foregroundStyle(Theme.hairline)
-                        AxisValueLabel { Text(clockText(v.as(Double.self) ?? 0)).font(.system(size: 10)).foregroundStyle(Theme.secondary) }
+                        AxisValueLabel { Text(clockText(v.as(Double.self) ?? 0)).scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary) }
                     }
                 }
                 .chartXAxis {
                     AxisMarks { v in
-                        AxisValueLabel { Text(Fmt.weekdayAndDay(v.as(String.self) ?? "").0 + ".").font(.system(size: 10)).foregroundStyle(Theme.secondary) }
+                        AxisValueLabel { Text(Fmt.weekdayAndDay(v.as(String.self) ?? "").0 + ".").scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary) }
                     }
                 }
                 .frame(height: 180)
@@ -273,7 +284,7 @@ struct SleepDetailView: View {
         let u = usual(.efficiency, d)
         let eff = (d.sleepEfficiency ?? (s.inBedMinutes > 0 ? s.efficiency : nil)).map { $0 * 100 }
         return PCard {
-            CardHeader(title: "Eficiencia del sueño")
+            CardHeader(title: "Eficiencia del sueño", subtitle: "Estimada")
             HStack(spacing: 6) {
                 BigValue(value: eff.map { "\(Int($0.rounded()))" } ?? "–", unit: "%", size: 30)
                 DeltaMark(delta: Delta(eff, u, higherIsBetter: true))
@@ -299,6 +310,8 @@ struct SleepDetailView: View {
                 Spacer()
                 Text("\(s.disturbances)").font(.headline.monospacedDigit()).foregroundStyle(.white)
             }
+            Text("Tiempo dormido dentro del bloque detectado. El bloque empieza cuando te quedaste quieto, no cuando te metiste en la cama: el rato leyendo o con el móvil no cuenta, así que la eficiencia sale más alta que en un laboratorio del sueño.")
+                .font(.caption).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -310,9 +323,16 @@ struct SleepDetailView: View {
             vital("waveform.path.ecg", "VFC (RMSSD)", Fmt.int(s.hrv), "ms")
             vital("heart", "FC en reposo", Fmt.int(s.rhr), "lpm")
             vital("lungs", "Respiración", Fmt.dec(s.respRate), "rpm")
-            vital("drop", "Oxígeno en sangre", Fmt.dec(s.spo2), "%")
+            vital("drop", "SpO₂ (experimental)", Fmt.dec(s.spo2), "%")
             vital("thermometer.medium", "Temp. cutánea", Fmt.dec(s.skinTemp), "°C")
-            vital("hourglass", "Latencia", Fmt.int(s.latencyMinutes), "min")
+            vital("hourglass", "Latencia (estimada)", Fmt.int(s.latencyMinutes), "min")
+            Text(s.latencyMinutes < 3
+                 ? "Latencia casi 0: la detección empieza cuando ya estás quieto, así que no ve el rato que tardas en dormirte desde que te acuestas."
+                 : "Minutos desde que te quedaste quieto hasta 10 minutos seguidos dormido. No incluye el rato en la cama antes de quedarte quieto.")
+                .font(.caption).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(16)
+                .overlay(alignment: .top) { Divider().overlay(Theme.hairline) }
         }
     }
 
@@ -329,20 +349,25 @@ struct SleepDetailView: View {
         .overlay(alignment: .top) { Divider().overlay(Theme.hairline) }
     }
 
-    /// Daytime sleeps with what each one counted as, and a menu to change it.
-    @ViewBuilder
+    /// Daytime sleeps with what each one counted as, and a menu to change, adjust or reject it.
     private var naps: some View {
         let list = model.daytimeSleeps(on: model.selectedDay)
-        if !list.isEmpty {
-            PCard {
-                CardHeader(title: "Sueño durante el día", subtitle: "Toca para cambiar si fue siesta o sueño")
-                ForEach(list) { n in
+        return PCard {
+            CardHeader(title: "Sueño durante el día",
+                       subtitle: list.isEmpty ? "Sin siestas este día" : "Toca una para cambiarla, ajustar sus horas o descartarla")
+            ForEach(list) { n in
                     Menu {
                         Button { model.answerSleepQuestion(n, isNap: true) } label: {
                             Label("Fue una siesta", systemImage: n.isNap ? "checkmark" : "powersleep")
                         }
                         Button { model.answerSleepQuestion(n, isNap: false) } label: {
                             Label("Era mi sueño", systemImage: n.isNap ? "bed.double" : "checkmark")
+                        }
+                        Button { editing = n } label: { Label("Ajustar horas", systemImage: "clock") }
+                        Button(role: .destructive) {
+                            if n.manual { model.deleteSleep(n) } else { model.answerSleepQuestion(n, kind: .notSleep) }
+                        } label: {
+                            Label(n.manual ? "Eliminar" : "No dormí: descartar", systemImage: "xmark.circle")
                         }
                     } label: {
                         HStack(spacing: 10) {
@@ -362,8 +387,11 @@ struct SleepDetailView: View {
                             Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(Theme.secondary)
                         }
                     }
-                }
             }
+            Button { addingNap = true } label: {
+                Label("Añadir siesta", systemImage: "plus.circle").font(.subheadline.weight(.semibold))
+            }
+            .foregroundStyle(.white)
         }
     }
 }
@@ -393,12 +421,12 @@ struct NightHRChart: View {
         .chartYAxis {
             AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { v in
                 AxisGridLine().foregroundStyle(Theme.hairline)
-                AxisValueLabel { Text("\(v.as(Int.self) ?? 0)").font(.system(size: 9)).foregroundStyle(Theme.secondary) }
+                AxisValueLabel { Text("\(v.as(Int.self) ?? 0)").scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary) }
             }
         }
         .chartXAxis {
             AxisMarks(values: [Date(timeIntervalSince1970: TimeInterval(session.start)), Date(timeIntervalSince1970: TimeInterval(session.end))]) { v in
-                AxisValueLabel { Text(Fmt.time(Int(v.as(Date.self)?.timeIntervalSince1970 ?? 0))).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white) }
+                AxisValueLabel { Text(Fmt.time(Int(v.as(Date.self)?.timeIntervalSince1970 ?? 0))).scaledFont(11, weight: .semibold, relativeTo: .caption1).foregroundStyle(.white) }
             }
         }
     }

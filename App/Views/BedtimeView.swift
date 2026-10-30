@@ -15,7 +15,7 @@ struct BedtimeView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     Image(systemName: "moon.stars.fill")
-                        .font(.system(size: 54))
+                        .scaledFont(54, relativeTo: .largeTitle, maxScale: 1.3)
                         .foregroundStyle(Theme.sleep)
                         .padding(.top, 8)
                     Text("Buenas noches").font(.title.bold())

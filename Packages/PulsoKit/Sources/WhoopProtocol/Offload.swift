@@ -8,13 +8,15 @@ import Foundation
 /// Never acknowledge a chunk before it is stored: the ack lets the strap drop that data.
 public final class OffloadSession {
     public enum Step: Equatable {
-        /// A chunk ended: persist `samples`, then ack with `token`.
-        case chunk(samples: [HistorySample], token: [UInt8], strapUnix: UInt32)
+        /// A chunk ended: persist `samples` and the raw frames of records we could not decode
+        /// (`undecoded`), then ack with `token`. Acking drops the data on the strap, so both must be stored.
+        case chunk(samples: [HistorySample], undecoded: [Frame], token: [UInt8], strapUnix: UInt32)
         /// The strap has nothing more to send.
-        case complete(pending: [HistorySample])
+        case complete(pending: [HistorySample], undecoded: [Frame])
     }
 
     public private(set) var pending: [HistorySample] = []
+    public private(set) var pendingUndecoded: [Frame] = []
     public private(set) var chunks = 0
     public private(set) var totalSamples = 0
     public private(set) var otherRecords = 0
@@ -32,19 +34,22 @@ public final class OffloadSession {
             return nil
         case .otherHistory:
             otherRecords += 1
+            pendingUndecoded.append(frame)
             return nil
         case .metadata(let m):
             switch m.kind {
             case .historyEnd:
                 guard let token = m.token else { return nil }
-                let out = pending
+                let out = pending, raw = pendingUndecoded
                 pending.removeAll(keepingCapacity: true)
+                pendingUndecoded.removeAll()
                 chunks += 1
-                return .chunk(samples: out, token: token, strapUnix: m.unix)
+                return .chunk(samples: out, undecoded: raw, token: token, strapUnix: m.unix)
             case .historyComplete:
-                let out = pending
+                let out = pending, raw = pendingUndecoded
                 pending.removeAll()
-                return .complete(pending: out)
+                pendingUndecoded.removeAll()
+                return .complete(pending: out, undecoded: raw)
             default:
                 return nil
             }

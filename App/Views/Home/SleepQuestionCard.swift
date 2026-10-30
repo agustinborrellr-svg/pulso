@@ -1,5 +1,6 @@
 import SwiftUI
 import PulsoStore
+import PulsoAnalytics
 
 /// "¿Te acabas de echar una siesta?" with one button per answer.
 struct SleepQuestionCard: View {
@@ -26,6 +27,10 @@ struct SleepQuestionCard: View {
                     .buttonStyle(SecondaryCapsuleStyle())
             }
             .font(.caption)
+            Button("No dormí: estaba descansando") { model.answerSleepQuestion(session, kind: .notSleep) }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.secondary)
+                .frame(maxWidth: .infinity)
         }
     }
 }
@@ -88,6 +93,45 @@ struct StageConfidenceRow: View {
         VStack(alignment: .leading, spacing: 2) {
             Text("\(Int((v * 100).rounded())) %").font(.headline.monospacedDigit()).foregroundStyle(.white)
             Caps(k, size: 9, color: Theme.secondary, weight: .semibold)
+        }
+    }
+}
+
+/// Shown in the morning while last night is missing, so yesterday's cycle is never read as today's.
+struct NightPendingCard: View {
+    @EnvironmentObject var model: AppModel
+    let status: NightStatus
+    @State private var adding = false
+
+    var body: some View {
+        PCard {
+            HStack(spacing: 10) {
+                Image(systemName: status == .awaitingData ? "arrow.triangle.2.circlepath" : "moon.zzz")
+                    .font(.title2).foregroundStyle(Theme.sleep)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(status == .awaitingData ? "Tu noche aún no está descargada" : "No encuentro tu noche")
+                        .font(.headline).foregroundStyle(.white)
+                    Text("Lo que ves abajo es el ciclo del \(Fmt.shortDay(model.currentDayKey).lowercased()). La recuperación de hoy saldrá de la noche que acaba esta mañana.")
+                        .font(.caption).foregroundStyle(Theme.secondary)
+                }
+            }
+            if status == .awaitingData {
+                Button("Sincronizar ahora") { model.syncNow() }
+                    .buttonStyle(PrimaryCapsuleStyle())
+                    .disabled(!model.strapState.isConnected)
+                if !model.strapState.isConnected {
+                    Text("La pulsera no está conectada: acércala al iPhone y abre la app.")
+                        .font(.caption).foregroundStyle(Theme.secondary)
+                }
+            } else {
+                Text("Hay datos de esta mañana pero ningún sueño principal. Si dormiste, añade las horas y se calcula todo con ellas.")
+                    .font(.caption).foregroundStyle(Theme.secondary)
+                Button("Añadir sueño") { adding = true }
+                    .buttonStyle(PrimaryCapsuleStyle())
+            }
+        }
+        .sheet(isPresented: $adding) {
+            SleepEditSheet(session: nil, forDay: DayKey.string(Date()))
         }
     }
 }

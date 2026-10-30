@@ -16,7 +16,8 @@ final class SleepConfidenceNapTests: XCTestCase {
 
     /// Demo history up to the evening of the 25th, then a night 23:30–07:30 and a day on the 26th with
     /// optional daytime sleep, viewed at 22:00.
-    func scenario(daySleep: ClosedRange<Int>?, poorNight: Bool = false, decision: SleepDecision.Kind? = nil) throws -> (PulsoDatabase, [DaySummary]) {
+    func scenario(daySleep: ClosedRange<Int>?, poorNight: Bool = false, decision: SleepDecision.Kind? = nil,
+                  sofa: ClosedRange<Int>? = nil, manualNap: ClosedRange<Int>? = nil) throws -> (PulsoDatabase, [DaySummary]) {
         let db = try PulsoDatabase(path: NSTemporaryDirectory() + "pulso-naps-\(UUID().uuidString).sqlite")
         let evening = cal.date(from: DateComponents(year: 2026, month: 10, day: 25, hour: 20))!
         _ = try DemoData.populate(db: db, days: 10, now: evening, calendar: cal, keepRawDays: nil)
@@ -32,6 +33,11 @@ final class SleepConfidenceNapTests: XCTestCase {
                 // A loose strap: 30 % of the minutes without a reading.
                 if poorNight && minute % 10 < 3 && minute > 15 { s = HistorySample(unix: UInt32(t), recordIndex: UInt32(t), signalPoor: true, offWrist: true) }
                 out.append(s)
+            } else if let q = sofa, q.contains(t) {
+                // Sitting still and awake: no strap sleep flag, HR only a little below the active day.
+                var x = strap.second(t, .awake(hr: 66, motion: 0.008))
+                x.sleepState = 1
+                out.append(x)
             } else if let d = daySleep, d.contains(t) {
                 let minute = (t - d.lowerBound) / 60
                 out.append(minute < 6 ? strap.second(t, .awake(hr: 64, motion: 0.03))
@@ -43,6 +49,9 @@ final class SleepConfidenceNapTests: XCTestCase {
         try db.insert(out)
         if let decision, let d = daySleep {
             try db.saveSleepDecision(SleepDecision(start: d.lowerBound, end: d.upperBound, kind: decision))
+        }
+        if let m = manualNap {
+            _ = try db.save(SleepSession(start: m.lowerBound, end: m.upperBound, isNap: true, manual: true))
         }
         let now = cal.date(from: DateComponents(year: 2026, month: 10, day: 26, hour: 22))!
         let days = try DayEngine(db: db, calendar: cal).recompute(fromDay: "2026-10-24", now: now)
@@ -116,5 +125,68 @@ final class SleepConfidenceNapTests: XCTestCase {
         try db.saveSleepDecision(SleepDecision(start: 1100, end: 4500, kind: .nap))
         XCTAssertEqual(db.sleepDecisions().count, 1, "a new answer replaces the old one")
         XCTAssertEqual(db.sleepDecision(start: 1000, end: 4600)?.kind, .nap)
+    }
+
+    func testSittingStillOnTheSofaIsNotANap() throws {
+        let (db, days) = try scenario(daySleep: nil, sofa: at(26, 16)...at(26, 17))
+        let d = try XCTUnwrap(days.first { $0.day == "2026-10-26" })
+        XCTAssertTrue(try db.sleeps(from: at(26, 10), to: at(26, 23)).isEmpty, "an hour still and awake is not sleep")
+        XCTAssertNil(d.napMinutes)
+    }
+
+    func testNoDormiSuppressesTheDetectionForGood() throws {
+        let nap = at(26, 15)...at(26, 15, 45)
+        let (db, days) = try scenario(daySleep: nap, decision: .notSleep)
+        let d = try XCTUnwrap(days.first { $0.day == "2026-10-26" })
+        XCTAssertTrue(try db.sleeps(from: at(26, 10), to: at(26, 23)).isEmpty)
+        XCTAssertNil(d.napMinutes)
+    }
+
+    func testAnEditedNapIsNeverDuplicatedByDetection() throws {
+        let nap = at(26, 15)...at(26, 15, 45)
+        let (db, days) = try scenario(daySleep: nap, manualNap: at(26, 14, 50)...at(26, 15, 50))
+        let d = try XCTUnwrap(days.first { $0.day == "2026-10-26" })
+        let naps = try db.sleeps(from: at(26, 10), to: at(26, 23))
+        XCTAssertEqual(naps.count, 1)
+        XCTAssertTrue(naps[0].manual)
+        XCTAssertEqual(d.napMinutes ?? 0, naps[0].asleepMinutes, accuracy: 0.5, "counted once")
+    }
+
+    func testTwoNapsTheSameDayBothCount() throws {
+        let (db, _) = try scenario(daySleep: at(26, 15)...at(26, 15, 45), manualNap: at(26, 11)...at(26, 11, 30))
+        let naps = try db.sleeps(from: at(26, 10), to: at(26, 23)).filter(\.isNap)
+        XCTAssertEqual(naps.count, 2)
+        XCTAssertEqual(Set(naps.compactMap(\.id)).count, 2, "each nap has its own id")
+    }
+
+    /// Strap put on after waking, no night; the user called an evening rest "sleep". That rest became
+    /// "last night" and gave a very low recovery while the real night (imported) was good.
+    func testWithoutNightDataADaytimeRestNeverBecomesLastNight() throws {
+        let db = try PulsoDatabase(path: NSTemporaryDirectory() + "pulso-nonight-\(UUID().uuidString).sqlite")
+        var strap = DemoData.Strap(rng: DemoData.RNG(state: 5))
+        var out: [HistorySample] = []
+        let rest = at(26, 18, 10)...at(26, 19, 1)
+        for t in at(26, 13, 23)..<at(26, 23) {
+            out.append(rest.contains(t) ? strap.second(t, .awake(hr: 70, motion: 0.008)) : strap.second(t, .awake(hr: 76, motion: 0.12)))
+        }
+        try db.insert(out)
+        try db.saveSleepDecision(SleepDecision(start: rest.lowerBound, end: rest.upperBound, kind: .sleep))
+        var imported = DaySummary(day: "2026-10-26")
+        imported.source = "whoop"
+        imported.recovery = 81
+        imported.sleepStart = at(26, 1, 8)
+        imported.sleepEnd = at(26, 8, 49)
+        imported.sleepMinutes = 408
+        try db.saveImported(imported)
+        let now = cal.date(from: DateComponents(year: 2026, month: 10, day: 26, hour: 23))!
+        let days = try DayEngine(db: db, calendar: cal).recompute(fromDay: "2026-10-26", now: now)
+        let d = try XCTUnwrap(days.first { $0.day == "2026-10-26" })
+        XCTAssertNil(d.recovery, "no night measured, no recovery computed from an evening rest")
+        XCTAssertNil(d.sleepId)
+        let merged = HistoryMerge.days(measured: days, imported: try db.importedDays(), profile: db.profile)
+        let m = try XCTUnwrap(merged.first { $0.day == "2026-10-26" })
+        XCTAssertEqual(m.recovery, 81)
+        XCTAssertTrue(m.nightImported)
+        XCTAssertNil(m.stressAvg, "one day of strap data is no stress baseline")
     }
 }

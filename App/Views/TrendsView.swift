@@ -5,12 +5,15 @@ import PulsoAnalytics
 
 struct TrendsView: View {
     @EnvironmentObject var model: AppModel
-    @State private var range = 30
+    @State private var range: TrendRange = .month
     @State private var mode = 1
+    @AppStorage("trends.extra") private var extraRaw = ""
 
-    private var window: [DaySummary] {
-        let from = DayKey.shift(DayKey.string(Date()), days: -(range - 1))
-        return model.days.filter { $0.day >= from }
+    private var extra: Binding<[TrendMetric]> {
+        Binding(
+            get: { extraRaw.split(separator: ",").compactMap { TrendMetric(rawValue: String($0)) } },
+            set: { extraRaw = $0.map(\.rawValue).joined(separator: ",") }
+        )
     }
 
     var body: some View {
@@ -25,18 +28,7 @@ struct TrendsView: View {
                     if mode == 1 {
                         IntelligenceContent()
                     } else {
-                    ForEach(TrendMetric.Group.allCases, id: \.self) { g in
-                        SectionHeading(text: g.rawValue)
-                        ForEach(TrendMetric.allCases.filter { $0.group == g }) { m in
-                            WeeklyTrendCard(metric: m)
-                        }
-                        if g == .strain {
-                            TrainingLoadCard(points: model.trainingLoad.filter { $0.day >= DayKey.shift(model.currentDayKey, days: -89) })
-                        }
-                    }
-                    if model.profile.cycleTracking { CycleCard(days: model.days) }
-                    WeeklyCard(days: model.days)
-                    insightsCard
+                        trends
                     }
                 }
                 .padding(.horizontal, 16)
@@ -44,6 +36,39 @@ struct TrendsView: View {
             }
             .background(PulsoBackground())
             .pulsoTitle("Análisis")
+        }
+    }
+
+    @ViewBuilder
+    private var trends: some View {
+        RangePicker(range: $range)
+        MetricsMenu(extra: extra)
+        if model.days.isEmpty {
+            EmptyState(icon: "chart.xyaxis.line", title: "Sin datos todavía",
+                       message: "Las tendencias aparecen cuando la pulsera haya registrado algunos días o importes tu historial.")
+        } else {
+            NotableChangesCard()
+            ForEach(TrendMetric.main) { m in
+                RangeTrendCard(metric: m, range: range)
+            }
+            let added = extra.wrappedValue.filter { !TrendMetric.main.contains($0) }
+            ForEach(TrendMetric.Group.allCases, id: \.self) { g in
+                let inGroup = added.filter { $0.group == g }
+                if !inGroup.isEmpty {
+                    SectionHeading(text: g.rawValue)
+                    ForEach(inGroup) { m in
+                        RangeTrendCard(metric: m, range: range) {
+                            withAnimation(.easeInOut(duration: 0.25)) { extra.wrappedValue.removeAll { $0 == m } }
+                        }
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                }
+            }
+            CompareTrendsCard(range: range)
+            TrainingLoadCard(points: model.trainingLoad.filter { $0.day >= DayKey.shift(model.currentDayKey, days: -89) })
+            if model.profile.cycleTracking { CycleCard(days: model.days) }
+            WeeklyCard(days: model.days)
+            insightsCard
         }
     }
 
@@ -56,21 +81,10 @@ struct TrendsView: View {
                 Rectangle().fill(mode == m ? Color.white : Color.clear).frame(height: 2)
             }
             .fixedSize()
+            .frame(minHeight: 44)
         }
         .buttonStyle(.plain)
-    }
-
-    private var averages: some View {
-        let rec = Stats.mean(window.compactMap { $0.recovery })
-        let hrv = Stats.mean(window.compactMap { $0.hrv })
-        let strain = Stats.mean(window.compactMap { $0.strain })
-        let sleep = Stats.mean(window.compactMap { $0.sleepMinutes })
-        return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-            MetricTile(title: "Recuperación media", value: Fmt.int(rec), unit: "%", icon: "circle.circle", tint: Theme.recoveryColor(rec))
-            MetricTile(title: "VFC media", value: Fmt.int(hrv), unit: "ms", icon: "waveform.path.ecg", tint: Theme.hrv)
-            MetricTile(title: "Esfuerzo medio", value: Fmt.one(strain), icon: "flame", tint: Theme.strain)
-            MetricTile(title: "Sueño medio", value: Fmt.hm(sleep), icon: "moon.zzz", tint: Theme.sleep)
-        }
+        .accessibilityAddTraits(mode == m ? .isSelected : [])
     }
 
     @ViewBuilder
@@ -78,7 +92,7 @@ struct TrendsView: View {
         Card {
             SectionTitle(title: "Qué te afecta", subtitle: "Tu diario vs la recuperación del día siguiente")
             if model.insights.isEmpty {
-                Text("Registra tu diario (pestaña Hoy) al menos 5 días con y 5 sin cada hábito y aquí verás su efecto real en ti.")
+                Text("Registra tu diario (en Inicio) al menos 5 días con y 5 sin cada hábito y aquí verás su efecto real en ti.")
                     .font(.footnote)
                     .foregroundStyle(Theme.secondary)
             } else {
@@ -100,107 +114,6 @@ struct TrendsView: View {
                     }
                 }
             }
-        }
-    }
-}
-
-struct TrendPointValue: Identifiable {
-    let id: String
-    let date: Date
-    let value: Double
-    let reference: Double?
-}
-
-struct TrendChart: View {
-    enum Style { case bars, line }
-
-    let title: String
-    let unit: String
-    let days: [DaySummary]
-    let color: Color
-    let style: Style
-    let value: (DaySummary) -> Double?
-    var reference: ((DaySummary) -> Double?)?
-    var colorFor: ((Double) -> Color)?
-    var domain: ClosedRange<Double>?
-
-    init(title: String, unit: String, days: [DaySummary], color: Color, style: Style,
-         value: @escaping (DaySummary) -> Double?, reference: ((DaySummary) -> Double?)? = nil,
-         colorFor: ((Double) -> Color)? = nil, domain: ClosedRange<Double>? = nil) {
-        self.title = title
-        self.unit = unit
-        self.days = days
-        self.color = color
-        self.style = style
-        self.value = value
-        self.reference = reference
-        self.colorFor = colorFor
-        self.domain = domain
-    }
-
-    private var points: [TrendPointValue] {
-        days.compactMap { d in
-            guard let v = value(d), v.isFinite, let date = DayKey.date(d.day) else { return nil }
-            return TrendPointValue(id: d.day, date: date, value: v, reference: reference?(d))
-        }
-    }
-
-    var body: some View {
-        let pts = points
-        if pts.count >= 2 {
-            Card {
-                HStack {
-                    SectionTitle(title: title)
-                    Spacer()
-                    if let last = pts.last {
-                        Text(String(format: "%.1f %@", last.value, unit)).font(.subheadline.monospacedDigit()).foregroundStyle(Theme.secondary)
-                    }
-                }
-                chart(pts)
-                    .frame(height: 140)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func chart(_ pts: [TrendPointValue]) -> some View {
-        let avg = Stats.mean(pts.map { $0.value }) ?? 0
-        let base = Chart {
-            ForEach(pts) { p in
-                switch style {
-                case .bars:
-                    BarMark(x: .value("Día", p.date, unit: .day), y: .value(title, p.value))
-                        .foregroundStyle(colorFor?(p.value) ?? color)
-                        .cornerRadius(3)
-                case .line:
-                    LineMark(x: .value("Día", p.date, unit: .day), y: .value(title, p.value))
-                        .foregroundStyle(color)
-                        .interpolationMethod(.catmullRom)
-                    PointMark(x: .value("Día", p.date, unit: .day), y: .value(title, p.value))
-                        .foregroundStyle(color)
-                        .symbolSize(pts.count > 40 ? 8 : 24)
-                }
-                if let r = p.reference {
-                    PointMark(x: .value("Día", p.date, unit: .day), y: .value("Referencia", r))
-                        .foregroundStyle(Color.white.opacity(0.6))
-                        .symbol(.circle)
-                        .symbolSize(10)
-                }
-            }
-            RuleMark(y: .value("Media", avg))
-                .foregroundStyle(Color.white.opacity(0.25))
-                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
-        }
-        .chartXAxis {
-            AxisMarks(values: .automatic(desiredCount: 5)) { _ in
-                AxisGridLine().foregroundStyle(Color.white.opacity(0.06))
-                AxisValueLabel(format: .dateTime.day().month(.abbreviated))
-            }
-        }
-        if let domain {
-            base.chartYScale(domain: domain)
-        } else {
-            base.chartYScale(domain: .automatic(includesZero: false))
         }
     }
 }

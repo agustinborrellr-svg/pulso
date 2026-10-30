@@ -84,7 +84,7 @@ struct AlarmRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(bigTime)
-                    .font(.system(size: 38, weight: .semibold, design: .rounded))
+                    .scaledFont(38, weight: .semibold, design: .rounded, relativeTo: .largeTitle)
                     .monospacedDigit()
                     .foregroundStyle(alarm.enabled ? .white : Theme.tertiary)
                 Text(subtitle).font(.caption).foregroundStyle(Theme.secondary)

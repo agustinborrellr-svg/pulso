@@ -14,6 +14,20 @@ public struct HeartRateModel: Equatable {
     /// Tanaka (2001): 208 − 0.7 × age.
     public static func tanakaMax(age: Int) -> Double { 208 - 0.7 * Double(age) }
 
+    /// Observed maximum that a single bad reading can't set: the second-highest daily peak of the window
+    /// (a real maximum shows up on more than one hard day; one spurious minute anchored zones, strain and
+    /// VO₂ máx for six months).
+    public static func robustObservedMax(_ dailyPeaks: [Double]) -> Double? {
+        let peaks = dailyPeaks.filter { $0 > 0 && $0 <= 230 }.sorted(by: >)
+        return peaks.count >= 2 ? peaks[1] : nil
+    }
+
+    /// Max HR used everywhere: your override, else the larger of the age formula and the robust observed peak.
+    public static func maxHR(override: Int?, age: Int, dailyPeaks: [Double]) -> Double {
+        if let o = override { return Double(o) }
+        return max(tanakaMax(age: age), robustObservedMax(dailyPeaks) ?? 0).rounded(.down)
+    }
+
     public func reserveFraction(_ hr: Double) -> Double {
         (hr - restingHR) / (maxHR - restingHR)
     }
@@ -183,10 +197,12 @@ public enum WorkoutDetector {
         let classes = w.compactMap { $0.activityClass }
         let steps = w.reduce(0) { $0 + $1.stepsDelta }
         let cadence = Double(steps) / Double(max(1, w.count))
-        if classes.filter({ $0 == 2 }).count > classes.count / 2 || cadence > 130 { return "Carrera" }
-        if classes.filter({ $0 == 1 }).count > classes.count / 2 || cadence > 70 { return "Caminata" }
-        let motion = Stats.mean(w.compactMap { $0.motion }) ?? 0
-        if motion < 0.08 { return "Ciclismo" }
+        // Only name a sport when two signals agree; otherwise "Actividad", which the user can correct.
+        // Elevated HR with little wrist motion used to read as cycling, but driving or stress look the same.
+        let running = classes.filter { $0 == 2 }.count > classes.count / 2
+        let walking = classes.filter { $0 == 1 }.count > classes.count / 2
+        if cadence > 130 && (running || classes.isEmpty) || running && cadence > 100 { return "Carrera" }
+        if cadence > 70 && (walking || classes.isEmpty) || walking && cadence > 50 { return "Caminata" }
         return "Actividad"
     }
 }

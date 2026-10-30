@@ -99,7 +99,12 @@ final class ECGTests: XCTestCase {
         XCTAssertTrue(text.hasPrefix("%PDF-1.4"))
         XCTAssertTrue(text.hasSuffix("%%EOF\n"))
         XCTAssertTrue(text.contains("/Type /Catalog"))
-        XCTAssertTrue(text.contains("Ritmo sinusal"))
+        XCTAssertTrue(text.contains("SIMULACI\\323N - NO ES UN ECG REAL"), "a simulation says so in the title")
+        XCTAssertFalse(text.contains("Ritmo sinusal"), "never a rhythm verdict on a simulation")
+        var real = rec
+        real.source = .whoopMG
+        XCTAssertTrue(String(decoding: ECGReport.pdf(real, analysis: a, info: .init(name: "", age: nil, deviceLabel: "MG")), as: UTF8.self)
+            .contains("Ritmo sinusal"))
         XCTAssertTrue(text.contains("Agust\\355n"), "Latin-1 octal escape for í")
         // startxref points at the xref table.
         let startxref = text.range(of: "startxref\n")!

@@ -17,6 +17,15 @@ public struct IntelligenceReport: Sendable {
     public var outlook: RecoveryModel.Outlook?
     public var sections: [Section]
     public var generated: Date
+    /// Whether the coherence shown as "anoche" really is last night.
+    public var lastNight: Deviation.NightCheck?
+    /// Per-workout 60-s heart-rate recovery (day, drop in bpm), oldest first.
+    public var hrrDrops: [HRRDrop] = []
+
+    public struct HRRDrop: Equatable, Sendable {
+        public var day: String
+        public var drop: Double
+    }
 
     /// Metric by id across sections.
     public func metric(_ id: String) -> MetricResult? { sections.lazy.flatMap { $0.metrics }.first { $0.id == id } }
@@ -33,7 +42,7 @@ public enum Intelligence {
         for d in days {
             guard let date = DayKey.date(d.day, calendar: calendar) else { continue }
             let c = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
-            let key = String(format: "%04d-%02d", c.yearForWeekOfYear ?? 0, c.weekOfYear ?? 0)
+            let key = String(format: "%04d-%02d", locale: Num.spanish, c.yearForWeekOfYear ?? 0, c.weekOfYear ?? 0)
             var w = weeks[key] ?? ([], [])
             if let s = d.strain { w.strain.append(s) }
             if let h = d.hrv, h > 0 { w.hrv.append(log(h)) }
@@ -106,19 +115,21 @@ public enum Intelligence {
     }
 
     public static func report(days: [DaySummary], sleeps: [SleepSession], workouts: [Workout], journal: [JournalEntry],
-                              hrrDrops: [(day: String, drop: Double)] = [], now: Date = Date(), calendar: Calendar = .current) -> IntelligenceReport {
+                              hrrDrops: [(day: String, drop: Double)] = [], now: Date = Date(), calendar: Calendar = .current,
+                              currentDay: String? = nil, lastNight: String? = nil) -> IntelligenceReport {
         let sorted = days.sorted { $0.day < $1.day }
         let dev = Deviation.series(sorted)
         let events = LoadResponse.events(days: sorted, deviation: dev, workouts: workouts)
         let habits = HabitImpact.analyze(journal: journal, days: sorted, deviation: dev)
         let today = DayKey.string(now, calendar: calendar)
+        let night = Deviation.check(night: lastNight ?? currentDay ?? today, days: sorted, series: dev)
         let lastDay = sorted.last(where: { $0.recovery != nil })?.day ?? today
         let outlook = RecoveryModel.outlook(days: sorted, deviation: dev, journal: journal, today: lastDay)
         let nowTs = Int(now.timeIntervalSince1970)
 
         let habitMetric: MetricResult = {
             let clear = habits.filter { $0.isClear }
-            let f = "Diferencia media de recuperación al día siguiente (con − sin), IC 90 % de Welch; mínimo 4 días con y 4 sin"
+            let f = "Diferencia media de recuperación al día siguiente (con − sin) solo en días en que se preguntó por el hábito; IC 90 % de Welch; «claro» si además q < 0,10 (Benjamini–Hochberg sobre todos los hábitos); mínimo 4 días con y 4 sin"
             guard !habits.isEmpty else {
                 return .insufficient("habits", "Impacto de tus hábitos", need: "registrar el diario: 4 días con y 4 sin cada hábito",
                                      have: Set(journal.map { $0.day }).count, formula: f, version: HabitImpact.version)
@@ -131,8 +142,8 @@ public enum Intelligence {
 
         let sections = [
             IntelligenceReport.Section(title: "Hoy", subtitle: "Cómo de habitual es tu estado y qué esperar mañana", metrics: [
-                Deviation.coherenceMetric(dev), Deviation.debtMetric(dev), RecoveryModel.forecastMetric(outlook),
-                RecoveryModel.surpriseMetric(outlook), Rhythms.cardiacCostMetric(sorted),
+                Deviation.coherenceMetric(dev, night: night), Deviation.debtMetric(dev), RecoveryModel.forecastMetric(outlook),
+                RecoveryModel.surpriseMetric(outlook), Rhythms.cardiacCostMetric(sorted, today: currentDay ?? today),
             ]),
             IntelligenceReport.Section(title: "Respuesta a la carga", subtitle: "Qué te pasa en las noches después de un día exigente", metrics: [
                 LoadResponse.velocityMetric(events), LoadResponse.efficiencyMetric(events), LoadResponse.consistencyMetric(events),
@@ -146,6 +157,7 @@ public enum Intelligence {
                                        metrics: [habitMetric, RecoveryModel.predictabilityMetric(outlook)]),
         ]
         return IntelligenceReport(deviation: dev, events: events, fingerprints: LoadResponse.fingerprints(events), habits: habits,
-                                  outlook: outlook, sections: sections, generated: now)
+                                  outlook: outlook, sections: sections, generated: now, lastNight: night,
+                                  hrrDrops: hrrDrops.map { .init(day: $0.day, drop: $0.drop) })
     }
 }

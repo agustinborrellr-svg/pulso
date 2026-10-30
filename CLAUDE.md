@@ -190,3 +190,14 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
 - No subas secretos al repo. Gus pegó un token de GitHub en la conversación de la nube; recuérdale que lo revoque.
 - Referencias útiles del protocolo: `whoop-rs` (tanarchytan), `noop` (docs/PROTOCOL.md),
   `OpenStrap/protocol`, `whoop5-protocol` (Rudra5417).
+
+## Estado (2026-10-30, auditoría integral)
+
+- Auditoría en `docs/AUDITORIA-2026-10-30.md`, informe final A–J en `docs/INFORME-2026-10-30.md`. 185 tests del núcleo en verde.
+- Descarga: registros no decodificados se guardan antes del ACK (`undecoded_records`, esquema 2). `derivedVersion` 5.
+- Nuevo: `NightStatus` (noche pendiente), siestas con «No dormí» (`SleepDecision.notSleep`), entrenos rechazados
+  (kv `workouts.rejected`), monitor fisiológico (`MonitorView`), pruebas en vivo en el modelo (`AppModel+LiveTests`),
+  inicio configurable (`HomeWidgets`, kv `pulso.home`), tendencias/calendario (`TrendExplorer`), `MetricGuide`,
+  `PulsoPalette` compartida app/widgets, `.scaledFont` (Dynamic Type), `PulseLoader`, `ConnectionStatus`.
+- SpO₂ fuera de la recuperación (byte sin confirmar). ECG simulado = «Demostración», sin PDF.
+- Nada validado aún con la pulsera física.

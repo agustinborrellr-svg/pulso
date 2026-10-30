@@ -1,8 +1,8 @@
 import SwiftUI
 import WhoopProtocol
 
-/// Tools for the pilot strap: raw frame capture (to reverse-engineer unknown streams such as the
-/// MG's ECG), haptic waveform tester and connection details.
+/// Technical tools: raw frame capture (to reverse-engineer unknown streams such as the MG's ECG), haptic
+/// waveform tester and connection details. Nothing here is needed to use Pulso normally.
 struct LabView: View {
     @EnvironmentObject var model: AppModel
     @State private var capturing = false
@@ -21,7 +21,7 @@ struct LabView: View {
                     .onChange(of: capturing) { _, on in model.strap.setCapture(on, all: captureAll) }
                 Toggle("Grabar también las conocidas", isOn: $captureAll)
                     .onChange(of: captureAll) { _, all in if capturing { model.strap.setCapture(true, all: all) } }
-                Button("Preparar archivo") {
+                Button("Crear archivo para compartir") {
                     model.strap.exportCapture { text, c in
                         counts = c
                         let url = FileManager.default.temporaryDirectory.appendingPathComponent("pulso-captura-\(Int(Date().timeIntervalSince1970)).txt")
@@ -45,13 +45,13 @@ struct LabView: View {
             } header: {
                 Text("Captura de tramas")
             } footer: {
-                Text("Guarda lo que envía la pulsera que Pulso no entiende todavía (por ejemplo el ECG de una MG). El archivo sirve para descifrar el formato y activar la función.")
+                Text("«Grabar tramas» guarda en memoria (hasta 20.000) los mensajes de la pulsera que Pulso aún no entiende, por ejemplo el ECG de una MG. «También las conocidas» añade los que sí entiende (pulso, historial…), útil para comparar; gasta algo más de memoria pero no de batería de la pulsera. La grabación se para al salir de esta pantalla y no se guarda sola: «Crear archivo» hace un .txt temporal (hora, canal y bytes en hexadecimal) para enviarlo y descifrar el formato. Nunca contiene tu nombre ni tus métricas calculadas.")
             }
 
             Section {
-                Stepper("Efecto A: \(effectA)", value: $effectA, in: 1...255)
-                Stepper("Efecto B: \(effectB)", value: $effectB, in: 0...255)
-                Stepper("Repeticiones: \(loops)", value: $loops, in: 1...10)
+                Stepper("Efecto A: \(effectA)", value: $effectA, in: 1...251)
+                Stepper("Efecto B: \(effectB)", value: $effectB, in: 0...251)
+                Stepper("Repeticiones: \(loops)", value: $loops, in: 1...8)
                 Button("Vibrar") {
                     model.strap.haptic(effects: [UInt8(effectA), UInt8(effectB)], loops: UInt8(loops))
                 }
@@ -62,7 +62,7 @@ struct LabView: View {
             } header: {
                 Text("Vibración")
             } footer: {
-                Text("Prueba otras formas de onda de la pulsera. La pareja 47/152 es la de las notificaciones normales de la pulsera. Solo hace vibrar: no cambia nada en la pulsera.")
+                Text("Prueba formas de onda del motor de vibración (efectos 1–251; la pareja 47/152 es la de las notificaciones normales). Sirve para elegir vibraciones para alarmas y avisos. Solo hace vibrar: no cambia ningún ajuste de la pulsera.")
             }
 
             Section {
@@ -80,12 +80,17 @@ struct LabView: View {
                 Text("En automático, si un modo falla Pulso prueba el otro solo. Secuencial sigue el orden de OpenStrap: suscripciones de una en una, con esperas.")
             }
 
-            Section("Pulsera") {
+            Section {
                 LabeledContent("Estado", value: "\(model.strapState)")
                 LabeledContent("Modelo", value: model.identity.isMG ? "MG" : "5.0")
                 LabeledContent("Hardware", value: model.identity.hardware.isEmpty ? "–" : model.identity.hardware)
                 LabeledContent("Firmware", value: model.identity.firmware.isEmpty ? "–" : model.identity.firmware)
+                LabeledContent("Registros sin decodificar guardados", value: "\((try? model.db.undecodedRecordCount()) ?? 0)")
                 NavigationLink("Registro de conexión") { ConnectionLogView() }
+            } header: {
+                Text("Pulsera")
+            } footer: {
+                Text("Los registros del historial en un formato que esta versión no sabe leer se guardan tal cual antes de confirmarlos a la pulsera, para no perderlos: una versión futura podrá leerlos.")
             }
                     }
             .listRowBackground(Theme.card)

@@ -25,7 +25,11 @@ extension AppModel {
 
     /// Records the answer and recomputes that day so it counts the right way.
     func answerSleepQuestion(_ s: SleepSession, isNap: Bool) {
-        try? db.saveSleepDecision(SleepDecision(start: s.start, end: s.end, kind: isNap ? .nap : .sleep))
+        answerSleepQuestion(s, kind: isNap ? .nap : .sleep)
+    }
+
+    func answerSleepQuestion(_ s: SleepSession, kind: SleepDecision.Kind) {
+        try? db.saveSleepDecision(SleepDecision(start: s.start, end: s.end, kind: kind))
         NotificationService.shared.remove([Self.questionID(s)])
         let day = DayKey.string(ts: s.end)
         recompute(fromDay: DayKey.shift(day, days: -1))

@@ -8,7 +8,7 @@ struct HealthView: View {
     @State private var expanded: Set<String> = []
 
     var body: some View {
-        let result = PulsoAge.compute(days: model.days, profile: model.profile, today: model.currentDayKey)
+        let result = model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: model.currentDayKey)
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
@@ -65,7 +65,7 @@ struct HealthView: View {
             HStack {
                 Label("Lento", systemImage: "tortoise").font(.subheadline)
                 Spacer()
-                Text(r.pace.map { "\(Fmt.dec($0))x" } ?? "–").font(.system(size: 24, weight: .bold)).monospacedDigit()
+                Text(r.pace.map { "\(Fmt.dec($0))x" } ?? "–").scaledFont(24, weight: .bold, relativeTo: .title1).monospacedDigit()
                 Spacer()
                 Label("Rápido", systemImage: "hare").font(.subheadline).labelStyle(TrailingIconLabelStyle())
             }
@@ -93,7 +93,7 @@ struct HealthView: View {
                     BigValue(value: Fmt.hmm(d.stressHighMinutes ?? 0), unit: "hrs", size: 30)
                 }
                 Spacer()
-                StressLine(hourly: d.stressHourly, compact: true)
+                StressLine(hourly: d.stressHourly, compact: true, startHour: d.cycleStartHour)
                     .chartYAxis(.hidden)
                     .chartXAxis(.hidden)
                     .frame(width: 170, height: 70)
@@ -106,7 +106,7 @@ struct HealthView: View {
     private func groupSection(_ title: String, _ items: [PulsoAge.Item]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center) {
-                Text(title).font(.system(size: 22, weight: .semibold)).foregroundStyle(.white)
+                Text(title).scaledFont(22, weight: .semibold, relativeTo: .title1).foregroundStyle(.white)
                 Spacer()
                 legend("arrowtriangle.down.fill", "Prom. de\n30 días")
                 legend("arrowtriangle.up", "Prom. de\n6 meses")
@@ -123,8 +123,8 @@ struct HealthView: View {
 
     private func legend(_ icon: String, _ text: String) -> some View {
         HStack(spacing: 4) {
-            Image(systemName: icon).font(.system(size: 9)).foregroundStyle(.white)
-            Text(text).font(.system(size: 11)).foregroundStyle(Theme.secondary).multilineTextAlignment(.trailing)
+            Image(systemName: icon).scaledFont(11, relativeTo: .caption1).foregroundStyle(.white)
+            Text(text).scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary).multilineTextAlignment(.trailing)
         }
     }
 
@@ -148,7 +148,7 @@ struct HealthView: View {
                     .frame(height: 54)
                 VStack(alignment: .trailing, spacing: 0) {
                     Text(item.years.map { ($0 > 0 ? "+" : "") + Fmt.dec($0) } ?? "–")
-                        .font(.system(size: 20, weight: .bold))
+                        .scaledFont(20, weight: .bold, relativeTo: .body)
                         .monospacedDigit()
                         .foregroundStyle(item.years.map { $0 > 0.05 ? Theme.worse : ($0 < -0.05 ? Theme.better : Color.white) } ?? Theme.secondary)
                     Text("años").font(.caption).foregroundStyle(Theme.secondary)
@@ -219,13 +219,13 @@ struct AgeOrbHero: View {
                     .frame(width: 250, height: 250)
                 VStack(spacing: 4) {
                     Text(result.pulsoAge.map { Fmt.dec($0) } ?? "–")
-                        .font(.system(size: 50, weight: .bold))
+                        .scaledFont(50, weight: .bold, relativeTo: .largeTitle, maxScale: 1.3)
                         .monospacedDigit()
                         .foregroundStyle(.white)
                     Caps("Edad Pulso", size: 13)
                     if let d = result.difference {
                         Text(abs(d) < 0.05 ? "como tu edad real" : "\(Fmt.dec(abs(d))) años \(d > 0 ? "mayor" : "menor")")
-                            .font(.system(size: 17, weight: .semibold))
+                            .scaledFont(17, weight: .semibold, relativeTo: .body)
                             .foregroundStyle(d > 0 ? Theme.worse : Theme.better)
                     } else {
                         Text("Faltan datos").font(.subheadline).foregroundStyle(Theme.secondary)
@@ -331,13 +331,13 @@ struct HabitRangeBar: View {
                 .offset(y: 26)
                 if let p = item.position(item.recent) {
                     VStack(spacing: 2) {
-                        Text(text).font(.system(size: 13, weight: .bold)).monospacedDigit().foregroundStyle(.white).fixedSize()
-                        Image(systemName: "arrowtriangle.down.fill").font(.system(size: 10)).foregroundStyle(.white)
+                        Text(text).scaledFont(13, weight: .bold, relativeTo: .caption1).monospacedDigit().foregroundStyle(.white).fixedSize()
+                        Image(systemName: "arrowtriangle.down.fill").scaledFont(11, relativeTo: .caption1).foregroundStyle(.white)
                     }
                     .position(x: min(max(p * w, 40), w - 40), y: 12)
                 }
                 if let p = item.position(item.longTerm) {
-                    Image(systemName: "arrowtriangle.up").font(.system(size: 9)).foregroundStyle(Theme.secondary)
+                    Image(systemName: "arrowtriangle.up").scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary)
                         .position(x: p * w, y: 40)
                 }
             }
@@ -359,7 +359,7 @@ struct HealthMonitorCard: View {
         let b = Baselines.from(history: model.days.filter { $0.day < day.day })
         let checks: [(String, String, Bool?)] = [
             ("lungs", "FR", z(day.respRate, b.resp)),
-            ("drop", "SPO₂", z(day.spo2, b.spo2)),
+            ("drop", "SPO₂ (EXP.)", z(day.spo2, b.spo2)),
             ("heart", "FCR", z(day.rhr, b.rhr)),
             ("waveform.path.ecg", "VFC", z(day.hrv.flatMap { $0 > 0 ? log($0) : nil }, b.lnHRV)),
             ("thermometer.medium", "TEMP", z(day.skinTemp, b.temp)),

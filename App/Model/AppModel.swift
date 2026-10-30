@@ -45,12 +45,19 @@ final class AppModel: ObservableObject {
     @Published var battery: Double?
     @Published var charging: Bool?
     @Published var lastSync: Date?
+    /// Newest stored strap second; tells "night not downloaded yet" apart from "night not found".
+    @Published var lastSampleTs: Int?
     @Published var log: [String] = []
     /// Since when the strap has been off the wrist (nil = on the wrist / unknown).
     @Published var offWristSince: Date?
 
     // Data
     @Published var days: [DaySummary] = []
+    /// Edad Pulso and its 26-week trend, computed once per reload instead of on every redraw.
+    var sleepCache: [Int64: SleepSession?] = [:]
+    var daytimeSleepCache: [String: [SleepSession]] = [:]
+    @Published var pulsoAge: PulsoAge.Result?
+    @Published var ageTrend: [(day: String, age: Double)] = []
     @Published var selectedDay: String = DayKey.string(Date())
     /// The selected day follows the cycle in progress (it moves to the new day after you wake up).
     var followCurrent = true
@@ -74,6 +81,8 @@ final class AppModel: ObservableObject {
     /// Load added by the live stream since the last download (live day strain).
     var liveExtraLoad = 0.0
     var zoneGuard: LiveMetrics.ZoneGuard?
+    /// Running live test or breathing session and the last outcome of each (AppModel+LiveTests).
+    @Published var liveLab = LiveLab()
 
     // Features
     @Published var settings: FeatureSettings
@@ -134,6 +143,7 @@ final class AppModel: ObservableObject {
         strap.delegate = self
         let database = db
         strap.persist = { samples in try database.insert(samples) }
+        strap.persistUndecoded = { frames in try database.insertUndecoded(frames) }
         migrateLegacyAlarm()
         migrateRetentionDefault()
         reload()
@@ -177,6 +187,25 @@ final class AppModel: ObservableObject {
         return days.contains(where: { $0.day == y }) ? y : t
     }
 
+    /// Live tests only need beats arriving: the 5.0 often refuses the vendor handshake but still streams the
+    /// standard heart-rate service. Returns why a test can't start yet, or nil when it can.
+    var liveToolBlocker: String? {
+        if let at = lastLiveAt, liveHR != nil, Date().timeIntervalSince(at) < 6 { return nil }
+        switch strapState {
+        case .noStrap: return "Primero vincula tu pulsera en Más → Pulsera."
+        case .bluetoothOff: return "Activa el Bluetooth del iPhone."
+        case .unauthorized: return "Pulso no tiene permiso de Bluetooth: actívalo en Ajustes."
+        case .scanning, .connecting, .pairing: return "Conectando con la pulsera…"
+        default: return "Esperando tu pulso: ajusta la pulsera a la muñeca, con el sensor contra la piel."
+        }
+    }
+
+    /// Whether last night is missing from the cycle on screen (see `NightStatus`).
+    var nightStatus: NightStatus {
+        NightStatus.evaluate(now: Date(), currentCycleDay: currentDayKey,
+                             recentCycleStarts: days.suffix(15).compactMap(\.cycleStart), lastSampleTs: lastSampleTs)
+    }
+
     /// The current cycle's summary.
     var today: DaySummary? { days.last { $0.day == currentDayKey } }
 
@@ -195,8 +224,8 @@ final class AppModel: ObservableObject {
 
     var heartRateModel: HeartRateModel {
         let rhr = Baseline.from(days.suffix(30).compactMap { $0.rhr }, floor: 1)?.center ?? 60
-        let observed = days.suffix(180).compactMap { $0.maxHR }.max() ?? 0
-        let maxHR = Double(profile.maxHROverride ?? Int(max(HeartRateModel.tanakaMax(age: profile.age), observed)))
+        let maxHR = HeartRateModel.maxHR(override: profile.maxHROverride, age: profile.age,
+                                         dailyPeaks: days.suffix(180).compactMap { $0.maxHR })
         return HeartRateModel(restingHR: rhr, maxHR: maxHR)
     }
 
@@ -241,8 +270,11 @@ final class AppModel: ObservableObject {
             let measured = try db.days(from: from, to: "9999-12-31")
             // Days imported from WHOOP fill the history where the strap has nothing of its own.
             let imported = try db.importedDays().filter { $0.day >= from }
+            sleepCache = [:]
+            daytimeSleepCache = [:]
             days = HistoryMerge.days(measured: measured, imported: imported, profile: profile)
             liveExtraLoad = 0
+            refreshPulsoAge()
             let journal = try db.allJournal()
             insights = Insights.compute(journal: journal, days: days)
             trainingLoad = TrainingLoad.series(days, through: DayKey.string(Date()))
@@ -257,18 +289,35 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func refreshPulsoAge() {
+        let today = currentDayKey
+        pulsoAge = PulsoAge.compute(days: days, profile: profile, today: today)
+        ageTrend = (0..<26).reversed().compactMap { w -> (day: String, age: Double)? in
+            let end = DayKey.shift(today, days: -7 * w)
+            return PulsoAge.compute(days: days.filter { $0.day <= end }, profile: profile, today: end).pulsoAge.map { (end, $0) }
+        }
+    }
+
     /// Counting every stored second scans the table, so it runs off the main thread.
     func refreshSampleCount() {
         let db = self.db
         analysisQueue.async {
             let n = (try? db.sampleCount()) ?? 0
-            Task { @MainActor in self.rawSampleCount = n }
+            let last = (try? db.sampleBounds())?.last
+            Task { @MainActor in
+                self.rawSampleCount = n
+                self.lastSampleTs = last
+            }
         }
     }
 
     func sleep(for day: DaySummary) -> SleepSession? {
         guard let id = day.sleepId else { return nil }
-        return try? db.sleep(id: id)
+        // Screens ask on every redraw; a night (with its minute stages) is read once per reload.
+        if let hit = sleepCache[id] { return hit }
+        let s = try? db.sleep(id: id)
+        sleepCache[id] = s
+        return s
     }
 
     func naps(on day: String) -> [SleepSession] {
@@ -279,6 +328,13 @@ final class AppModel: ObservableObject {
 
     /// Every daytime sleep of a day (naps and real sleep), excluding the night.
     func daytimeSleeps(on day: String) -> [SleepSession] {
+        if let hit = daytimeSleepCache[day] { return hit }
+        let list = loadDaytimeSleeps(on: day)
+        daytimeSleepCache[day] = list
+        return list
+    }
+
+    private func loadDaytimeSleeps(on day: String) -> [SleepSession] {
         guard let d = DayKey.date(day) else { return [] }
         let a = Int(d.timeIntervalSince1970)
         let main = self.day(day)?.sleepId
@@ -470,6 +526,7 @@ final class AppModel: ObservableObject {
 
     func deleteWorkout(_ w: Workout) {
         guard let id = w.id else { return }
+        if w.source == .auto { try? db.rejectWorkout(start: w.start, end: w.end) }
         try? db.deleteWorkout(id: id)
         recompute(fromDay: DayKey.shift(DayKey.string(ts: w.start), days: -1))
     }
@@ -493,6 +550,8 @@ final class AppModel: ObservableObject {
 
     func deleteSleep(_ s: SleepSession) {
         guard let id = s.id else { return }
+        // A detected sleep would come back on the next recompute: remember that the user rejected it.
+        if !s.manual { try? db.saveSleepDecision(SleepDecision(start: s.start, end: s.end, kind: .notSleep)) }
         try? db.deleteSleep(id: id)
         recompute(fromDay: DayKey.shift(DayKey.string(ts: s.end), days: -1))
     }
@@ -568,7 +627,10 @@ final class AppModel: ObservableObject {
     }
 
     func eraseEverything() {
-        safetyBackup(reason: "borrar")
+        guard safetyBackup(reason: "borrar") else {
+            errorMessage = "No se pudo hacer la copia de seguridad previa (¿falta espacio?). No se ha borrado nada."
+            return
+        }
         try? db.eraseAll()
         profile = db.profile
         lastSync = nil
@@ -623,6 +685,10 @@ extension AppModel: StrapManagerDelegate {
         MainActor.assumeIsolated {
             let wasReady = self.strapState.isConnected
             self.strapState = state
+            if !state.isConnected && state != .pairing && state != .pairingRefused {
+                // No link: the last beat must not keep "beating" on screen.
+                self.liveHR = nil
+            }
             if state == .ready && !wasReady {
                 // The strap's own alarm is one-shot: re-arm it on every new session, once the clock
                 // has been set (a few seconds after "ready").
@@ -672,11 +738,13 @@ extension AppModel: StrapManagerDelegate {
         }
     }
 
-    nonisolated func strapSyncFinished(newRecords: Int, firstTs: Int?, lastTs: Int?) {
+    nonisolated func strapSyncFinished(newRecords: Int, firstTs: Int?, lastTs: Int?, completed: Bool) {
         MainActor.assumeIsolated {
-            self.lastSync = Date()
-            try? self.db.set(Date(), for: "lastSync")
-            NotificationService.shared.cancelPending(prefix: "stale.")
+            if completed {
+                self.lastSync = Date()
+                try? self.db.set(Date(), for: "lastSync")
+                NotificationService.shared.cancelPending(prefix: "stale.")
+            }
             self.refreshSampleCount()
             self.alarmSyncFinished()
             if newRecords > 0 || self.today == nil {

@@ -236,6 +236,31 @@ final class IntelligenceTests: XCTestCase {
         XCTAssertLessThan(timing.value!, 0)
     }
 
+    func testImportedNightsCountForTimingButNotForAwakenings() {
+        var r = LCG(s: 11)
+        let base = 1_790_000_000
+        // 120 imported nights (no awakenings, as in the WHOOP export) and 10 measured by Pulso.
+        let days: [DaySummary] = (0..<130).map { i in
+            var d = DaySummary(day: day(i))
+            let h = 6 + 2.5 * r.next(), shift = r.next() * 2
+            d.sleepMinutes = h * 60
+            d.sleepStart = base + i * 86400 + Int((23 + shift) * 3600)
+            d.recovery = 20 + 6 * h - 6 * abs(shift - 1) + 3 * r.normal()
+            if i < 120 { d.source = "whoop" } else { d.disturbances = Int(r.next() * 8) }
+            return d
+        }
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        let m = Rhythms.sleepEffects(days: days, calendar: cal)
+        let timing = m.first { $0.id == "timingSensitivity" }!
+        XCTAssertEqual(timing.sampleSize, 130, "imported nights count")
+        XCTAssertNotNil(timing.value)
+        let frag = m.first { $0.id == "fragmentationCost" }!
+        XCTAssertNil(frag.value)
+        XCTAssertEqual(frag.unlock?.have, 10)
+        XCTAssertEqual(frag.unlock?.need, 21)
+    }
+
     // MARK: Workout
 
     func testWorkoutRecoveryCurveAndDrift() {

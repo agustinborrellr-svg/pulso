@@ -184,7 +184,7 @@ private struct GuidePage: View {
                         .strokeBorder(page.color.opacity(0.45), lineWidth: 2)
                         .frame(width: 112, height: 112)
                     Image(systemName: page.symbol)
-                        .font(.system(size: 50, weight: .semibold))
+                        .scaledFont(50, weight: .semibold, relativeTo: .largeTitle, maxScale: 1.3)
                         .foregroundStyle(page.color)
                 }
                 .frame(maxWidth: .infinity)

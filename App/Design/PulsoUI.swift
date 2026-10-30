@@ -14,7 +14,7 @@ struct PulsoBackground: View {
 
 /// Rounded slate card.
 struct PCard<Content: View>: View {
-    var padding: CGFloat = 16
+    var padding: CGFloat = Metrics.cardPadding
     var spacing: CGFloat = 12
     @ViewBuilder var content: Content
 
@@ -22,20 +22,14 @@ struct PCard<Content: View>: View {
         VStack(alignment: .leading, spacing: spacing) { content }
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Theme.card)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(Color.white.opacity(0.04), lineWidth: 1)
-                    )
-            )
+            .cardSurface()
     }
 }
 
 // MARK: - Type
 
 /// "VARIABILIDAD DE LA FRECUENCIA CARDÍACA": the uppercase, tracked label used for every title.
+/// Scales with Dynamic Type (capped) and never renders below `Metrics.minLabel` at the default size.
 struct Caps: View {
     let text: String
     var size: CGFloat = 13
@@ -50,9 +44,9 @@ struct Caps: View {
     }
 
     var body: some View {
+        let base = max(size, Metrics.minLabel)
         Text(text.uppercased())
-            .font(.system(size: size, weight: weight))
-            .tracking(size * 0.11)
+            .scaledFont(base, weight: weight, relativeTo: .footnote, maxScale: 1.5, tracking: base * 0.11)
             .foregroundStyle(color)
     }
 }
@@ -76,13 +70,17 @@ struct CardHeader: View {
             if let info {
                 Button(action: info) {
                     Image(systemName: "info.circle").foregroundStyle(Theme.secondary)
+                        .frame(minWidth: 32, minHeight: 32)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Más información sobre \(title.lowercased())")
             }
             if chevron {
                 Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.secondary)
+                    .accessibilityHidden(true)
             }
         }
+        .accessibilityElement(children: .contain)
     }
 }
 
@@ -96,13 +94,17 @@ struct BigValue: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
             Text(value)
-                .font(.system(size: size, weight: .bold))
+                .scaledFont(size, weight: .bold, relativeTo: .largeTitle, maxScale: 1.3)
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                 .foregroundStyle(color)
             if !unit.isEmpty {
-                Text(unit).font(.system(size: size * 0.4, weight: .semibold)).foregroundStyle(color.opacity(0.85))
+                Text(unit).scaledFont(max(size * 0.4, Metrics.minLabel), weight: .semibold, relativeTo: .body, maxScale: 1.3)
+                    .foregroundStyle(color.opacity(0.85))
             }
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -138,6 +140,18 @@ struct Delta {
         guard let good else { return Theme.secondary }
         return good ? Theme.better : Theme.worse
     }
+
+    /// Spoken form: "por encima de tu media, mejor".
+    var spoken: String {
+        let dir: String
+        switch trend {
+        case .up: dir = "por encima de tu media"
+        case .down: dir = "por debajo de tu media"
+        case .flat: dir = "en tu media"
+        }
+        guard let good else { return dir }
+        return dir + (good ? ", mejor" : ", peor")
+    }
 }
 
 /// ▲ / ▼ / • next to a value.
@@ -153,8 +167,9 @@ struct DeltaMark: View {
             case .flat: Image(systemName: "circle.fill").scaleEffect(0.6)
             }
         }
-        .font(.system(size: size))
+        .scaledFont(size, relativeTo: .caption2, maxScale: 1.4)
         .foregroundStyle(delta.color)
+        .accessibilityLabel(delta.spoken)
     }
 }
 
@@ -165,13 +180,15 @@ struct DeltaChip: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            DeltaMark(delta: delta, size: 8)
-            Text(text).font(.system(size: 11, weight: .semibold))
+            DeltaMark(delta: delta, size: 8).accessibilityHidden(true)
+            Text(text).scaledFont(Metrics.minLabel, weight: .semibold, relativeTo: .caption2)
         }
         .foregroundStyle(delta.good == nil ? Theme.secondary : delta.color)
         .padding(.horizontal, 7)
         .padding(.vertical, 4)
         .background((delta.good == nil ? Color.white : delta.color).opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(delta.spoken)
     }
 }
 
@@ -189,20 +206,21 @@ struct MetricRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .regular))
+                .scaledFont(16, relativeTo: .body, maxScale: 1.3)
                 .foregroundStyle(Theme.secondary)
                 .frame(width: 24)
+                .accessibilityHidden(true)
             Caps(title, size: 12.5, weight: .semibold)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 1) {
                 HStack(spacing: 5) {
-                    Text(value).font(.system(size: 22, weight: .bold)).monospacedDigit().foregroundStyle(.white)
+                    Text(value).scaledFont(22, weight: .bold, relativeTo: .title2, maxScale: 1.4).monospacedDigit().foregroundStyle(.white)
                     if let delta { DeltaMark(delta: delta) }
                 }
                 if let baseline {
-                    Text(baseline).font(.system(size: 11, weight: .medium)).monospacedDigit().foregroundStyle(Theme.secondary)
+                    Text(baseline).scaledFont(Metrics.minLabel, weight: .medium, relativeTo: .caption2).monospacedDigit().foregroundStyle(Theme.secondary)
                         .padding(.trailing, delta == nil ? 0 : 14)
                 }
             }
@@ -213,7 +231,11 @@ struct MetricRow: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .cardSurface(radius: Metrics.rowRadius)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue([value, baseline.map { "habitual \($0)" }, delta.map(\.spoken)].compactMap { $0 }.joined(separator: ", "))
+        .accessibilityAddTraits(chevron ? .isButton : [])
     }
 }
 
@@ -227,19 +249,21 @@ struct ActionRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 14) {
-                Image(systemName: icon).font(.system(size: 18)).frame(width: 24)
+                Image(systemName: icon).scaledFont(18, relativeTo: .body, maxScale: 1.3).frame(width: 24).accessibilityHidden(true)
                 Caps(title, size: 13, color: destructive ? Theme.red : .white, weight: .semibold)
                 Spacer()
                 Image(systemName: "chevron.right").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.secondary)
+                    .accessibilityHidden(true)
             }
             .foregroundStyle(destructive ? Theme.red : .white)
             .padding(.horizontal, 18)
             .padding(.vertical, 18)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .cardSurface(radius: Metrics.rowRadius)
             if let detail {
                 Text(detail).font(.caption).foregroundStyle(Theme.secondary).padding(.horizontal, 14)
             }
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -253,8 +277,9 @@ struct InsightChip: View {
         HStack(spacing: 5) {
             if let up {
                 Image(systemName: up ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill").font(.system(size: 8))
+                    .accessibilityLabel(up ? "sube" : "baja")
             }
-            Text(text).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+            Text(text).scaledFont(13, weight: .semibold, relativeTo: .subheadline, maxScale: 1.4).lineLimit(1)
         }
         .foregroundStyle(color)
         .padding(.horizontal, 10)
@@ -268,28 +293,43 @@ struct InsightChip: View {
 /// White capsule, black caps label.
 struct PrimaryCapsuleStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 15, weight: .heavy))
-            .tracking(1.6)
+        CapsuleBody(configuration: configuration, primary: true)
+    }
+}
+
+/// Reads `isEnabled` (a ButtonStyle can't): a disabled capsule must look disabled, never like a dead button.
+private struct CapsuleBody: View {
+    let configuration: ButtonStyleConfiguration
+    let primary: Bool
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        if primary {
+            configuration.label
+            .scaledFont(15, weight: .heavy, relativeTo: .body, maxScale: 1.4, tracking: 1.6)
             .textCase(.uppercase)
             .foregroundStyle(.black)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
             .background(Color.white.opacity(configuration.isPressed ? 0.8 : 1), in: Capsule())
+            .opacity(isEnabled ? 1 : 0.3)
+        } else {
+            configuration.label
+            .scaledFont(15, weight: .heavy, relativeTo: .body, maxScale: 1.4, tracking: 1.6)
+            .textCase(.uppercase)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 17)
+            .background(Capsule().stroke(Color.white.opacity(configuration.isPressed ? 0.6 : 0.3), lineWidth: 1.5))
+            .opacity(isEnabled ? 1 : 0.35)
+        }
     }
 }
 
 /// Outlined capsule.
 struct SecondaryCapsuleStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 15, weight: .heavy))
-            .tracking(1.6)
-            .textCase(.uppercase)
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 17)
-            .background(Capsule().stroke(Color.white.opacity(configuration.isPressed ? 0.6 : 0.3), lineWidth: 1.5))
+        CapsuleBody(configuration: configuration, primary: false)
     }
 }
 
@@ -306,16 +346,21 @@ struct ScreenHeader<Trailing: View>: View {
         ZStack {
             VStack(spacing: 3) {
                 Caps(title, size: 14)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .accessibilityAddTraits(.isHeader)
                 if let subtitle {
                     Caps(subtitle, size: 10, color: Theme.secondary, weight: .semibold)
                 }
             }
+            .padding(.horizontal, 44)
             HStack {
                 if let back {
                     Button(action: back) {
-                        Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 40, height: 40)
+                        Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Atrás")
                 }
                 Spacer()
                 trailing
@@ -323,7 +368,7 @@ struct ScreenHeader<Trailing: View>: View {
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 8)
-        .frame(height: 50)
+        .frame(minHeight: 50)
     }
 }
 
@@ -377,7 +422,8 @@ struct SectionHeading: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(text).font(.system(size: 22, weight: .semibold)).foregroundStyle(.white)
+            Text(text).scaledFont(22, weight: .semibold, relativeTo: .title2, maxScale: 1.5).foregroundStyle(.white)
+                .accessibilityAddTraits(.isHeader)
             Spacer()
             if let trailing, let action {
                 Button(action: action) {
@@ -400,7 +446,8 @@ struct ExplainerCard: View {
 
     var body: some View {
         PCard {
-            Text(title).font(.system(size: 20, weight: .semibold)).foregroundStyle(.white)
+            Text(title).scaledFont(20, weight: .semibold, relativeTo: .title3, maxScale: 1.5).foregroundStyle(.white)
+                .accessibilityAddTraits(.isHeader)
             Text(text).font(.subheadline).foregroundStyle(Color(white: 0.82)).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -408,7 +455,7 @@ struct ExplainerCard: View {
 
 // MARK: - Dials
 
-/// Score dial: track + arc + value, the hero of each pillar.
+/// Score dial: track + arc, the hero of each pillar. Decorative for VoiceOver: the value text next to it carries the number.
 struct Dial: View {
     let progress: Double
     let color: Color
@@ -424,6 +471,7 @@ struct Dial: View {
                 .shadow(color: color.opacity(0.45), radius: 8)
                 .animation(.easeOut(duration: 0.7), value: progress)
         }
+        .accessibilityHidden(true)
     }
 }
 
@@ -438,6 +486,7 @@ struct PillarTab: View {
             Dial(progress: progress, color: color, lineWidth: 3).frame(width: 22, height: 22)
             Caps(label, size: 12)
         }
+        .accessibilityElement(children: .combine)
     }
 }
 

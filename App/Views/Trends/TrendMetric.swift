@@ -36,7 +36,7 @@ enum TrendMetric: String, CaseIterable, Identifiable {
         case .hrv: return "Variabilidad de la frecuencia cardíaca"
         case .rhr: return "Frecuencia cardíaca en reposo"
         case .respRate: return "Frecuencia respiratoria"
-        case .spo2: return "Oxígeno en sangre"
+        case .spo2: return "Oxígeno en sangre (experimental)"
         case .skinTemp: return "Temperatura cutánea"
         case .sleepPerformance: return "Calificación del sueño"
         case .sleepHours: return "Horas de sueño"
@@ -46,14 +46,14 @@ enum TrendMetric: String, CaseIterable, Identifiable {
         case .regularity: return "Regularidad del sueño"
         case .efficiency: return "Eficiencia del sueño"
         case .sleepDebt: return "Deuda de sueño"
-        case .timeInBed: return "Tiempo en cama"
+        case .timeInBed: return "Bloque de sueño detectado"
         case .strain: return "Esfuerzo del día"
         case .avgHR: return "Frecuencia cardíaca promedio"
         case .calories: return "Calorías"
         case .steps: return "Pasos"
         case .zonesLight: return "Zonas de FC 1-3"
         case .zonesHard: return "Zonas de FC 4-5"
-        case .vo2max: return "VO₂ máx"
+        case .vo2max: return "VO₂ máx (estimado)"
         case .stress: return "Estrés diurno"
         case .stressHigh: return "Estrés alto"
         }
@@ -321,7 +321,7 @@ enum TrendMetric: String, CaseIterable, Identifiable {
         case .respRate:
             return ("¿Qué es la frecuencia respiratoria?", "Respiraciones por minuto durante el sueño, calculadas a partir de cómo cambia tu pulso al respirar. Es muy estable en cada persona: una subida sostenida de más de 1 rpm suele acompañar a infecciones respiratorias.")
         case .spo2:
-            return ("¿Qué es el oxígeno en sangre?", "El porcentaje de saturación de oxígeno estimado por la pulsera durante el sueño. Lo normal es 95-100 %. Es una estimación de bienestar: no sirve para diagnosticar.")
+            return ("¿Qué es el oxígeno en sangre?", "El porcentaje de saturación de oxígeno durante el sueño. Experimental: sale de un campo de los datos de la pulsera cuyo formato no está confirmado, así que puede no ser fiable. Por eso no se usa para tu recuperación. Lo normal es 95-100 %. No sirve para diagnosticar.")
         case .skinTemp:
             return ("¿Qué es la temperatura cutánea?", "La temperatura de tu piel en la muñeca durante el sueño. Lo importante no es el valor absoluto sino cuánto se aleja de tu normal: subidas de más de 0,5 °C suelen acompañar a fiebre, alcohol o una habitación caliente.")
         case .sleepPerformance:
@@ -339,7 +339,7 @@ enum TrendMetric: String, CaseIterable, Identifiable {
         case .sleepDebt:
             return ("¿Qué es la deuda de sueño?", "Lo que te ha faltado por dormir en las últimas noches. No se borra de golpe: se va pagando poco a poco durmiendo algo más que tu necesidad.")
         case .timeInBed:
-            return ("¿Qué es el tiempo en cama?", "Desde que te duermes hasta que te despiertas, incluidos los ratos despierto. La pulsera no sabe cuándo te tumbas si estás quieto y despierto, así que cuenta desde que te duermes.")
+            return ("¿Qué es el bloque de sueño detectado?", "Lo que otras apps llaman «tiempo en cama»: desde que te duermes hasta que te despiertas, incluidos los ratos despierto. La pulsera no sabe cuándo te tumbas si estás quieto y despierto, así que cuenta desde que te duermes.")
         case .strain:
             return ("¿Qué es el esfuerzo del día?", "El esfuerzo mide la carga total sobre tu cuerpo durante todo el día, en una escala de 0 a 21. Suma el tiempo con el pulso alto, en entrenos y en la vida normal; cada punto cuesta más que el anterior.\n\nCompararlo con tu recuperación te ayuda a entrenar cuando estás listo y a descansar cuando lo necesitas.")
         case .avgHR:
@@ -353,7 +353,7 @@ enum TrendMetric: String, CaseIterable, Identifiable {
         case .vo2max:
             return ("¿Qué es el VO₂ máx?", "La cantidad máxima de oxígeno que tu cuerpo puede usar durante el ejercicio. Es la métrica que mejor refleja la salud cardiovascular a largo plazo. Pulso la estima con tu pulso en reposo, tu frecuencia máxima y tus entrenos; es una estimación, no una prueba de laboratorio.")
         case .stress, .stressHigh:
-            return ("¿Qué es el estrés?", "El estrés de 0 a 3 compara tu pulso y tu VFC con tu estado de calma cuando estás quieto y despierto, fuera de entrenos. 0-1 es bajo, 1-2 medio y 2-3 alto. El estrés no es bueno ni malo: lo importante es que haya equilibrio con momentos de calma.")
+            return ("¿Qué es el estrés?", "El estrés de 0 a 3 compara tu pulso y tu VFC, cuando estás quieto y despierto, con cómo están normalmente en esos momentos (tus dos últimas semanas). No cuenta los entrenos ni la hora y media después, porque ahí el pulso alto es recuperación, no estrés. 0-1 es bajo, 1-2 medio y 2-3 alto. El estrés no es bueno ni malo: lo importante es que haya equilibrio con momentos de calma.")
         }
     }
 }

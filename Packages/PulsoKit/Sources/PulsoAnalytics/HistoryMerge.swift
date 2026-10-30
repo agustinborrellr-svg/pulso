@@ -9,8 +9,8 @@ public enum HistoryMerge {
         let have = Set(measured.map(\.day))
         let extra = imported.filter { !have.contains($0.day) }
         let all = measured + extra
-        let observed = all.suffix(400).compactMap(\.maxHR).filter { $0 < 230 }.max() ?? 0
-        let maxHR = Double(profile.maxHROverride ?? Int(max(HeartRateModel.tanakaMax(age: profile.age), observed)))
+        let maxHR = HeartRateModel.maxHR(override: profile.maxHROverride, age: profile.age,
+                                         dailyPeaks: all.suffix(400).compactMap(\.maxHR))
         let filled = extra.map { d -> DaySummary in
             var d = d
             if d.vo2max == nil, let rhr = d.rhr {
@@ -18,7 +18,23 @@ public enum HistoryMerge {
             }
             return d
         }
-        return (measured + filled).sorted { $0.day < $1.day }
+        // A measured day without its night (the strap was put on after waking): last night and its recovery come
+        // from the import instead of being left empty or computed from a daytime rest.
+        let importedByDay = Dictionary(imported.map { ($0.day, $0) }, uniquingKeysWith: { a, _ in a })
+        let completed = measured.map { m -> DaySummary in
+            guard m.sleepStart == nil, m.recovery == nil, let i = importedByDay[m.day], i.recovery != nil else { return m }
+            var d = m
+            d.recovery = i.recovery; d.hrv = i.hrv; d.rhr = i.rhr; d.respRate = i.respRate; d.spo2 = i.spo2
+            d.skinTemp = i.skinTemp; d.sleepStart = i.sleepStart; d.sleepEnd = i.sleepEnd
+            d.sleepMinutes = i.sleepMinutes; d.inBedMinutes = i.inBedMinutes; d.deepMinutes = i.deepMinutes
+            d.remMinutes = i.remMinutes; d.lightMinutes = i.lightMinutes; d.awakeMinutes = i.awakeMinutes
+            d.disturbances = i.disturbances; d.sleepPerformance = i.sleepPerformance; d.sleepEfficiency = i.sleepEfficiency
+            d.sleepConsistency = i.sleepConsistency; d.sleepNeedMinutes = i.sleepNeedMinutes; d.sleepDebtMinutes = i.sleepDebtMinutes
+            d.restorativeMinutes = i.restorativeMinutes
+            d.nightImported = true
+            return d
+        }
+        return (completed + filled).sorted { $0.day < $1.day }
     }
 
     /// Imported nights as sleep periods (bed and wake times; stages unknown, counted as light sleep) so the

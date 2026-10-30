@@ -77,7 +77,7 @@ public enum Rhythms {
             jetlag = h
             out.append(MetricResult(id: "socialJetlag", name: "Jet lag social", value: (h * 10).rounded() / 10, unit: "h",
                                     summary: h < 0.5 ? "Duermes a horas parecidas entre semana y el fin de semana." :
-                                        String(format: "El fin de semana tu sueño se desplaza %.1f h: es como cambiar de huso horario cada semana.", h),
+                                        String(format: "El fin de semana tu sueño se desplaza %.1f h: es como cambiar de huso horario cada semana.", locale: Num.spanish, h),
                                     confidence: .from(samples: min(wk.count, we.count * 2), medium: 4, high: 8), sampleSize: wk.count + we.count,
                                     formula: fSJL, version: version))
         } else {
@@ -133,58 +133,81 @@ public enum Rhythms {
 
     // MARK: - Sleep structure → recovery
 
-    /// Personal regression: recovery ~ hours asleep + awakenings + |bedtime − usual bedtime| (h).
-    /// Gives the cost of each awakening and of each hour of shifted bedtime, with 90 % intervals.
+    /// Two personal regressions on the nights each one can use:
+    /// - timing: recovery ~ hours asleep + |bedtime − usual bedtime| (h). Imported nights count (they have
+    ///   bedtime and hours), with a source term so the two recovery scales don't mix.
+    /// - awakenings: recovery ~ hours asleep + awakenings + |bedtime shift|, only nights with an awakening count
+    ///   (imported summaries don't carry it).
+    /// Both give 90 % intervals.
     public static func sleepEffects(days: [DaySummary], calendar: Calendar = .current) -> [MetricResult] {
-        let fFrag = "Regresión recuperación ~ horas dormidas + despertares + |hora de acostarse − la habitual|; coeficiente de despertares con IC 90 %"
-        let fTime = "Mismo modelo; coeficiente por hora de desfase al acostarse con IC 90 %"
-        let rows = days.compactMap { d -> (y: Double, h: Double, w: Double, bed: Double)? in
-            guard let r = d.recovery, let m = d.sleepMinutes, let w = d.disturbances, let s = d.sleepStart else { return nil }
+        let fFrag = "Regresión recuperación ~ horas dormidas + despertares + |hora de acostarse − la habitual|; sólo noches con despertares contados; coeficiente de despertares con IC 90 %"
+        let fTime = "Regresión recuperación ~ horas dormidas + |hora de acostarse − la habitual| (+ término por fuente si mezcla noches importadas); coeficiente por hora de desfase con IC 90 %"
+        struct Row { var y: Double; var h: Double; var w: Double?; var bed: Double; var imported: Bool }
+        let rows = days.compactMap { d -> Row? in
+            guard let r = d.recovery, let m = d.sleepMinutes, let s = d.sleepStart else { return nil }
             var b = SleepCoachMinutes.minutesAfterMidnight(ts: s, calendar: calendar)
             if b < 12 * 60 { b += 1440 }
-            return (r, m / 60, Double(w), b)
+            return Row(y: r, h: m / 60, w: d.disturbances.map(Double.init), bed: b, imported: d.source != "strap")
         }
-        guard rows.count >= 21, let usual = Num.median(rows.map { $0.bed }) else {
-            return [.insufficient("fragmentationCost", "Coste de cada despertar", unit: "pts", need: "21 noches con recuperación", have: rows.count,
-                                  formula: fFrag, version: version),
-                    .insufficient("timingSensitivity", "Sensibilidad al horario", unit: "pts/h", need: "21 noches con recuperación", have: rows.count,
-                                  formula: fTime, version: version)]
-        }
-        let x = rows.map { [$0.h, $0.w, abs($0.bed - usual) / 60] }
-        guard let fit = Num.ridge(x, rows.map { $0.y }), let se = fit.se else { return [] }
-        let t = Num.tCritical(df: fit.n - 4)
-        func ci(_ j: Int) -> ClosedRange<Double> { (fit.beta[j] - t * se[j])...(fit.beta[j] + t * se[j]) }
-        let conf = MetricResult.Confidence.from(samples: rows.count, medium: 40, high: 80)
-        let wake = fit.beta[2], wci = ci(2)
-        let bed = fit.beta[3], bci = ci(3)
         func sig(_ c: ClosedRange<Double>) -> Bool { c.lowerBound > 0 || c.upperBound < 0 }
-        return [
-            MetricResult(id: "fragmentationCost", name: "Coste de cada despertar", value: (wake * 10).rounded() / 10, unit: "pts", summary:
-                            sig(wci) ? String(format: "Cada despertar de más se asocia con %+.1f puntos de recuperación (a igual duración de sueño).", wake)
+        func fitCoef(_ x: [[Double]], _ y: [Double], _ j: Int) -> (Double, ClosedRange<Double>)? {
+            guard let fit = Num.ridge(x, y), let se = fit.se else { return nil }
+            let t = Num.tCritical(df: fit.n - (x.first?.count ?? 0) - 1)
+            return (fit.beta[j], (fit.beta[j] - t * se[j])...(fit.beta[j] + t * se[j]))
+        }
+
+        var out: [MetricResult] = []
+        let fragRows = rows.filter { $0.w != nil }
+        if fragRows.count >= 21, let usual = Num.median(fragRows.map(\.bed)),
+           let (wake, wci) = fitCoef(fragRows.map { [$0.h, $0.w ?? 0, abs($0.bed - usual) / 60] }, fragRows.map(\.y), 2) {
+            out.append(MetricResult(id: "fragmentationCost", name: "Coste de cada despertar", value: (wake * 10).rounded() / 10, unit: "pts", summary:
+                            sig(wci) ? String(format: "Cada despertar de más se asocia con %+.1f puntos de recuperación (a igual duración de sueño). Asociación, no causa.", locale: Num.spanish, wake)
                                      : "No se ve una relación clara entre tus despertares y tu recuperación.",
-                         interval: wci, confidence: conf, sampleSize: rows.count, formula: fFrag, version: version),
-            MetricResult(id: "timingSensitivity", name: "Sensibilidad al horario", value: (bed * 10).rounded() / 10, unit: "pts/h", summary:
-                            sig(bci) ? String(format: "Cada hora que te acuestas fuera de tu hora habitual se asocia con %+.1f puntos de recuperación, aun durmiendo lo mismo.", bed)
+                         interval: wci, confidence: .from(samples: fragRows.count, medium: 40, high: 80), sampleSize: fragRows.count,
+                         formula: fFrag, version: version))
+        } else {
+            out.append(.insufficient("fragmentationCost", "Coste de cada despertar", unit: "pts",
+                                     need: "21 noches medidas por Pulso (las importadas no traen los despertares)", have: fragRows.count,
+                                     formula: fFrag, version: version))
+        }
+
+        let mixed = rows.filter(\.imported).count >= 5 && rows.filter { !$0.imported }.count >= 5
+        if rows.count >= 21, let usual = Num.median(rows.map(\.bed)),
+           let (bed, bci) = fitCoef(rows.map { [$0.h, abs($0.bed - usual) / 60] + (mixed ? [$0.imported ? 1 : 0] : []) }, rows.map(\.y), 2) {
+            out.append(MetricResult(id: "timingSensitivity", name: "Sensibilidad al horario", value: (bed * 10).rounded() / 10, unit: "pts/h", summary:
+                            sig(bci) ? String(format: "Cada hora que te acuestas fuera de tu hora habitual se asocia con %+.1f puntos de recuperación, aun durmiendo lo mismo. Asociación, no causa.", locale: Num.spanish, bed)
                                      : "Tu recuperación no parece depender de a qué hora te acuestas, sino de cuánto duermes.",
-                         interval: bci, confidence: conf, sampleSize: rows.count, formula: fTime, version: version),
-        ]
+                         interval: bci, confidence: .from(samples: rows.count, medium: 40, high: 80), sampleSize: rows.count,
+                         formula: fTime, version: version))
+        } else {
+            out.append(.insufficient("timingSensitivity", "Sensibilidad al horario", unit: "pts/h", need: "21 noches con recuperación y hora de acostarse",
+                                     have: rows.count, formula: fTime, version: version))
+        }
+        return out
     }
 
     // MARK: - Cardiac cost of daily life
 
-    public static func cardiacCostMetric(_ days: [DaySummary]) -> MetricResult {
-        let f = "CCDL = Σ max(0, FC − FC reposo) por minuto despierto, fuera de entrenos y siestas (latidos de más)"
-        let vals = days.compactMap { d in d.extraBeats.map { (d.day, $0) } }
-        guard vals.count >= 5, let today = vals.last?.1, let med = Num.median(vals.dropLast().suffix(28).map { $0.1 }), med > 0 else {
-            return .insufficient("cardiacCost", "Coste cardíaco del día", unit: "latidos", need: "5 días con la pulsera puesta", have: vals.count,
+    /// Compares only complete days: the cycle in progress (`today` and later) has fewer awake minutes, so a
+    /// relative % against full days would always read low. It is reported apart, without comparison.
+    public static func cardiacCostMetric(_ days: [DaySummary], today: String) -> MetricResult {
+        let f = "CCDL = Σ max(0, FC − FC reposo) por minuto despierto, fuera de entrenos y siestas (latidos de más); último día completo frente a la mediana de los 28 días completos anteriores"
+        let all = days.sorted { $0.day < $1.day }.compactMap { d in d.extraBeats.map { (day: d.day, beats: $0) } }
+        let complete = all.filter { $0.day < today }
+        let partial = all.last { $0.day >= today }
+        let partialText = partial.map { " Hoy, en lo que va de día: \(Int($0.beats).formatted()) (sin comparar: el día no ha terminado)." } ?? ""
+        guard complete.count >= 5, let last = complete.last, let med = Num.median(complete.dropLast().suffix(28).map(\.beats)), med > 0 else {
+            return .insufficient("cardiacCost", "Coste cardíaco del día", unit: "latidos",
+                                 need: "5 días completos medidos por Pulso (los importados no traen el pulso minuto a minuto)", have: complete.count,
                                  formula: f, version: version)
         }
-        let rel = (today / med - 1) * 100
-        let text = String(format: "Hoy tu corazón lleva %@ latidos de más fuera de los entrenos", Int(today).formatted()) +
-            (abs(rel) < 10 ? ", lo normal para ti." : String(format: ", un %+.0f %% frente a tu día típico.", rel)) +
+        let rel = (last.beats / med - 1) * 100
+        let when = last.day == DayKey.shift(today, days: -1) ? "Ayer" : "El \(Deviation.shortDate(last.day))"
+        let text = "\(when) tu corazón hizo \(Int(last.beats).formatted()) latidos de más fuera de los entrenos" +
+            (abs(rel) < 10 ? ", lo normal para ti." : String(format: ", un %+.0f %% frente a tu día típico.", locale: Num.spanish, rel)) + partialText +
             " Estrés, calor, cafeína o enfermedad lo suben. No mide calorías."
-        return MetricResult(id: "cardiacCost", name: "Coste cardíaco del día", value: today.rounded(), unit: "latidos", summary: text,
-                            confidence: .from(samples: vals.count, medium: 10, high: 28), sampleSize: vals.count, formula: f, version: version)
+        return MetricResult(id: "cardiacCost", name: "Coste cardíaco del día", value: last.beats.rounded(), unit: "latidos", summary: text,
+                            confidence: .from(samples: complete.count, medium: 10, high: 28), sampleSize: complete.count, formula: f, version: version)
     }
 }
 

@@ -149,7 +149,7 @@ public enum WorkoutAnalysis {
         }
         let older = drops.dropLast(4).suffix(8).map { $0.drop }
         let trend = (older.count >= 3 ? Num.median(older) : nil).map { med - $0 }
-        var text = String(format: "Tu pulso baja de media %.0f lpm en el primer minuto tras un esfuerzo intenso.", med)
+        var text = String(format: "Tu pulso baja de media %.0f lpm en el primer minuto tras un esfuerzo intenso.", locale: Num.spanish, med)
         if let t = trend, abs(t) >= 3 { text += t > 0 ? " Está mejorando." : " Últimamente baja más despacio." }
         return MetricResult(id: "hrr60", name: "Recuperación del pulso a 60 s", value: med.rounded(), unit: "lpm", summary: text,
                             confidence: .from(samples: drops.count, medium: 5, high: 10), sampleSize: drops.count, formula: f, version: version)

@@ -87,3 +87,15 @@ final class AnalysisToolsTests: XCTestCase {
         XCTAssertEqual(MonthlyReport.shiftMonth("2026-12", 1), "2027-01")
     }
 }
+
+final class RelationByDateTests: XCTestCase {
+    func testNextDayPairsByDateAcrossGaps() {
+        let days = ["2026-10-01", "2026-10-02", "2026-10-05", "2026-10-06"]
+        let x: [Double?] = [1, 2, 3, 4]
+        let y: [Double?] = [10, 20, 30, 40]
+        let p = Relation.pairs(days: days, x, y, lagDays: 1)
+        XCTAssertEqual(p.map(\.x), [1, 3], "Oct 2 → Oct 5 is not 'the next day'")
+        XCTAssertEqual(p.map(\.y), [20, 40])
+        XCTAssertEqual(Relation.pairs(days: days, x, y, lagDays: 0).count, 4)
+    }
+}

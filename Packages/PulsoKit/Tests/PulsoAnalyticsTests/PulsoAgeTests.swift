@@ -49,9 +49,9 @@ final class PulsoAgeTests: XCTestCase {
 
     func testImprovingLatelyRaisesPaceBelowOne() {
         let p = profile(age: 35)
-        // 5 months of poor sleep, then a good month.
+        // 5 months of poor sleep, then a good month (31 days: today's open cycle is left out).
         var list = days(150, sleep: 5.5 * 60, steps: 6000, rhr: 60, vo2: 40, zones: [10, 5, 0, 0, 0], regularity: 60)
-        for i in (list.count - 30)..<list.count {
+        for i in (list.count - 31)..<list.count {
             list[i].sleepMinutes = 8 * 60
             list[i].sleepConsistency = 95
         }

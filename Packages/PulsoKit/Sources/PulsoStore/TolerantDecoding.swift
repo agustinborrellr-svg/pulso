@@ -5,7 +5,7 @@ import Foundation
 
 extension DaySummary {
     private enum TolerantKeys: String, CodingKey {
-        case day, cycleStart, cycleEnd, recovery, calibrating, hrv, rhr, respRate, spo2, skinTemp, skinTempDeviation, contributors, sleepId, sleepStart, sleepEnd, deepMinutes, remMinutes, lightMinutes, awakeMinutes, disturbances, sleepMinutes, inBedMinutes, sleepNeedMinutes, sleepPerformance, sleepEfficiency, sleepConsistency, sleepDebtMinutes, restorativeMinutes, napMinutes, strain, kcal, activeKcal, avgHR, maxHR, steps, zoneMinutes, workoutCount, stressAvg, stressHighMinutes, stressHourly, calmHR, calmHRV, extraBeats, vo2max, wornMinutes, source
+        case day, cycleStart, cycleEnd, recovery, calibrating, hrv, rhr, respRate, spo2, skinTemp, skinTempDeviation, contributors, sleepId, sleepStart, sleepEnd, deepMinutes, remMinutes, lightMinutes, awakeMinutes, disturbances, sleepMinutes, inBedMinutes, sleepNeedMinutes, sleepPerformance, sleepEfficiency, sleepConsistency, sleepDebtMinutes, restorativeMinutes, napMinutes, strain, kcal, activeKcal, avgHR, maxHR, steps, zoneMinutes, workoutCount, stressAvg, stressHighMinutes, stressHourly, calmHR, calmHRV, extraBeats, vo2max, wornMinutes, source, nightImported
     }
 
     public init(from decoder: Decoder) throws {
@@ -57,6 +57,7 @@ extension DaySummary {
         vo2max = try c.decodeIfPresent(Double.self, forKey: .vo2max)
         wornMinutes = try c.decodeIfPresent(Double.self, forKey: .wornMinutes) ?? 0
         source = try c.decodeIfPresent(String.self, forKey: .source) ?? "strap"
+        nightImported = try c.decodeIfPresent(Bool.self, forKey: .nightImported) ?? false
     }
 }
 

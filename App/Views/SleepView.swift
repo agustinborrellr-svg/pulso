@@ -82,7 +82,7 @@ struct SleepView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     row("Dormido", Fmt.hm(d.sleepMinutes))
                     row("Necesitabas", Fmt.hm(d.sleepNeedMinutes))
-                    row("En cama", "\(Fmt.time(d.sleepStart)) – \(Fmt.time(d.sleepEnd))")
+                    row("Bloque detectado", "\(Fmt.time(d.sleepStart)) – \(Fmt.time(d.sleepEnd))")
                     row("Deuda de sueño", Fmt.hm(d.sleepDebtMinutes))
                 }
             }
@@ -141,10 +141,10 @@ struct SleepView: View {
             MetricTile(title: "FC reposo", value: Fmt.int(s.rhr), unit: "lpm", detail: s.minHR.map { "mínima \(Int($0)) lpm" },
                        icon: "heart.fill", tint: Theme.red)
             MetricTile(title: "Respiración", value: Fmt.one(s.respRate), unit: "rpm", icon: "lungs.fill", tint: Theme.hrv)
-            MetricTile(title: "SpO₂", value: Fmt.one(s.spo2), unit: "%", icon: "drop.fill", tint: Theme.red)
+            MetricTile(title: "SpO₂ (exp.)", value: Fmt.one(s.spo2), unit: "%", icon: "drop.fill", tint: Theme.red)
             MetricTile(title: "Temp. piel", value: Fmt.one(s.skinTemp), unit: "°C",
                        detail: d.skinTempDeviation.map { String(format: "%+.2f °C vs tu media", $0) }, icon: "thermometer.medium", tint: Theme.yellow)
-            MetricTile(title: "Latencia", value: Fmt.int(s.latencyMinutes), unit: "min", icon: "hourglass", tint: Theme.sleep)
+            MetricTile(title: "Latencia (estim.)", value: Fmt.int(s.latencyMinutes), unit: "min", icon: "hourglass", tint: Theme.sleep)
         }
     }
 }
@@ -265,6 +265,9 @@ struct SleepEditSheet: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     let session: SleepSession?
+    /// The day whose night is being added (the night that ends that morning); defaults to the selected day.
+    var forDay: String?
+    var napDefault = false
     @State private var start = Date()
     @State private var end = Date()
     @State private var isNap = false
@@ -316,9 +319,10 @@ struct SleepEditSheet: View {
                 if let s = session {
                     start = Date(timeIntervalSince1970: TimeInterval(s.start))
                     end = Date(timeIntervalSince1970: TimeInterval(s.end))
-                } else if let d = DayKey.date(model.selectedDay) {
-                    start = d.addingTimeInterval(-60 * 60)
-                    end = d.addingTimeInterval(7 * 3600)
+                } else if let d = DayKey.date(forDay ?? model.selectedDay) {
+                    isNap = napDefault
+                    start = d.addingTimeInterval(napDefault ? 15 * 3600 : -60 * 60)
+                    end = d.addingTimeInterval(napDefault ? 15.5 * 3600 : 7 * 3600)
                 }
             }
         }
