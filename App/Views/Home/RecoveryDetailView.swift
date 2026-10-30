@@ -11,9 +11,11 @@ struct RecoveryDetailView: View {
         DetailScreen(title: model.cycleTitle(model.selectedDay)) {
             if let day = model.selected {
                 hero(day)
+                effort(day)
                 vitals(day)
                 behaviours(day)
                 RecoveryBreakdown(day: day)
+                quality(day)
                 SectionHeading(text: "Tendencias semanales")
                 ForEach([TrendMetric.recovery, .hrv, .rhr, .respRate, .sleepPerformance], id: \.self) { m in
                     WeeklyTrendCard(metric: m)
@@ -31,10 +33,10 @@ struct RecoveryDetailView: View {
             ZStack {
                 Dial(progress: (d.recovery ?? 0) / 100, color: color, lineWidth: 22)
                 VStack(spacing: 6) {
-                    Text("PULSO").font(.system(size: 18, weight: .light)).tracking(4).foregroundStyle(Theme.secondary)
+                    Text("PULSO").scaledFont(18, weight: .light, relativeTo: .body).tracking(4).foregroundStyle(Theme.secondary)
                     HStack(alignment: .firstTextBaseline, spacing: 2) {
-                        Text(d.recovery.map { "\(Int($0))" } ?? "–").font(.system(size: 64, weight: .heavy)).monospacedDigit()
-                        if d.recovery != nil { Text("%").font(.system(size: 30, weight: .heavy)) }
+                        Text(d.recovery.map { "\(Int($0))" } ?? "–").scaledFont(64, weight: .heavy, relativeTo: .largeTitle, maxScale: 1.3).monospacedDigit()
+                        if d.recovery != nil { Text("%").scaledFont(30, weight: .heavy, relativeTo: .title1) }
                     }
                     .foregroundStyle(.white)
                     Caps(d.calibrating && d.recovery == nil ? "Calibrando" : "Recuperación", size: 13)
@@ -65,10 +67,10 @@ struct RecoveryDetailView: View {
                         VStack(alignment: .trailing, spacing: 1) {
                             HStack(spacing: 5) {
                                 Text(v.map { m.label($0) } ?? "–")
-                                    .font(.system(size: 22, weight: .bold)).monospacedDigit().foregroundStyle(.white)
+                                    .scaledFont(22, weight: .bold, relativeTo: .title1).monospacedDigit().foregroundStyle(.white)
                                 if v != nil { DeltaMark(delta: Delta(v, u, higherIsBetter: m.higherIsBetter)) }
                             }
-                            if let u { Text(m.label(u)).font(.system(size: 11)).monospacedDigit().foregroundStyle(Theme.secondary) }
+                            if let u { Text(m.label(u)).scaledFont(11, relativeTo: .caption1).monospacedDigit().foregroundStyle(Theme.secondary) }
                         }
                     }
                     .padding(.horizontal, 16)
@@ -82,10 +84,74 @@ struct RecoveryDetailView: View {
                 Image(systemName: "arrowtriangle.down.fill").foregroundStyle(Theme.worse)
                 Text("\(model.cycleTitle(d.day).capitalized) vs. los últimos 30 días").font(.caption).foregroundStyle(Theme.secondary)
             }
-            .font(.system(size: 8))
+            .scaledFont(11, relativeTo: .caption1)
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.black.opacity(0.25))
+        }
+    }
+
+    /// Today's effort range, only when there's a real recovery behind it.
+    private func effort(_ d: DaySummary) -> some View {
+        let justified = d.recovery != nil && !d.calibrating
+        let advice = model.coachAdvice(for: d)
+        return PCard {
+            HStack {
+                Image(systemName: "flame").foregroundStyle(Theme.strain)
+                Caps("Esfuerzo recomendado", size: 12)
+                Spacer()
+                if justified {
+                    Text("\(Int(advice.strainTarget.lowerBound))–\(Int(advice.strainTarget.upperBound))")
+                        .font(.headline.monospacedDigit()).foregroundStyle(.white)
+                }
+            }
+            Text(justified ? advice.headline
+                 : "Sin recomendación: hace falta una recuperación calculada con tus líneas base. Mientras tanto, guíate por cómo te encuentras.")
+                .font(.caption).foregroundStyle(Theme.secondary)
+        }
+    }
+
+    /// Which inputs went into the score, how mature the baselines are and where they came from.
+    private func quality(_ d: DaySummary) -> some View {
+        let before = model.days.filter { $0.day < d.day }
+        let b = Baselines.from(history: before)
+        let used = Set(d.contributors.map(\.key))
+        let hrvNights = before.filter { ($0.hrv ?? 0) > 0 }.suffix(30)
+        let imported = hrvNights.filter { $0.source != "strap" }.count
+        let inputs: [(String, String, Bool, String)] = [
+            ("hrv", "VFC", d.hrv != nil, b.lnHRV?.isUsable == true ? "" : "línea base calibrando"),
+            ("rhr", "FC en reposo", d.rhr != nil, b.rhr?.isUsable == true ? "" : "línea base calibrando"),
+            ("sleep", "Sueño", d.sleepPerformance != nil, ""),
+            ("resp", "Respiración", d.respRate != nil, b.resp?.isUsable == true ? "" : "línea base calibrando"),
+            ("temp", "Temperatura piel", d.skinTemp != nil, b.temp?.isUsable == true ? "" : "línea base calibrando"),
+        ]
+        return PCard {
+            CardHeader(title: "Calidad de los datos")
+            ForEach(inputs, id: \.0) { i in
+                let on = used.contains(i.0)
+                HStack(spacing: 10) {
+                    Image(systemName: on ? "checkmark.circle.fill" : "minus.circle")
+                        .foregroundStyle(on ? Theme.better : Theme.secondary)
+                    Text(i.1).font(.subheadline).foregroundStyle(.white)
+                    Spacer()
+                    Text(on ? "en el cálculo" : (i.2 ? (i.3.isEmpty ? "sin efecto hoy" : i.3) : "sin lectura"))
+                        .font(.caption).foregroundStyle(Theme.secondary)
+                }
+            }
+            HStack(spacing: 10) {
+                Image(systemName: "minus.circle").foregroundStyle(Theme.secondary)
+                Text("SpO₂").font(.subheadline).foregroundStyle(.white)
+                Spacer()
+                Text("fuera (experimental)").font(.caption).foregroundStyle(Theme.secondary)
+            }
+            Divider().overlay(Theme.hairline)
+            Text(hrvNights.isEmpty ? "Aún no hay noches anteriores con VFC: la recuperación aparece tras 4."
+                 : "Líneas base: \(hrvNights.count) noches con VFC\(imported > 0 ? ", \(imported) importadas" : "")\(d.calibrating ? " · calibrando (hacen falta 4)" : "").")
+                .font(.caption).foregroundStyle(Theme.secondary)
+            if d.source != "strap" {
+                Text("Este día es importado: sus valores vienen del archivo, no de la pulsera.")
+                    .font(.caption).foregroundStyle(Theme.secondary)
+            }
         }
     }
 
@@ -108,6 +174,10 @@ struct RecoveryDetailView: View {
                     }
                     Text("Esto es lo que más ha movido tu recuperación de hoy (y lo que apuntaste ayer en el diario).")
                         .font(.subheadline).foregroundStyle(Theme.secondary)
+                    if !journal.isEmpty {
+                        Text("Asociación, no causa: lo del diario coincide con el día, no demuestra que lo haya provocado.")
+                            .font(.caption).foregroundStyle(Theme.tertiary)
+                    }
                     let shown = showAllChips ? all : Array(all.prefix(2))
                     FlowLayout(spacing: 8) {
                         ForEach(Array(shown.enumerated()), id: \.offset) { _, c in
@@ -117,7 +187,7 @@ struct RecoveryDetailView: View {
                             Button {
                                 withAnimation { showAllChips = true }
                             } label: {
-                                Text("+\(all.count - 2) más").font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                                Text("+\(all.count - 2) más").scaledFont(13, weight: .semibold, relativeTo: .caption1).foregroundStyle(.white)
                                     .padding(.horizontal, 10).padding(.vertical, 8)
                                     .background(Theme.cardHighlight, in: RoundedRectangle(cornerRadius: 6))
                             }

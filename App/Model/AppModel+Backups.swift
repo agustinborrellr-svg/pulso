@@ -14,7 +14,7 @@ extension AppModel {
 
     /// Runs at launch and when the app comes back; does nothing if the copies are recent.
     func autoBackupIfDue() {
-        guard !AppMode.screenshots, !demoActive, let dir = Self.backupsFolder else { return }
+        guard !AppMode.screenshots, let dir = Self.backupsFolder else { return }
         let db = self.db
         analysisQueue.async {
             let fm = FileManager.default
@@ -29,13 +29,21 @@ extension AppModel {
     }
 
     /// A full copy taken synchronously right before data is replaced or deleted.
-    func safetyBackup(reason: String) {
-        guard !AppMode.screenshots, let dir = Self.backupsFolder else { return }
-        try? db.backup(to: dir.appendingPathComponent(BackupPolicy.fileName(.safety, reason: reason, at: Date())).path)
+    /// Returns false when the copy could not be written: callers that delete data must then stop.
+    @discardableResult
+    func safetyBackup(reason: String) -> Bool {
+        guard !AppMode.screenshots else { return true }
+        guard let dir = Self.backupsFolder else { return false }
+        do {
+            try db.backup(to: dir.appendingPathComponent(BackupPolicy.fileName(.safety, reason: reason, at: Date())).path)
+        } catch {
+            return false
+        }
         let names = (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []
         for name in BackupPolicy.plan(existing: names, now: Date()).delete where BackupPolicy.parse(name)?.kind == .safety {
             try? FileManager.default.removeItem(at: dir.appendingPathComponent(name))
         }
+        return true
     }
 
     /// Size of the database and of the automatic copies, for Más → Datos.

@@ -11,7 +11,7 @@ enum ShotScreen: String, Identifiable {
     case guide, guideData, guideRecovery, guideAlarm, whoopImport
     case recovery, strain, stress, trendRecovery, trendStrain, trendHRV, device, pairing, deviceAdvanced
     case sleepQuestion, vo2, plan, addActivity
-    case scan, coherence, poincare, orthostatic, explorer, calendar, monthly, storage
+    case scan, coherence, poincare, orthostatic, explorer, calendar, monthly, storage, monitor
 
     var id: String { rawValue }
 
@@ -155,6 +155,7 @@ struct ShotDestination: View {
                 case .calendar: CalendarRecordsView()
                 case .monthly: MonthlyReportView()
                 case .storage: StorageView()
+                case .monitor: MonitorView()
                 case .intelDetail:
                     if let m = model.intelligence?.metric("forecast") { MetricDetailView(metric: m) } else { Text("Calculando…") }
                 default: EmptyView()

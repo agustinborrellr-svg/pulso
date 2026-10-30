@@ -31,6 +31,11 @@ public enum LoadResponse {
         public var respChange: Double?
         /// Another load day came before recovering: not a clean measurement.
         public var chained: Bool
+        /// All `maxNights` nights were measured and none was back in range: recovery took at least that long.
+        public var censored: Bool = false
+
+        /// Nights to recover counting overloads as `maxNights` (a lower bound); nil when the nights weren't measured.
+        public var nightsAtLeast: Double? { recoveryNights ?? (censored ? Double(LoadResponse.maxNights) : nil) }
     }
 
     static func intensity(_ strain: Double) -> String {
@@ -87,7 +92,7 @@ public enum LoadResponse {
             out.append(Event(day: d.day, sport: main?.sport ?? "Día exigente", strain: d.strain ?? main?.strain ?? 0, load3d: last3,
                              intensity: intensity(d.strain ?? 0), recoveryNights: rec, cost: outOfRange.reduce(0, +),
                              peak: curve.max() ?? 0, hrvChangePct: hrvPct, rhrChange: change { $0.rhr }, respChange: change { $0.respRate },
-                             chained: chained))
+                             chained: chained, censored: rec == nil && curve.count == maxNights))
         }
         return out
     }
@@ -105,8 +110,8 @@ public enum LoadResponse {
     static func clean(_ e: [Event]) -> [Event] { e.filter { !$0.chained } }
 
     public static func velocityMetric(_ events: [Event]) -> MetricResult {
-        let f = "Noches hasta que D⁺ vuelve por debajo de 1 σ tras un día exigente (interpolado); mediana de los últimos 10"
-        let rec = clean(events).suffix(10).compactMap { $0.recoveryNights }
+        let f = "Noches hasta que D⁺ vuelve por debajo de 1 σ tras un día exigente (interpolado; sin volver en 5 noches = 5); mediana de los últimos 10"
+        let rec = clean(events).suffix(10).compactMap { $0.nightsAtLeast }
         guard rec.count >= 3, let med = Num.median(rec) else {
             return .insufficient("recoveryVelocity", "Velocidad de recuperación", unit: "noches",
                                  need: "3 días exigentes con las noches siguientes medidas", have: rec.count, formula: f, version: version)
@@ -114,8 +119,8 @@ public enum LoadResponse {
         let text: String
         switch med {
         case ..<1: text = "Tras un día exigente, tus constantes vuelven a lo normal en la primera noche."
-        case ..<2: text = String(format: "Tras un día exigente tardas unas %.1f noches en volver a tu patrón.", med)
-        default: text = String(format: "Tras un día exigente tardas %.1f noches en volver a tu patrón: recuperas despacio.", med)
+        case ..<2: text = String(format: "Tras un día exigente tardas unas %.1f noches en volver a tu patrón.", locale: Num.spanish, med)
+        default: text = String(format: "Tras un día exigente tardas %.1f noches en volver a tu patrón: recuperas despacio.", locale: Num.spanish, med)
         }
         return MetricResult(id: "recoveryVelocity", name: "Velocidad de recuperación", value: (med * 10).rounded() / 10, unit: "noches",
                             summary: text, interval: (rec.min() ?? med)...(rec.max() ?? med),
@@ -186,34 +191,72 @@ public enum LoadResponse {
                             formula: f, version: version)
     }
 
+    /// Recovery time against the 3-day load, overloads included as "≥ 5 nights" (dropping them hid exactly
+    /// the cases a ceiling is about).
+    public struct Ceiling: Equatable, Sendable {
+        public struct Point: Equatable, Sendable {
+            public var day: String
+            public var load: Double
+            public var nights: Double
+            public var censored: Bool
+        }
+        public var points: [Point]
+        /// Load where the slope breaks; nil when there's no knee (or too few points).
+        public var knee: Double?
+        public var slopeBelow: Double?
+        public var slopeAbove: Double?
+        public var overloads: Int { points.filter(\.censored).count }
+    }
+
+    public static let minCeilingEvents = 20
+
+    public static func ceiling(_ events: [Event]) -> Ceiling {
+        let pts = events.compactMap { e in e.nightsAtLeast.map { Ceiling.Point(day: e.day, load: e.load3d, nights: $0, censored: e.censored) } }
+            .sorted { $0.load < $1.load }
+        var out = Ceiling(points: pts)
+        guard pts.count >= minCeilingEvents else { return out }
+        let y = pts.map(\.nights)
+        guard let lin = Num.ridge(pts.map { [$0.load] }, y) else { return out }
+        func sse(_ f: Num.Fit, _ x: [[Double]]) -> Double { zip(x, y).reduce(0) { $0 + pow($1.1 - f.predict($1.0), 2) } }
+        let linSSE = sse(lin, pts.map { [$0.load] })
+        out.slopeBelow = lin.beta[1]
+        // Continuous hinge y = a + b·load + c·max(0, load − k): a cluster of "≥ 5 nights" above the knee reads as
+        // a steeper segment, which two separate fits (both flat) would miss.
+        var best: (knee: Double, sse: Double, below: Double, above: Double)?
+        for q in stride(from: 0.3, through: 0.8, by: 0.05) {
+            let k = pts[Int(Double(pts.count) * q)].load
+            let x = pts.map { [$0.load, max(0, $0.load - k)] }
+            guard x.filter({ $0[1] > 0 }).count >= 5, let f = Num.ridge(x, y) else { continue }
+            let e = sse(f, x)
+            if e < (best?.sse ?? .infinity) { best = (k, e, f.beta[1], f.beta[1] + f.beta[2]) }
+        }
+        if let b = best, b.sse < linSSE * 0.85, b.above > max(0.01, 2 * b.below) {
+            out.knee = b.knee
+            out.slopeBelow = b.below
+            out.slopeAbove = b.above
+        }
+        return out
+    }
+
     /// Load above which recovery time grows disproportionately (piecewise-linear knee).
     public static func ceilingMetric(_ events: [Event]) -> MetricResult {
-        let f = "Ajuste por tramos de tiempo de recuperación ~ esfuerzo acumulado 3 días; codo si mejora el error > 15 % y la pendiente se duplica"
-        let pts = events.compactMap { e in e.recoveryNights.map { (x: e.load3d, y: $0) } }.sorted { $0.x < $1.x }
-        guard pts.count >= 20 else {
-            return .insufficient("recoveryCeiling", "Techo de carga", need: "20 días exigentes medidos (unos 2–3 meses)", have: pts.count,
+        let f = "Recta con codo (continua) de noches hasta recuperarte ~ esfuerzo acumulado 3 días (sin recuperar en 5 noches = 5, cota inferior); codo si mejora el error > 15 % frente a una recta y la pendiente al menos se duplica"
+        let c = ceiling(events)
+        guard c.points.count >= minCeilingEvents else {
+            return .insufficient("recoveryCeiling", "Techo de carga", need: "\(minCeilingEvents) días exigentes medidos (unos 2–3 meses)", have: c.points.count,
                                  formula: f, version: version)
         }
-        func sse(_ p: ArraySlice<(x: Double, y: Double)>) -> (sse: Double, slope: Double) {
-            guard let fit = Num.ridge(p.map { [$0.x] }, p.map { $0.y }) else { return (.infinity, 0) }
-            return (p.reduce(0) { $0 + pow($1.y - fit.predict([$1.x]), 2) }, fit.beta[1])
-        }
-        let lin = sse(pts[...])
-        var best: (knee: Double, sse: Double, s1: Double, s2: Double)?
-        for q in stride(from: 0.3, through: 0.8, by: 0.05) {
-            let k = Int(Double(pts.count) * q)
-            guard k >= 5, pts.count - k >= 5 else { continue }
-            let a = sse(pts[..<k]), b = sse(pts[k...])
-            if a.sse + b.sse < (best?.sse ?? .infinity) { best = (pts[k].x, a.sse + b.sse, a.slope, b.slope) }
-        }
-        guard let b = best, b.sse < lin.sse * 0.85, b.s2 > max(0.01, 2 * b.s1) else {
+        let over = c.overloads > 0 ? " \(c.overloads) \(c.overloads == 1 ? "vez" : "veces") no te recuperaste en \(maxNights) noches." : ""
+        let conf = MetricResult.Confidence.from(samples: c.points.count, medium: 30, high: 50)
+        guard let knee = c.knee else {
+            let hi = c.points.map(\.load).max() ?? 0
             return MetricResult(id: "recoveryCeiling", name: "Techo de carga", value: nil, unit: "esfuerzo 3 días",
-                                summary: "No se ve un punto a partir del cual la recuperación se dispare: tu carga actual parece sostenible.",
-                                confidence: .medium, sampleSize: pts.count, formula: f, version: version)
+                                summary: String(format: "No se ve límite: hasta %.0f puntos de esfuerzo en 3 días, tu recuperación crece en proporción a la carga.", locale: Num.spanish, hi) + over,
+                                confidence: conf, sampleSize: c.points.count, formula: f, version: version)
         }
-        return MetricResult(id: "recoveryCeiling", name: "Techo de carga", value: b.knee.rounded(), unit: "esfuerzo 3 días",
-                            summary: String(format: "Por encima de unos %.0f puntos de esfuerzo en 3 días, tu recuperación se alarga mucho más que la carga.", b.knee),
-                            confidence: .from(samples: pts.count, medium: 30, high: 50), sampleSize: pts.count, formula: f, version: version)
+        return MetricResult(id: "recoveryCeiling", name: "Techo de carga", value: knee.rounded(), unit: "esfuerzo 3 días",
+                            summary: String(format: "Por encima de unos %.0f puntos de esfuerzo en 3 días, tu recuperación se alarga mucho más que la carga.", locale: Num.spanish, knee) + over,
+                            confidence: conf, sampleSize: c.points.count, formula: f, version: version)
     }
 
     /// Response fingerprint per sport and intensity (medians), buckets with ≥ 3 clean sessions.
@@ -233,7 +276,7 @@ public enum LoadResponse {
     public static func fingerprints(_ events: [Event]) -> [Fingerprint] {
         Dictionary(grouping: clean(events)) { "\($0.sport)|\($0.intensity)" }.compactMap { _, g -> Fingerprint? in
             guard g.count >= 3, let e = g.first else { return nil }
-            return Fingerprint(sport: e.sport, intensity: e.intensity, count: g.count, recoveryNights: Num.median(g.compactMap { $0.recoveryNights }),
+            return Fingerprint(sport: e.sport, intensity: e.intensity, count: g.count, recoveryNights: Num.median(g.compactMap { $0.nightsAtLeast }),
                                cost: Num.median(g.map { $0.cost }) ?? 0, peak: Num.median(g.map { $0.peak }) ?? 0,
                                hrvChangePct: Num.median(g.compactMap { $0.hrvChangePct }), rhrChange: Num.median(g.compactMap { $0.rhrChange }),
                                respChange: Num.median(g.compactMap { $0.respChange }))

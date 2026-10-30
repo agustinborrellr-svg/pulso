@@ -277,6 +277,42 @@ public enum LiveMetrics {
         return Recovery(peakHR: peak, hr60: h60, hr120: around(120))
     }
 
+    /// What the recovery test lacked when `recovery` returns nil, in words.
+    public static func recoveryProblem(_ samples: [(t: Double, hr: Double)], stopAt: Double) -> String? {
+        let before = samples.filter { $0.t >= stopAt - 30 && $0.t <= stopAt }.count
+        let at60 = samples.filter { abs($0.t - (stopAt + 60)) <= 5 }.count
+        var missing: [String] = []
+        if before == 0 { missing.append("no llegó pulso (1 por segundo) en los 30 s antes de parar") }
+        if at60 == 0 { missing.append("no llegó pulso entre los 55 y 65 s después de parar") }
+        guard !missing.isEmpty else { return nil }
+        let after = samples.filter { $0.t > stopAt }.count
+        let text = missing.joined(separator: " y ")
+        return text.prefix(1).uppercased() + text.dropFirst() + ". Lecturas recibidas: \(before) antes de parar y \(after) después."
+    }
+
+    /// Clean R-R beats in each window the orthostatic test needs, and the phase that fell short.
+    public struct OrthostaticCoverage: Equatable, Sendable {
+        public var lying: Int
+        public var earlyStanding: Int
+        public var settled: Int
+        public var problem: String? {
+            var out: [String] = []
+            if lying < 30 { out.append("tumbado (último minuto): \(lying) latidos con R-R, hacen falta 30") }
+            if earlyStanding < 5 { out.append("al levantarte (primeros 30 s): \(earlyStanding), hacen falta 5") }
+            if settled < 30 { out.append("de pie (minuto 2–3): \(settled), hacen falta 30") }
+            return out.isEmpty ? nil : "Faltan intervalos R-R " + out.joined(separator: "; ") + "."
+        }
+    }
+
+    public static func orthostaticCoverage(_ beats: [Beat], standAt: Double) -> OrthostaticCoverage {
+        func clean(_ a: Double, _ b: Double) -> Int {
+            HRV.clean(runs(beats.filter { $0.t >= a && $0.t < b })).reduce(0) { $0 + $1.count }
+        }
+        return OrthostaticCoverage(lying: clean(standAt - 60, standAt),
+                                   earlyStanding: beats.filter { $0.t >= standAt && $0.t < standAt + 30 }.count,
+                                   settled: clean(standAt + 120, standAt + 180))
+    }
+
     /// Highest 5-second average, the honest "max HR" of a test (no single-beat spikes).
     public static func peakHR(_ samples: [(t: Double, hr: Double)]) -> Double? {
         rolling(samples.map(\.hr), 5).max()
@@ -285,6 +321,48 @@ public enum LiveMetrics {
     static func rolling(_ x: [Double], _ n: Int) -> [Double] {
         guard x.count >= n else { return x.isEmpty ? [] : [x.reduce(0, +) / Double(x.count)] }
         return (n...x.count).map { i in x[(i - n)..<i].reduce(0, +) / Double(n) }
+    }
+
+    // MARK: Guided breathing
+
+    public struct Breathing: Equatable, Sendable {
+        /// RMSSD of the minute before starting (or of the first minute when there was none), ms.
+        public var rmssdBefore: Double?
+        public var beforeIsFirstMinute: Bool
+        /// RMSSD of the last minute, ms.
+        public var rmssdAfter: Double?
+        public var coherenceStart: Double?
+        public var coherenceEnd: Double?
+        public var coherenceMean: Double?
+        public var beats: Int
+
+        public var coherenceTrend: Double? {
+            guard let a = coherenceStart, let b = coherenceEnd else { return nil }
+            return b - a
+        }
+    }
+
+    /// Before/after HRV and the coherence trend of a breathing session. `scores` are (time, 0–100) readings
+    /// taken during the session; start and end are the first and last third.
+    public static func breathing(_ beats: [Beat], start: Double, end: Double, scores: [(t: Double, score: Double)]) -> Breathing {
+        func rmssd(_ a: Double, _ b: Double) -> Double? {
+            HRV.rmssd(HRV.clean(runs(beats.filter { $0.t >= a && $0.t < b })), minPairs: 20)
+        }
+        var before = rmssd(start - 90, start)
+        var first = false
+        if before == nil {
+            before = rmssd(start, min(end, start + 60))
+            first = before != nil
+        }
+        let s = scores.filter { $0.t >= start && $0.t <= end }.sorted { $0.t < $1.t }
+        let third = max(1, s.count / 3)
+        let enough = s.count >= 3
+        return Breathing(rmssdBefore: before, beforeIsFirstMinute: first,
+                         rmssdAfter: end - start >= 90 ? rmssd(end - 60, end) : nil,
+                         coherenceStart: enough ? Stats.mean(s.prefix(third).map(\.score)) : nil,
+                         coherenceEnd: enough ? Stats.mean(s.suffix(third).map(\.score)) : nil,
+                         coherenceMean: Stats.mean(s.map(\.score)),
+                         beats: beats.filter { $0.t >= start && $0.t < end }.count)
     }
 
     // MARK: Zone guard

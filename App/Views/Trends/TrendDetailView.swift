@@ -51,7 +51,7 @@ struct TrendDetailView: View {
             }
 
             Text(metric.narrative(w, period: period))
-                .font(.system(size: 16))
+                .font(.body)
                 .foregroundStyle(.white)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -101,7 +101,7 @@ struct MetricPicker: View {
             }
         } label: {
             HStack(spacing: 14) {
-                Image(systemName: metric.icon).font(.system(size: 18)).foregroundStyle(Theme.secondary).frame(width: 24)
+                Image(systemName: metric.icon).scaledFont(18, relativeTo: .body).foregroundStyle(Theme.secondary).frame(width: 24)
                 Caps(metric.title, size: 13)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -226,7 +226,7 @@ struct MetricChart: View {
                 if !compact {
                     AxisValueLabel {
                         if let d = v.as(Double.self) {
-                            Text(metric.isDuration ? Fmt.hmm(d) : axisNumber(d)).font(.system(size: 10)).foregroundStyle(Theme.secondary)
+                            Text(metric.isDuration ? Fmt.hmm(d) : axisNumber(d)).scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary)
                         }
                     }
                 }
@@ -239,7 +239,7 @@ struct MetricChart: View {
                         let (wd, d) = Fmt.weekdayAndDay(key)
                         let isLast = highlightLast && key == points.last?.day
                         if period == .halfYear {
-                            Text(monthLabel(key)).font(.system(size: 10)).foregroundStyle(Theme.secondary)
+                            Text(monthLabel(key)).scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary)
                         } else {
                             VStack(spacing: 1) {
                                 if period == .week { Text(wd) }
@@ -299,9 +299,9 @@ struct BreakdownView: View {
             ForEach(buckets) { b in
                 HStack(spacing: 10) {
                     Rectangle().fill(b.color).frame(width: 9, height: 9)
-                    Text(b.text).font(.system(size: 15, weight: .bold)).monospacedDigit().foregroundStyle(.white)
+                    Text(b.text).font(.subheadline.weight(.bold)).monospacedDigit().foregroundStyle(.white)
                         .frame(minWidth: 34, alignment: .leading)
-                    Text(b.label).font(.system(size: 15)).foregroundStyle(.white)
+                    Text(b.label).font(.subheadline).foregroundStyle(.white)
                 }
             }
         }

@@ -7,14 +7,7 @@ import PulsoAnalytics
 struct AgeTrendCard: View {
     @EnvironmentObject var model: AppModel
 
-    private var points: [(day: String, age: Double)] {
-        let today = model.currentDayKey
-        return (0..<26).reversed().compactMap { w -> (String, Double)? in
-            let end = DayKey.shift(today, days: -7 * w)
-            let r = PulsoAge.compute(days: model.days.filter { $0.day <= end }, profile: model.profile, today: end)
-            return r.pulsoAge.map { (end, $0) }
-        }
-    }
+    private var points: [(day: String, age: Double)] { model.ageTrend }
 
     /// Both your Edad Pulso and your real age in view, with room for the labels.
     private func yDomain(_ pts: [(day: String, age: Double)]) -> ClosedRange<Double> {
@@ -50,7 +43,7 @@ struct AgeTrendCard: View {
                 .chartYScale(domain: yDomain(pts))
                 .chartXAxis {
                     AxisMarks(values: pts.enumerated().filter { $0.offset % 6 == 0 }.map(\.element.day)) { v in
-                        AxisValueLabel { Text(Fmt.shortDay(v.as(String.self) ?? "")).font(.system(size: 9)).foregroundStyle(Theme.secondary) }
+                        AxisValueLabel { Text(Fmt.shortDay(v.as(String.self) ?? "")).scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary) }
                     }
                 }
                 .frame(height: 180)

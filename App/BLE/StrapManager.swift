@@ -78,7 +78,7 @@ protocol StrapManagerDelegate: AnyObject {
     func strapBattery(percent: Double, charging: Bool?)
     func strapLive(heartRate: Int, rr: [Int], at date: Date)
     func strapEvent(_ event: StrapEvent)
-    func strapSyncFinished(newRecords: Int, firstTs: Int?, lastTs: Int?)
+    func strapSyncFinished(newRecords: Int, firstTs: Int?, lastTs: Int?, completed: Bool)
     func strapLog(_ line: String)
     /// Raw frame the app didn't route (ECG decoders / Laboratorio). Called on the BLE queue.
     func strapUnhandledFrame(_ frame: Frame)
@@ -99,6 +99,7 @@ final class StrapManager: NSObject {
     /// Persists a chunk of decoded seconds. Must throw if they were not stored: a chunk is only
     /// acknowledged (letting the strap free it) after this returns.
     var persist: (([HistorySample]) throws -> Void)?
+    var persistUndecoded: (([Frame]) throws -> Void)?
 
     private let queue = DispatchQueue(label: "pulso.ble", qos: .userInitiated)
     private var central: CBCentralManager!
@@ -144,6 +145,7 @@ final class StrapManager: NSObject {
     private var offloadFirst: Int?
     private var offloadLast: Int?
     private var lastSyncAt: Date?
+    private var lastSyncProgress = Date.distantPast
     /// Next automatic download while the link stays up (runs whenever the app is awake then).
     private var autoSync: DispatchWorkItem?
     /// Gap between automatic downloads on a link that stays connected all day.
@@ -617,15 +619,19 @@ final class StrapManager: NSObject {
             guard let self, self.offload != nil else { return }
             self.log("La pulsera dejó de enviar; cierro la descarga")
             self.send(self.commands.abortHistorical())
-            self.finishOffload()
+            self.finishOffload(completed: true)
         }
         offloadIdle = item
         queue.asyncAfter(deadline: .now() + 10, execute: item)
     }
 
-    private func store(_ samples: [HistorySample]) -> Bool {
-        guard !samples.isEmpty else { return true }
+    private func store(_ samples: [HistorySample], undecoded: [Frame] = []) -> Bool {
         do {
+            if !undecoded.isEmpty {
+                try persistUndecoded?(undecoded)
+                log("\(undecoded.count) registros en un formato desconocido: guardados sin decodificar")
+            }
+            guard !samples.isEmpty else { return true }
             try persist?(samples)
             guard offload != nil else { return true }
             offloadRecords += samples.count
@@ -644,29 +650,32 @@ final class StrapManager: NSObject {
         armOffloadIdle()
         guard let step = session.handle(frame) else { return }
         switch step {
-        case .chunk(let samples, let token, _):
-            if store(samples) {
+        case .chunk(let samples, let undecoded, let token, _):
+            if store(samples, undecoded: undecoded) {
                 send(commands.historyAck(token: token))
-                state = .syncing(records: offloadRecords)
+                // Each state change redraws every visible screen: chunks arrive many times a second.
+                if Date().timeIntervalSince(lastSyncProgress) >= 1 {
+                    lastSyncProgress = Date()
+                    state = .syncing(records: offloadRecords)
+                }
             } else {
                 send(commands.abortHistorical())
-                finishOffload()
+                finishOffload(completed: false)
             }
-        case .complete(let pending):
-            _ = store(pending)
-            finishOffload()
+        case .complete(let pending, let undecoded):
+            finishOffload(completed: store(pending, undecoded: undecoded))
         }
     }
 
-    private func finishOffload() {
+    private func finishOffload(completed: Bool) {
         offloadIdle?.cancel()
         offload = nil
-        lastSyncAt = Date()
+        if completed { lastSyncAt = Date() }
         if bonded { state = .ready }
         scheduleAutoSync()
         let n = offloadRecords, a = offloadFirst, b = offloadLast
-        log("Descarga terminada: \(n) segundos nuevos")
-        DispatchQueue.main.async { self.delegate?.strapSyncFinished(newRecords: n, firstTs: a, lastTs: b) }
+        log(completed ? "Descarga terminada: \(n) segundos nuevos" : "Descarga interrumpida: \(n) segundos guardados; el resto se pedirá de nuevo")
+        DispatchQueue.main.async { self.delegate?.strapSyncFinished(newRecords: n, firstTs: a, lastTs: b, completed: completed) }
     }
 
     // MARK: - Frame routing
@@ -816,7 +825,7 @@ extension StrapManager: CBCentralManagerDelegate {
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         let wasSyncing = offload != nil
         resetSession()
-        if wasSyncing { finishOffload() }
+        if wasSyncing { finishOffload(completed: false) }
         log("Desconectado\(error.map { ": \($0.localizedDescription)" } ?? "")")
         guard hasSavedStrap, self.peripheral?.identifier == peripheral.identifier else {
             // A strap being replaced (or forgotten) went away: only idle if nothing else is in progress.

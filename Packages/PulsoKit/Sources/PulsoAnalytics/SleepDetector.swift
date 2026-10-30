@@ -102,4 +102,16 @@ public enum SleepDetector {
         }
         return merged.filter { $0.length >= config.minBlockMinutes }
     }
+
+    /// Daytime blocks need more evidence than a night: sitting still on the sofa looks like sleep to motion
+    /// alone. Accept one when the strap itself flagged sleep, or when it lasts 30+ minutes with heart rate
+    /// near the sleeping floor (falling asleep lowers HR well below quiet wakefulness).
+    public static func daytimeSleepIsPlausible(_ epochs: ArraySlice<MinuteEpoch>, hrFloor: Double?) -> Bool {
+        let worn = epochs.filter { $0.worn }
+        guard worn.count >= 20 else { return false }
+        let strapAsleep = worn.reduce(0) { $0 + $1.strapAsleepFraction } / Double(worn.count)
+        if strapAsleep >= 0.5 { return true }
+        guard worn.count >= 30, let floor = hrFloor, let hr = Stats.median(worn.compactMap(\.hr)) else { return false }
+        return hr <= min(floor * 1.12, floor + 8)
+    }
 }

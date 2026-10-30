@@ -206,9 +206,10 @@ public struct StageConfidence: Codable, Equatable, Sendable {
     }
 }
 
-/// The user's answer to "¿fue una siesta o era tu sueño?" for a daytime sleep.
+/// The user's answer to "¿fue una siesta o era tu sueño?" for a daytime sleep. `notSleep` ("no dormí")
+/// suppresses the detection for good.
 public struct SleepDecision: Codable, Equatable, Sendable {
-    public enum Kind: String, Codable, Sendable { case nap, sleep }
+    public enum Kind: String, Codable, Sendable { case nap, sleep, notSleep }
     public var start: Int
     public var end: Int
     public var kind: Kind
@@ -370,6 +371,8 @@ public struct DaySummary: Codable, Equatable, Identifiable, Sendable {
     public var vo2max: Double?
     public var wornMinutes: Double = 0
     public var source: String = "strap"
+    /// The strap has this day but not its night: the night and recovery shown come from the imported history.
+    public var nightImported: Bool = false
 
     public init(day: String) {
         self.day = day

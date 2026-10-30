@@ -58,6 +58,18 @@ public enum Relation {
         }
     }
 
+    /// Pairs by calendar date: x of day D with y of day D + `lagDays`. Gaps in the history never pair two days
+    /// that aren't consecutive (pairing by list position did).
+    public static func pairs(days: [String], _ x: [Double?], _ y: [Double?], lagDays: Int) -> [(x: Double, y: Double)] {
+        guard days.count == x.count, days.count == y.count else { return [] }
+        var yByDay: [String: Double] = [:]
+        for (d, v) in zip(days, y) { if let v, v.isFinite { yByDay[d] = v } }
+        return zip(days, x).compactMap { d, a in
+            guard let a, a.isFinite, let b = yByDay[lagDays == 0 ? d : DayKey.shift(d, days: lagDays)] else { return nil }
+            return (a, b)
+        }
+    }
+
     public static func fit(_ p: [(x: Double, y: Double)]) -> Result? {
         guard p.count >= 3 else { return nil }
         let n = Double(p.count)
@@ -124,7 +136,7 @@ public enum Records {
             best("Día más exigente", { $0.strain }),
             best("Noche más larga", { $0.sleepMinutes }),
             best("Más pasos", { $0.steps.map(Double.init) }),
-            best("VO₂ máx más alto", { $0.vo2max }),
+            best("VO₂ máx más alto (estimado)", { $0.vo2max }),
         ].compactMap { $0 }
     }
 }

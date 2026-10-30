@@ -95,11 +95,23 @@ final class ProtocolTests: XCTestCase {
         let complete = try Framing.decode(.gen5, Framing.encode(.gen5, type: 49, seq: 0, cmd: 3, payload: []))
         XCTAssertNil(session.handle(v18))
         XCTAssertNil(session.handle(v18))
-        guard case .chunk(let samples, let token, _)? = session.handle(end) else { return XCTFail("expected chunk") }
+        guard case .chunk(let samples, let undecoded, let token, _)? = session.handle(end) else { return XCTFail("expected chunk") }
         XCTAssertEqual(samples.count, 2)
+        XCTAssertTrue(undecoded.isEmpty)
         XCTAssertEqual(token.count, 8)
-        guard case .complete(let rest)? = session.handle(complete) else { return XCTFail("expected complete") }
+        guard case .complete(let rest, _)? = session.handle(complete) else { return XCTFail("expected complete") }
         XCTAssertTrue(rest.isEmpty)
+    }
+
+    func testUndecodedHistoryRecordsTravelWithTheirChunk() throws {
+        let session = OffloadSession()
+        let unknown = try Framing.decode(.gen5, Framing.encode(.gen5, type: 47, seq: 99, cmd: 0, payload: [1, 2, 3, 4]))
+        let end = try Framing.decode(.gen5, XCTUnwrap(Hex.decode(Self.realHistoryEnd)))
+        XCTAssertNil(session.handle(unknown))
+        guard case .chunk(let samples, let undecoded, _, _)? = session.handle(end) else { return XCTFail("expected chunk") }
+        XCTAssertTrue(samples.isEmpty)
+        XCTAssertEqual(undecoded, [unknown])
+        XCTAssertTrue(session.pendingUndecoded.isEmpty)
     }
 
     func testCorruptFrameIsIgnoredByOffload() throws {

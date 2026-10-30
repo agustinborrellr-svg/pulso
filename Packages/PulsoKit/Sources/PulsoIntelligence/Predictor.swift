@@ -13,6 +13,10 @@ public enum RecoveryModel {
     public static let lambda = 2.0
 
     public static let firstHabitFeature = 5
+    /// A yes/no habit with fewer "yes" days than this stays out of the model: with one or two days its
+    /// standardised scale is tiny and toggling it swings the forecast wildly.
+    public static let minHabitDays = 5
+    public static let habitKeys = ["alcohol", "late_caffeine", "late_meal"]
     public static let featureNames = ["Recuperación de hoy", "Esfuerzo de hoy", "Deuda de sueño", "Deuda fisiológica",
                                       "Horas de sueño", "Alcohol", "Cafeína por la tarde", "Cena tarde"]
 
@@ -45,6 +49,11 @@ public enum RecoveryModel {
         /// SD of out-of-sample errors (or in-sample residuals when not validated yet).
         public var errorSD: Double
         public var n: Int
+        /// "Yes" days per habit feature in the training data (same order as `habitKeys`).
+        public var habitDays: [Int] = []
+
+        /// The habit has enough "yes" days to be part of the model.
+        public func usesHabit(_ i: Int) -> Bool { i < habitDays.count && habitDays[i] >= RecoveryModel.minHabitDays }
 
         func scaled(_ x: [Double]) -> [Double] { (0..<x.count).map { (x[$0] - means[$0]) / sds[$0] } }
 
@@ -55,7 +64,8 @@ public enum RecoveryModel {
         /// Points each feature adds versus an average day.
         public func contributions(_ x: [Double]) -> [(name: String, points: Double)] {
             let z = scaled(x)
-            return (0..<z.count).map { j -> (name: String, points: Double) in
+            return (0..<z.count).filter { $0 < RecoveryModel.firstHabitFeature || usesHabit($0 - RecoveryModel.firstHabitFeature) }
+                .map { j -> (name: String, points: Double) in
                 var name = RecoveryModel.featureNames[j]
                 // Habits are yes/no: when absent, say so ("sin alcohol") instead of naming the habit.
                 if j >= RecoveryModel.firstHabitFeature && x[j] == 0 { name = "Sin " + name.lowercased() }
@@ -72,11 +82,14 @@ public enum RecoveryModel {
 
     static func train(_ rows: [Row], errorSD: Double? = nil) -> Trained? {
         guard rows.count >= 8, let p = rows.first?.x.count else { return nil }
-        let means = (0..<p).map { j in Num.mean(rows.map { $0.x[j] }) ?? 0 }
-        let sds = (0..<p).map { j in max(Num.sd(rows.map { $0.x[j] }) ?? 1, 1e-3) }
-        let z = rows.map { r in (0..<p).map { (r.x[$0] - means[$0]) / sds[$0] } }
-        guard let fit = Num.ridge(z, rows.map { $0.y }, lambda: lambda) else { return nil }
-        return Trained(means: means, sds: sds, beta: fit.beta, errorSD: errorSD ?? fit.residualSD, n: rows.count)
+        let habitDays = (firstHabitFeature..<p).map { j in rows.filter { $0.x[j] > 0 }.count }
+        let off = Set((firstHabitFeature..<p).filter { habitDays[$0 - firstHabitFeature] < minHabitDays })
+        let means = (0..<p).map { j in off.contains(j) ? 0 : Num.mean(rows.map { $0.x[j] }) ?? 0 }
+        let sds = (0..<p).map { j in off.contains(j) ? 1 : max(Num.sd(rows.map { $0.x[j] }) ?? 1, 1e-3) }
+        let z = rows.map { r in (0..<p).map { off.contains($0) ? 0 : (r.x[$0] - means[$0]) / sds[$0] } }
+        guard var fit = Num.ridge(z, rows.map { $0.y }, lambda: lambda) else { return nil }
+        for j in off { fit.beta[j + 1] = 0 }
+        return Trained(means: means, sds: sds, beta: fit.beta, errorSD: errorSD ?? fit.residualSD, n: rows.count, habitDays: habitDays)
     }
 
     public struct Evaluation: Equatable, Sendable {
@@ -162,12 +175,15 @@ public enum RecoveryModel {
         }
         let f = o.model.forecast(o.todayInputs)
         let top = o.model.contributions(o.todayInputs).prefix(2).filter { abs($0.points) >= 2 }
-        var text = String(format: "Si duermes tus %.1f h habituales, mañana rondarías el %.0f %% (entre %.0f y %.0f).", o.usualSleepHours, f.value,
+        var text = String(format: "Si duermes tus %.1f h habituales, mañana rondarías el %.0f %% (entre %.0f y %.0f).", locale: Num.spanish, o.usualSleepHours, f.value,
                           f.interval.lowerBound, f.interval.upperBound)
         if !top.isEmpty {
-            text += " Pesa sobre todo: " + top.map { String(format: "%@ (%+.0f)", $0.name.lowercased(), $0.points) }.joined(separator: ", ") + "."
+            text += " Pesa sobre todo: " + top.map { String(format: "%@ (%+.0f)", locale: Num.spanish, $0.name.lowercased(), $0.points) }.joined(separator: ", ") + "."
         }
-        let conf: MetricResult.Confidence = (o.evaluation?.predictability ?? 0) > 0.15 ? .high : ((o.evaluation?.predictability ?? 0) > 0 ? .medium : .low)
+        var conf: MetricResult.Confidence = (o.evaluation?.predictability ?? 0) > 0.15 ? .high : ((o.evaluation?.predictability ?? 0) > 0 ? .medium : .low)
+        // A range as wide as most of the scale can't be called confident, whatever the back-test says.
+        let width = f.interval.upperBound - f.interval.lowerBound
+        if width > 40 { conf = .low } else if width > 25, conf == .high { conf = .medium }
         return MetricResult(id: "forecast", name: "Recuperación prevista para mañana", value: f.value.rounded(), unit: "%", summary: text,
                             interval: f.interval, confidence: conf, sampleSize: o.model.n, formula: fForecast, version: version)
     }
@@ -180,9 +196,9 @@ public enum RecoveryModel {
         let pct = ev.predictability * 100
         let text: String
         if pct > 15 {
-            text = String(format: "El modelo personal acierta un %.0f %% mejor que tu media reciente (error medio %.0f puntos frente a %.0f).", pct, ev.maeModel, ev.maeReference)
+            text = String(format: "El modelo personal acierta un %.0f %% mejor que tu media reciente (error medio %.0f puntos frente a %.0f).", locale: Num.spanish, pct, ev.maeModel, ev.maeReference)
         } else if pct > 0 {
-            text = String(format: "El modelo personal mejora poco a tu media reciente (%.0f %%): tu recuperación depende de cosas que aún no registras.", pct)
+            text = String(format: "El modelo personal mejora poco a tu media reciente (%.0f %%): tu recuperación depende de cosas que aún no registras.", locale: Num.spanish, pct)
         } else {
             text = "Por ahora el modelo no supera a tu media reciente: hacen falta más días o más variedad. Úsalo con cautela."
         }
@@ -198,7 +214,7 @@ public enum RecoveryModel {
         let dir = last.observed > last.predicted ? "mejor" : "peor"
         let text = ps < 1 ? "Hoy has amanecido como cabía esperar." :
             (ps < 2 ? "Hoy has amanecido algo \(dir) de lo esperado." :
-                String(format: "Hoy has amanecido mucho %@ de lo esperado (%.0f %% frente a %.0f %%). Algo no registrado ha influido.", dir, last.observed, last.predicted))
+                String(format: "Hoy has amanecido mucho %@ de lo esperado (%.0f %% frente a %.0f %%). Algo no registrado ha influido.", locale: Num.spanish, dir, last.observed, last.predicted))
         return MetricResult(id: "surprise", name: "Sorpresa fisiológica", value: (ps * 10).rounded() / 10, unit: "σ", summary: text,
                             confidence: .from(samples: ev.tested, medium: 15, high: 40), sampleSize: ev.tested, formula: fSurprise, version: version)
     }

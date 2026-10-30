@@ -10,7 +10,19 @@ import PulsoIntegrations
 extension AppModel {
     // MARK: - Double tap
 
+    /// Last double tap received from the strap: the 5.0's event isn't documented, so this is the proof it works.
+    var lastDoubleTapAt: Date? {
+        get { UserDefaults.standard.object(forKey: "pulso.doubleTap.last") as? Date }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "pulso.doubleTap.last")
+            objectWillChange.send()
+        }
+    }
+
     func handleDoubleTap() {
+        // The strap may repeat the event: one gesture, one action.
+        if let last = lastDoubleTapAt, Date().timeIntervalSince(last) < 1.5 { return }
+        lastDoubleTapAt = Date()
         let alarmActive = wakeSession?.isActive == true
         switch GestureRouter.route(action: settings.doubleTap, alarmActive: alarmActive, workoutActive: liveWorkout != nil) {
         case .alarm:

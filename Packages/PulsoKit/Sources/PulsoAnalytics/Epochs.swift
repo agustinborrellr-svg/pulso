@@ -41,6 +41,7 @@ public enum Epochs {
         var out: [MinuteEpoch] = []
         out.reserveCapacity(count)
         var lastSteps: Int?
+        var lastStepsTs = 0
         for i in 0..<count {
             let b = buckets[i]
             let ts = start + i * 60
@@ -69,9 +70,12 @@ public enum Epochs {
                 if let st = s.steps {
                     if let l = lastSteps {
                         let d = (st - l + 65536) % 65536
-                        if d < 512 { steps += d }
+                        // Across a gap in the data the counter keeps counting: keep the jump if a human could
+                        // have walked it in that time (≤ 3.5 steps/s). Larger jumps are resets, not steps.
+                        if d < 512 || Double(d) <= Double(s.ts - lastStepsTs) * 3.5 && d < 20000 { steps += d }
                     }
                     lastSteps = st
+                    lastStepsTs = s.ts
                 }
             }
             let states = b.compactMap { $0.sleepState }

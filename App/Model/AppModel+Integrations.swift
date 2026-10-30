@@ -177,8 +177,17 @@ extension AppModel {
         guard let live = try? PulsoDatabase.defaultPath(), let pending = restorePath,
               FileManager.default.fileExists(atPath: pending) else { return }
         let fm = FileManager.default
-        for suffix in ["", "-wal", "-shm"] { try? fm.removeItem(atPath: live + suffix) }
-        try? fm.moveItem(atPath: pending, toPath: live)
+        // Set the live database aside first and only drop it once the restored one is in place.
+        let aside = live + ".before-restore"
+        try? fm.removeItem(atPath: aside)
+        guard (try? fm.moveItem(atPath: live, toPath: aside)) != nil || !fm.fileExists(atPath: live) else { return }
+        do {
+            try fm.moveItem(atPath: pending, toPath: live)
+            for suffix in ["-wal", "-shm"] { try? fm.removeItem(atPath: live + suffix) }
+            try? fm.removeItem(atPath: aside)
+        } catch {
+            try? fm.moveItem(atPath: aside, toPath: live)
+        }
     }
 
     /// A compact copy of everything (to keep in Files / iCloud Drive).

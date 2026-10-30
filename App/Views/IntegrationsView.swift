@@ -233,7 +233,7 @@ struct ExportHelpView: View {
     var body: some View {
         List {
             Group {
-            Text("Abre cualquier entreno (pestaña Hoy → Esfuerzo → toca el entreno) y pulsa «Exportar FIT / TCX». Puedes enviarlo a Garmin Connect, TrainingPeaks, Intervals.icu, Runalyze, Final Surge o guardarlo en Archivos.")
+            Text("Abre cualquier entreno (Inicio → Esfuerzo → toca el entreno) y pulsa «Exportar FIT / TCX». Puedes enviarlo a Garmin Connect, TrainingPeaks, Intervals.icu, Runalyze, Final Surge o guardarlo en Archivos.")
             Text("FIT es el formato nativo de Garmin y el que mejor importan todas estas plataformas. TCX es una alternativa en texto.")
             Text("Para exportar todos tus datos (días, entrenos y cada segundo), usa Más → Datos → Preparar exportación CSV.")
                     }

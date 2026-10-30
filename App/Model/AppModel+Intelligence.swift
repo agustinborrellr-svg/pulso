@@ -4,12 +4,26 @@ import PulsoAnalytics
 import PulsoIntelligence
 
 extension AppModel {
+    /// Cached 60-s heart-rate recovery of one workout. Only final answers are stored: a workout whose
+    /// strap data hasn't been downloaded yet is retried once it is, instead of keeping a −1 forever.
+    struct HRRCache: Codable {
+        enum State: String, Codable { case ok, noCurve, noHeartData }
+        var state: State
+        var drop: Double?
+    }
+
+    nonisolated static func hrrKey(_ w: Workout) -> String { "hrr.v2.\(w.start)" }
+
     /// Recomputes the Inteligencia report off the main thread (after each analysis).
     func refreshIntelligence() {
         let db = self.db
         let hr = heartRateModel
         let measuredMax = profile.maxHROverride != nil
         let profile = self.profile
+        let currentDay = currentDayKey
+        // "Anoche" = the night that should already be in: today's once it's expected but missing.
+        let lastNight = nightStatus == .ok ? currentDay : DayKey.string(Date())
+        let lastSample = lastSampleTs
         analysisQueue.async {
             let now = Date()
             let nowTs = Int(now.timeIntervalSince1970)
@@ -25,20 +39,36 @@ extension AppModel {
             let journal = (try? db.allJournal()) ?? []
             var drops: [(day: String, drop: Double)] = []
             for w in workouts.suffix(25) {
-                let key = "hrr.v1.\(w.start)"
-                var drop = db.get(Double.self, for: key)
-                if drop == nil, nowTs - w.end > 1800 {
-                    let samples = (try? db.samples(from: w.start - 60, to: w.end + 1800)) ?? []
-                    let r = WorkoutAnalysis.analyze(workout: w, samples: samples, restingHR: hr.restingHR, maxHR: hr.maxHR,
-                                                    maxHRMeasured: measuredMax)
-                    drop = r.recovery?.drop60 ?? -1
-                    try? db.set(drop!, for: key)
+                let key = Self.hrrKey(w)
+                var cached = db.get(HRRCache.self, for: key)
+                if cached == nil, nowTs - w.end > 1800 {
+                    let windowEnd = w.end + 1800
+                    let downloaded = (lastSample ?? 0) >= windowEnd
+                    let samples = (try? db.samples(from: w.start - 60, to: windowEnd)) ?? []
+                    let beats = samples.filter { ($0.hr ?? 0) > 0 }.count
+                    if beats < 60 {
+                        // Nothing from the strap here: final for imported workouts or once later data exists.
+                        if w.source.isExternal || downloaded { cached = HRRCache(state: .noHeartData) }
+                    } else if downloaded {
+                        let r = WorkoutAnalysis.analyze(workout: w, samples: samples, restingHR: hr.restingHR, maxHR: hr.maxHR,
+                                                        maxHRMeasured: measuredMax)
+                        cached = r.recovery?.drop60.map { HRRCache(state: .ok, drop: $0) } ?? HRRCache(state: .noCurve)
+                    }
+                    if let c = cached { try? db.set(c, for: key) }
                 }
-                if let d = drop, d > 0 { drops.append((DayKey.string(ts: w.start), d)) }
+                if let d = cached?.drop, d > 0 { drops.append((DayKey.string(ts: w.start), d)) }
             }
-            let report = Intelligence.report(days: days, sleeps: sleeps, workouts: workouts, journal: journal, hrrDrops: drops, now: now)
+            let report = Intelligence.report(days: days, sleeps: sleeps, workouts: workouts, journal: journal, hrrDrops: drops, now: now,
+                                             currentDay: currentDay, lastNight: lastNight)
             Task { @MainActor in self.intelligence = report }
         }
+    }
+
+    /// Whether the strap recorded this workout at all (imported ones often have no pulse behind them).
+    func workoutHasHeartData(_ w: Workout) -> Bool {
+        if db.get(HRRCache.self, for: Self.hrrKey(w))?.state == .noHeartData { return false }
+        let samples = (try? db.samples(from: w.start, to: w.end)) ?? []
+        return samples.filter { ($0.hr ?? 0) > 0 }.count >= 60
     }
 
     /// Full cardiac analysis of one workout (samples up to 30 min after it).

@@ -23,12 +23,13 @@ public final class PulsoDatabase {
     }
 
     /// Schema version this build writes (`PRAGMA user_version`).
-    public static let schemaVersion = 1
+    public static let schemaVersion = 2
 
     /// Ordered schema changes. Append, never edit: each one runs once, in its own transaction, on databases
     /// created by older versions. Version 0 is the original schema below.
     static let migrations: [(version: Int, sql: String)] = [
         (1, "CREATE INDEX IF NOT EXISTS days_updated ON days(updated); CREATE INDEX IF NOT EXISTS sleeps_end ON sleeps(end);"),
+        (2, "CREATE TABLE IF NOT EXISTS undecoded_records(id INTEGER PRIMARY KEY AUTOINCREMENT, received INTEGER NOT NULL, version INTEGER NOT NULL, frame BLOB NOT NULL UNIQUE);"),
     ]
 
     /// Version found on disk after opening (newer than `schemaVersion` if a newer build wrote it).
@@ -125,6 +126,21 @@ public final class PulsoDatabase {
                 off = CASE WHEN excluded.hr IS NOT NULL THEN excluded.off ELSE samples.off END
             """, rows)
         }
+    }
+
+    /// History records in a layout this build cannot decode, kept verbatim so a later version can
+    /// decode them: they are stored before the chunk is acked, because the ack deletes them on the strap.
+    public func insertUndecoded(_ frames: [Frame], received: Date = Date()) throws {
+        guard !frames.isEmpty else { return }
+        let t = Int64(received.timeIntervalSince1970)
+        try sql.transaction {
+            try sql.run("INSERT OR IGNORE INTO undecoded_records(received, version, frame) VALUES(?,?,?)",
+                        frames.map { [.int(t), .int(Int64($0.version)), .blob($0.raw)] })
+        }
+    }
+
+    public func undecodedRecordCount() throws -> Int {
+        Int(try sql.scalarInt("SELECT COUNT(*) FROM undecoded_records;") ?? 0)
     }
 
     public func samples(from: Int, to: Int) throws -> [Sample] {
@@ -265,6 +281,23 @@ public final class PulsoDatabase {
     /// The answer given for a sleep that overlaps this one by at least half (detection moves edges a little).
     public func sleepDecision(start: Int, end: Int) -> SleepDecision? {
         sleepDecisions().last { SleepDecision.overlapFraction($0.start, $0.end, start, end) >= 0.5 }
+    }
+
+    // MARK: - Rejected automatic workouts
+
+    static let rejectedWorkoutsKey = "workouts.rejected"
+
+    /// Automatic workouts the user deleted: detection must not bring them back on the next recompute.
+    public func rejectedWorkouts() -> [SleepDecision] {
+        get([SleepDecision].self, for: Self.rejectedWorkoutsKey) ?? []
+    }
+
+    public func rejectWorkout(start: Int, end: Int) throws {
+        try set((rejectedWorkouts() + [SleepDecision(start: start, end: end, kind: .notSleep)]).suffix(400), for: Self.rejectedWorkoutsKey)
+    }
+
+    public func isRejectedWorkout(start: Int, end: Int) -> Bool {
+        rejectedWorkouts().contains { SleepDecision.overlapFraction($0.start, $0.end, start, end) >= 0.5 }
     }
 
     public func deleteDay(_ day: String) throws {
@@ -427,7 +460,10 @@ public final class PulsoDatabase {
     public static func isValidBackup(path: String) -> Bool {
         guard let c = try? SQLiteConnection(path: path, readOnly: true) else { return false }
         let tables = (try? c.query("SELECT name FROM sqlite_master WHERE type='table'") { $0.text(0) ?? "" }) ?? []
-        return ["samples", "days", "sleeps", "workouts", "kv"].allSatisfy(tables.contains)
+        guard ["samples", "days", "sleeps", "workouts", "kv"].allSatisfy(tables.contains) else { return false }
+        let check = (try? c.query("PRAGMA quick_check;") { $0.text(0) ?? "" }) ?? []
+        let version = Int((try? c.scalarInt("PRAGMA user_version;")) ?? 0)
+        return check == ["ok"] && version <= schemaVersion
     }
 
     // MARK: - Journal

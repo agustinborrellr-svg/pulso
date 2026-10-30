@@ -9,7 +9,7 @@ import PulsoStore
 public final class DayEngine {
     /// Version of the derived numbers (days, sleeps, workouts). Bump it whenever an algorithm changes: the app
     /// then recomputes every day from the raw seconds it still has.
-    public static let derivedVersion = 3
+    public static let derivedVersion = 6
 
     /// Daytime sleeps shorter than this are naps unless the user says otherwise.
     public static let napLimit = 3 * 3600
@@ -114,8 +114,8 @@ public final class DayEngine {
     func heartRateModel(profile: Profile, past: [DaySummary]) -> HeartRateModel {
         let recent = Array(past.suffix(30))
         let rhr = Baseline.from(recent.compactMap { $0.rhr }, floor: 1)?.center ?? 60
-        let observed = past.suffix(180).compactMap { $0.maxHR }.max() ?? 0
-        let maxHR = Double(profile.maxHROverride ?? Int(max(HeartRateModel.tanakaMax(age: profile.age), observed)))
+        let maxHR = HeartRateModel.maxHR(override: profile.maxHROverride, age: profile.age,
+                                         dailyPeaks: past.suffix(180).compactMap { $0.maxHR })
         return HeartRateModel(restingHR: rhr, maxHR: maxHR)
     }
 
@@ -140,13 +140,20 @@ public final class DayEngine {
         return main
     }
 
-    func detectBlocks(samples: [Sample], from: Int, to: Int) -> (blocks: [(start: Int, end: Int)], stillThreshold: Double) {
+    func detectBlocks(samples: [Sample], from: Int, to: Int, sleepingHR: Double? = nil)
+        -> (blocks: [(start: Int, end: Int)], stillThreshold: Double, plausibleDaytime: Set<Int>) {
         let epochs = Epochs.minutes(samples, from: from, to: to)
         let thr = SleepDetector.stillThreshold(epochs)
-        let blocks = SleepDetector.blocks(epochs).map { b in
-            (start: epochs[b.startIndex].ts, end: epochs[b.endIndex].ts + 60)
-        }
-        return (blocks, thr)
+        // The window's own floor is a daytime value when the strap wasn't worn at night: the usual sleeping
+        // resting HR is the better reference (sitting still on the sofa sits well above it).
+        let windowFloor = SleepDetector.hrFloor(epochs)
+        let floor = sleepingHR.map { min(windowFloor ?? $0, $0) } ?? windowFloor
+        let raw = SleepDetector.blocks(epochs)
+        let blocks = raw.map { b in (start: epochs[b.startIndex].ts, end: epochs[b.endIndex].ts + 60) }
+        let plausible = Set(raw.filter {
+            SleepDetector.daytimeSleepIsPlausible(epochs[$0.startIndex...$0.endIndex], hrFloor: floor)
+        }.map { epochs[$0.startIndex].ts })
+        return (blocks, thr, plausible)
     }
 
     func computeDay(_ day: String, profile: Profile, past: [DaySummary], now: Date) throws -> DaySummary? {
@@ -156,7 +163,8 @@ public final class DayEngine {
         let samples = try loadSamples(from: loadFrom, to: loadTo)
         guard samples.count >= 600 else { return nil }
 
-        let (blocks, stillThr) = detectBlocks(samples: samples, from: loadFrom, to: loadTo)
+        let sleepingHR = Baseline.from(past.suffix(30).compactMap { $0.rhr }, floor: 1)?.center
+        let (blocks, stillThr, plausibleDaytime) = detectBlocks(samples: samples, from: loadFrom, to: loadTo, sleepingHR: sleepingHR)
 
         // Main sleep: a manual edit wins over detection.
         let dayStart = ts(day, hour: 0), mainHi = ts(day, hour: 16)
@@ -182,14 +190,20 @@ public final class DayEngine {
             main = s
         }
 
-        // Daytime sleep: a nap or real sleep. The user's answer wins; otherwise under 3 h is a nap.
+        // Daytime sleep: a nap or real sleep. The user's answer wins ("no dormí" drops it); otherwise it must
+        // pass the stricter daytime check and under 3 h is a nap. Blocks the user already entered or edited by
+        // hand are theirs: detection never adds a second copy.
         var naps: [SleepSession] = []
         var daySleeps: [SleepSession] = []
+        let manualSleeps = existing.filter(\.manual)
         for b in blocks where b.start >= napLo && b.start < napHi && b.end <= dayEnd {
             let len = b.end - b.start
-            guard len >= 15 * 60 else { continue }
+            guard len >= 20 * 60 else { continue }
             if let m = mainBounds, b.start < m.end && b.end > m.start { continue }
+            if manualSleeps.contains(where: { b.start < $0.end && b.end > $0.start }) { continue }
             let decision = db.sleepDecision(start: b.start, end: b.end)
+            if decision?.kind == .notSleep { continue }
+            if decision == nil && !plausibleDaytime.contains(b.start) { continue }
             let kind = decision?.kind ?? (len < Self.napLimit ? .nap : .sleep)
             var s = SleepAnalyzer.analyze(samples: samples, start: b.start, end: b.end, isNap: kind == .nap, manual: false,
                                           stillThreshold: stillThr)
@@ -197,9 +211,18 @@ public final class DayEngine {
             s.id = try db.save(s)
             if kind == .nap { naps.append(s) } else { daySleeps.append(s) }
         }
-        naps += existing.filter { $0.manual && $0.isNap && $0.start >= napLo && $0.start < napHi }
-        // No night sleep (shift work, a late night): the longest daytime sleep becomes the day's sleep.
-        if main == nil, let longest = daySleeps.max(by: { $0.inBedMinutes < $1.inBedMinutes }) {
+        // Naps entered or edited by hand: analysed like detected ones so their minutes count.
+        for m in existing where m.manual && m.isNap && m.start >= napLo && m.start < napHi {
+            var s = SleepAnalyzer.analyze(samples: samples, start: m.start, end: m.end, isNap: true, manual: true,
+                                          stillThreshold: stillThr, existingID: m.id)
+            s.kindConfirmed = true
+            s.id = try db.save(s)
+            naps.append(s)
+        }
+        // No night sleep (shift work, a late night): the longest daytime sleep becomes the day's sleep, but
+        // only if the strap was on through the night. Without night data a daytime rest is not "last night".
+        let nightWorn = samples.lazy.filter { $0.ts >= dayStart && $0.ts < self.ts(day, hour: 9) && $0.hr != nil }.count
+        if main == nil, nightWorn >= 3 * 3600, let longest = daySleeps.max(by: { $0.inBedMinutes < $1.inBedMinutes }) {
             main = longest
             daySleeps.removeAll { $0.id == longest.id }
         }
@@ -252,7 +275,7 @@ public final class DayEngine {
         var workouts = try db.workouts(from: cycleStart, to: d.cycleEnd!)
         let userWindows = workouts.map { $0.start...$0.end }
         for bout in WorkoutDetector.detect(cycleEpochs, model: model, stillThreshold: stillThr)
-        where !userWindows.contains(where: { $0.overlaps(bout.start...bout.end) }) {
+        where !userWindows.contains(where: { $0.overlaps(bout.start...bout.end) }) && !db.isRejectedWorkout(start: bout.start, end: bout.end) {
             workouts.append(Workout(start: bout.start, end: bout.end, sport: bout.sport, source: .auto))
         }
         for i in workouts.indices {
@@ -322,14 +345,19 @@ public final class DayEngine {
                 previous: prevTimes)
             // Debt is a decaying carry-over (half of last night's debt is kept, plus tonight's shortfall;
             // a surplus pays it back), not a plain 7-day sum, which grows without bound.
+            // The shortfall is measured against the need without its debt top-up: the debt already raised the
+            // need, so counting that extra again inflated the debt night after night.
+            let needWithoutDebt = SleepCoach.need(baseHours: profile.sleepNeedHours, previousStrain: prevDay?.strain,
+                                                  recentShortfalls: [], napMinutes: prevDay?.napMinutes ?? 0)
             let prevDebt = prevDay?.sleepDebtMinutes ?? 0
-            d.sleepDebtMinutes = Stats.clamp(prevDebt * 0.5 + (need - asleep), 0, 12 * 60).rounded()
+            d.sleepDebtMinutes = Stats.clamp(prevDebt * 0.5 + (needWithoutDebt - asleep), 0, 12 * 60).rounded()
         }
         d.napMinutes = naps.isEmpty ? nil : naps.reduce(0) { $0 + $1.asleepMinutes }
 
         // Recovery against personal baselines (only days before this one).
         let baselines = Baselines.from(history: past)
-        let rec = Recovery.compute(hrv: d.hrv, rhr: d.rhr, resp: d.respRate, skinTemp: d.skinTemp, spo2: d.spo2,
+        // SpO₂ stays out of recovery: its byte in the record isn't confirmed against any protocol reference.
+        let rec = Recovery.compute(hrv: d.hrv, rhr: d.rhr, resp: d.respRate, skinTemp: d.skinTemp, spo2: nil,
                                    sleepPerformance: d.sleepPerformance, baselines: baselines)
         d.recovery = main == nil ? nil : rec.score
         d.calibrating = rec.calibrating
@@ -347,8 +375,9 @@ public final class DayEngine {
         }
         d.extraBeats = counted >= 120 ? extra.rounded() : nil
 
-        // Stress while awake and still, outside workouts and naps, against a two-week calm baseline.
-        let excluding = workoutWindows + naps.map { $0.start...$0.end }
+        // Stress while awake and still, outside workouts (and the recovery after them) and naps, against a
+        // two-week baseline of your typical still moments.
+        let excluding = workouts.map { $0.start...($0.end + Stress.postWorkoutMinutes * 60) } + naps.map { $0.start...$0.end }
         let still = Stress.stillWindows(samples: samples, epochs: cycleEpochs, from: cycleStart, to: d.cycleEnd!,
                                         excluding: excluding, stillThreshold: stillThr)
         let todayCalm = Stress.calmReference(still)
@@ -356,7 +385,8 @@ public final class DayEngine {
         d.calmHRV = todayCalm.hrv
         let calmHRs = past.suffix(14).compactMap { $0.calmHR } + [todayCalm.hr].compactMap { $0 }
         let calmHRVs = past.suffix(14).compactMap { $0.calmHRV } + [todayCalm.hrv].compactMap { $0 }
-        if let refHR = Stats.median(calmHRs) {
+        // One day is no baseline: against a single afternoon, an ordinary evening read as "high stress".
+        if past.suffix(14).compactMap({ $0.calmHR }).count >= Stress.minBaselineDays, let refHR = Stats.median(calmHRs) {
             let stress = Stress.score(still, calmHR: refHR, calmHRV: Stats.median(calmHRVs))
             if !stress.isEmpty {
                 d.stressAvg = Stats.mean(stress.map { $0.score })

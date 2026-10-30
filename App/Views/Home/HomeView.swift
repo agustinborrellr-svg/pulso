@@ -10,16 +10,9 @@ struct HomeView: View {
     @EnvironmentObject var model: AppModel
     @State private var customizing = false
     @State private var showCoach = false
-    @AppStorage("pulso.dashboard") private var dashboardRaw = HomeView.defaultDashboard
+    @AppStorage(HomeLayout.key) private var homeRaw = ""
 
-    static let defaultDashboard = [
-        TrendMetric.hrv, .rhr, .respRate, .sleepPerformance, .sleepHours, .sleepDebt, .efficiency, .strain, .avgHR,
-        .calories, .steps, .zonesLight, .zonesHard, .vo2max, .recovery, .regularity, .restorativePct, .restorativeHours, .timeInBed,
-    ].map(\.rawValue).joined(separator: ",")
-
-    private var dashboard: [TrendMetric] {
-        dashboardRaw.split(separator: ",").compactMap { TrendMetric(rawValue: String($0)) }
-    }
+    private var widgets: [HomeWidget] { HomeLayout.decode(homeRaw) }
 
     var body: some View {
         NavigationStack {
@@ -31,27 +24,26 @@ struct HomeView: View {
                         SleepQuestionCard(session: q)
                     }
                     AlarmBanner()
+                    if model.selectedDay == model.currentDayKey, model.nightStatus != .ok {
+                        NightPendingCard(status: model.nightStatus)
+                    }
                     if model.isEvening && model.selectedDay == model.currentDayKey {
                         BedtimeCard()
                     }
                     if let day = model.selected {
-                        PillarHero(day: day)
-                        StrainRecoveryWeekCard()
-                        PlanSummaryCard()
-                        if day.stressHourly.contains(where: { $0 != nil }) {
-                            NavigationLink { StressMonitorView() } label: { StressPreviewCard(day: day) }
-                                .buttonStyle(.plain)
+                        ForEach(Array(HomeLayout.lines(widgets).enumerated()), id: \.offset) { _, line in
+                            HomeWidgetLine(items: line, day: day)
                         }
-                        SectionHeading(text: "Mi panel de control", trailing: "Personalizar") { customizing = true }
-                        ForEach(dashboard) { m in
-                            NavigationLink {
-                                TrendDetailView(metric: m)
-                            } label: {
-                                DashboardRow(metric: m, day: day)
+                        Button { customizing = true } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "square.grid.2x2")
+                                Caps("Personalizar Inicio", size: 11, color: Theme.secondary, weight: .semibold)
                             }
-                            .buttonStyle(.plain)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
                         }
-                        JournalCard(day: model.selectedDay)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Theme.secondary)
                     } else if model.days.isEmpty {
                         firstRun
                     } else {
@@ -77,7 +69,7 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $customizing) {
-                DashboardEditor(raw: $dashboardRaw)
+                HomeEditor(raw: $homeRaw)
             }
             .sheet(isPresented: $showCoach) {
                 if let day = model.selected { CoachSheet(day: day) }
@@ -131,7 +123,7 @@ struct HomeTopBar: View {
                 ProfileEditor(profile: model.profile)
             } label: {
                 Image(systemName: "person.crop.circle")
-                    .font(.system(size: 26, weight: .light))
+                    .scaledFont(26, weight: .light, relativeTo: .title1)
                     .foregroundStyle(.white)
             }
             Spacer(minLength: 0)
@@ -157,12 +149,12 @@ struct HomeTopBar: View {
             } label: {
                 HStack(spacing: 5) {
                     Text(model.battery.map { "\(Int($0)) %" } ?? "")
-                        .font(.system(size: 13, weight: .semibold))
+                        .scaledFont(13, weight: .semibold, relativeTo: .caption1)
                         .monospacedDigit()
                         .foregroundStyle(Theme.secondary)
                     ZStack(alignment: .topTrailing) {
                         Image(systemName: "applewatch.side.right")
-                            .font(.system(size: 24, weight: .light))
+                            .scaledFont(24, weight: .light, relativeTo: .title1)
                             .foregroundStyle(.white)
                         Circle().fill(statusColor).frame(width: 8, height: 8).offset(x: 3, y: -2)
                     }
@@ -209,6 +201,15 @@ struct PillarHero: View {
                 Text("Calibrando tus líneas base: la recuperación aparece tras 4 noches.")
                     .font(.caption).foregroundStyle(Theme.secondary)
             }
+            if day.nightImported {
+                Label("Sueño y recuperación de la noche importados: la pulsera no estaba conectada a Pulso esa noche.",
+                      systemImage: "square.and.arrow.down")
+                    .font(.caption).foregroundStyle(Theme.secondary)
+            }
+            if let running = model.inProgressText(day) {
+                Text("Esfuerzo: \(running.lowercased()). Sigue sumando hasta que te duermas.")
+                    .font(.caption).foregroundStyle(Theme.secondary)
+            }
         }
     }
 
@@ -217,8 +218,8 @@ struct PillarHero: View {
             ZStack {
                 Dial(progress: progress, color: color, lineWidth: 9)
                 HStack(alignment: .firstTextBaseline, spacing: 1) {
-                    Text(value).font(.system(size: 26, weight: .bold)).monospacedDigit()
-                    if !unit.isEmpty { Text(unit).font(.system(size: 12, weight: .bold)) }
+                    Text(value).scaledFont(26, weight: .bold, relativeTo: .title1).monospacedDigit()
+                    if !unit.isEmpty { Text(unit).scaledFont(12, weight: .bold, relativeTo: .caption1) }
                 }
                 .foregroundStyle(.white)
             }
@@ -259,7 +260,7 @@ struct StrainRecoveryWeekCard: View {
                         PointMark(x: .value("Día", k), y: .value("Recuperación", r * 0.21))
                             .symbol { ring(Theme.recoveryColor(r)) }
                             .annotation(position: .top, spacing: 3) {
-                                Text("\(Int(r)) %").font(.system(size: 11, weight: .bold)).foregroundStyle(Theme.recoveryColor(r)).fixedSize()
+                                Text("\(Int(r)) %").scaledFont(11, weight: .bold, relativeTo: .caption1).foregroundStyle(Theme.recoveryColor(r)).fixedSize()
                             }
                     }
                     if let s = byDay[k]?.strain {
@@ -269,7 +270,7 @@ struct StrainRecoveryWeekCard: View {
                         PointMark(x: .value("Día", k), y: .value("Esfuerzo", s))
                             .symbol { ring(Theme.strain) }
                             .annotation(position: .bottom, spacing: 3) {
-                                Text(Fmt.dec(s)).font(.system(size: 11, weight: .bold)).foregroundStyle(Theme.strain).fixedSize()
+                                Text(Fmt.dec(s)).scaledFont(11, weight: .bold, relativeTo: .caption1).foregroundStyle(Theme.strain).fixedSize()
                             }
                     }
                 }
@@ -279,12 +280,12 @@ struct StrainRecoveryWeekCard: View {
             .chartYAxis {
                 AxisMarks(position: .leading, values: [0, 7, 14, 21]) { v in
                     AxisGridLine().foregroundStyle(Theme.hairline)
-                    AxisValueLabel { Text("\(v.as(Int.self) ?? 0)").font(.system(size: 10)).foregroundStyle(Theme.strain) }
+                    AxisValueLabel { Text("\(v.as(Int.self) ?? 0)").scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.strain) }
                 }
                 AxisMarks(position: .trailing, values: [0, 7, 14, 21]) { v in
                     AxisValueLabel {
                         let pct = [0: "0%", 7: "33%", 14: "66%", 21: "100%"][v.as(Int.self) ?? 0] ?? ""
-                        Text(pct).font(.system(size: 10)).foregroundStyle([0: Theme.red, 7: Theme.red, 14: Theme.yellow, 21: Theme.green][v.as(Int.self) ?? 0] ?? Theme.secondary)
+                        Text(pct).scaledFont(11, relativeTo: .caption1).foregroundStyle([0: Theme.red, 7: Theme.red, 14: Theme.yellow, 21: Theme.green][v.as(Int.self) ?? 0] ?? Theme.secondary)
                     }
                 }
             }
@@ -316,7 +317,7 @@ struct StressPreviewCard: View {
 
     var body: some View {
         let hourly = day.stressHourly
-        let lastHour = hourly.lastIndex { $0 != nil }
+        let lastHour = (0..<24).map { (day.cycleStartHour + $0) % 24 }.last { $0 < hourly.count && hourly[$0] != nil }
         let current = lastHour.flatMap { hourly[$0] }
         PCard {
             CardHeader(title: "Monitor de estrés", chevron: true)
@@ -326,37 +327,52 @@ struct StressPreviewCard: View {
                 Spacer()
                 if let current {
                     Caps(Theme.stressLevel(current), size: 12, color: Theme.stressColor(current))
-                    Text(Fmt.dec(current)).font(.system(size: 20, weight: .bold)).monospacedDigit().foregroundStyle(.white)
+                    Text(Fmt.dec(current)).scaledFont(20, weight: .bold, relativeTo: .body).monospacedDigit().foregroundStyle(.white)
                 }
             }
-            StressLine(hourly: hourly, compact: true)
+            StressLine(hourly: hourly, compact: true, startHour: day.cycleStartHour)
                 .frame(height: 150)
         }
     }
 }
 
-/// Hourly stress as a line coloured by level.
+/// Hourly stress as a line coloured by level. Runs from the hour the cycle started (waking up), so the hours
+/// after midnight come last instead of on the left; hours without readings break the line instead of being
+/// bridged.
 struct StressLine: View {
     let hourly: [Double?]
     var compact = false
-    var sleep: ClosedRange<Int>?
+    var startHour = 0
+
+    private var points: [(x: Int, v: Double, segment: Int)] {
+        var out: [(Int, Double, Int)] = []
+        var segment = 0, last: Int?
+        for k in 0..<24 {
+            let h = (startHour + k) % 24
+            guard h < hourly.count, let v = hourly[h] else { continue }
+            if let l = last, k - l > 1 { segment += 1 }
+            out.append((k, v, segment))
+            last = k
+        }
+        return out
+    }
 
     var body: some View {
+        let pts = points
+        let lo = pts.map(\.v).min() ?? 0, hi = pts.map(\.v).max() ?? 0
+        // A gradient on a line spans the line's own height: colour its ends by their real level.
+        let gradient = LinearGradient(colors: [Theme.stressColor(lo), Theme.stressColor((lo + hi) / 2), Theme.stressColor(hi)],
+                                      startPoint: .bottom, endPoint: .top)
         Chart {
-            if let sleep {
-                RectangleMark(xStart: .value("a", sleep.lowerBound), xEnd: .value("b", sleep.upperBound), yStart: .value("y0", 0), yEnd: .value("y1", 3))
-                    .foregroundStyle(Color.white.opacity(0.05))
-                    .annotation(position: .top, alignment: .center) {
-                        Image(systemName: "moon.fill").font(.caption).foregroundStyle(.white)
-                    }
-            }
-            ForEach(Array(hourly.enumerated()), id: \.offset) { item in
-                if let v = item.element {
-                    LineMark(x: .value("Hora", item.offset), y: .value("Estrés", v))
-                        .foregroundStyle(LinearGradient(colors: [Theme.stressLow, Theme.stressMid, Theme.stressHigh],
-                                                        startPoint: .bottom, endPoint: .top))
-                        .interpolationMethod(.catmullRom)
-                        .lineStyle(StrokeStyle(lineWidth: 2.2))
+            ForEach(pts, id: \.x) { p in
+                LineMark(x: .value("Hora", p.x), y: .value("Estrés", p.v), series: .value("Tramo", p.segment))
+                    .foregroundStyle(gradient)
+                    .interpolationMethod(.monotone)
+                    .lineStyle(StrokeStyle(lineWidth: 2.2))
+                if pts.filter({ $0.segment == p.segment }).count == 1 {
+                    PointMark(x: .value("Hora", p.x), y: .value("Estrés", p.v))
+                        .foregroundStyle(Theme.stressColor(p.v))
+                        .symbolSize(24)
                 }
             }
         }
@@ -365,14 +381,24 @@ struct StressLine: View {
         .chartYAxis {
             AxisMarks(position: .leading, values: [0, 1, 2, 3]) { v in
                 AxisGridLine().foregroundStyle(Theme.hairline)
-                AxisValueLabel { Text(Fmt.dec(v.as(Double.self))).font(.system(size: 10)).foregroundStyle(Theme.secondary) }
+                AxisValueLabel { Text(Fmt.dec(v.as(Double.self))).scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary) }
             }
         }
         .chartXAxis {
             AxisMarks(values: compact ? [0, 8, 16, 23] : [0, 4, 8, 12, 16, 20, 23]) { v in
-                AxisValueLabel { Text(String(format: "%02d:00", v.as(Int.self) ?? 0)).font(.system(size: 10)).foregroundStyle(Theme.secondary) }
+                AxisValueLabel {
+                    Text(String(format: "%02d:00", ((v.as(Int.self) ?? 0) + startHour) % 24))
+                        .scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary)
+                }
             }
         }
+    }
+}
+
+extension DaySummary {
+    /// Local hour the cycle started (waking up); 0 when unknown.
+    var cycleStartHour: Int {
+        cycleStart.map { Calendar.current.component(.hour, from: Date(timeIntervalSince1970: TimeInterval($0))) } ?? 0
     }
 }
 
@@ -382,72 +408,11 @@ struct DashboardRow: View {
     @EnvironmentObject var model: AppModel
     let metric: TrendMetric
     let day: DaySummary
+    var period = 30
 
     var body: some View {
-        let value = metric.value(day)
-        let usual = TrendSeries.window(days: model.days.filter { $0.day < day.day }, value: { metric.value($0) }, period: .month,
-                                       today: DayKey.shift(day.day, days: -1)).summary
-        MetricRow(icon: metric.icon, title: metric.title, value: metric.format(value), baseline: usual.map { metric.format($0) },
-                  delta: value == nil ? nil : Delta(value, usual, higherIsBetter: metric.higherIsBetter))
-    }
-}
-
-/// Choose and order the dashboard rows.
-struct DashboardEditor: View {
-    @Environment(\.dismiss) private var dismiss
-    @Binding var raw: String
-    @State private var items: [TrendMetric] = []
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    ForEach(items) { m in
-                        Label(m.title, systemImage: m.icon)
-                    }
-                    .onMove { items.move(fromOffsets: $0, toOffset: $1) }
-                    .onDelete { items.remove(atOffsets: $0) }
-                } header: {
-                    Text("En tu panel")
-                } footer: {
-                    Text("Arrastra para ordenar; desliza para quitar.")
-                }
-                let hidden = TrendMetric.allCases.filter { !items.contains($0) }
-                if !hidden.isEmpty {
-                    Section("Añadir") {
-                        ForEach(hidden) { m in
-                            Button {
-                                withAnimation { items.append(m) }
-                            } label: {
-                                HStack {
-                                    Label(m.title, systemImage: m.icon)
-                                    Spacer()
-                                    Image(systemName: "plus.circle.fill").foregroundStyle(Theme.green)
-                                }
-                            }
-                            .foregroundStyle(.white)
-                        }
-                    }
-                }
-                Section {
-                    Button("Restablecer el orden original") { items = HomeView.defaultDashboard.split(separator: ",").compactMap { TrendMetric(rawValue: String($0)) } }
-                }
-            }
-            .environment(\.editMode, .constant(.active))
-            .navigationTitle("Mi panel de control")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar") {
-                        raw = items.map(\.rawValue).joined(separator: ",")
-                        dismiss()
-                    }
-                }
-            }
-            .onAppear { items = raw.split(separator: ",").compactMap { TrendMetric(rawValue: String($0)) } }
-        }
-        .preferredColorScheme(.dark)
+        let c = HomeComparison(metric, day: day, period: period, model: model)
+        MetricRow(icon: metric.icon, title: HomeLayout.title(metric), value: c.value, baseline: c.caption, delta: c.delta)
     }
 }
 
@@ -470,7 +435,7 @@ struct CoachBanner: View {
                     .clipShape(Circle())
                     .overlay(Circle().stroke(Theme.link.opacity(0.6), lineWidth: 1.5))
                 Text("\(advice.headline)\(name)")
-                    .font(.system(size: 15, weight: .medium))
+                    .scaledFont(15, weight: .medium, relativeTo: .body)
                     .foregroundStyle(.white)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)

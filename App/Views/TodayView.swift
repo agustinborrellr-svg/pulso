@@ -396,7 +396,9 @@ struct CoachCard: View {
         let status = TrainingLoad.status(model.trainingLoad.filter { $0.day <= day.day })
         Card {
             SectionTitle(title: "Tu plan de hoy",
-                         subtitle: "Esfuerzo objetivo \(Int(advice.strainTarget.lowerBound))–\(Int(advice.strainTarget.upperBound))")
+                         subtitle: day.recovery != nil && !day.calibrating
+                             ? "Esfuerzo objetivo \(Int(advice.strainTarget.lowerBound))–\(Int(advice.strainTarget.upperBound))"
+                             : "Sin esfuerzo objetivo hasta tener recuperación")
             if health.level != .normal {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "thermometer.medium")

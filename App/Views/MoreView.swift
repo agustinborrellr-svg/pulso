@@ -8,6 +8,7 @@ import PulsoIntegrations
 struct MoreView: View {
     @EnvironmentObject var model: AppModel
     @State private var restoring = false
+    @State private var confirmClearDemo = false
     @State private var exportURLs: [URL] = []
     @State private var backupURL: URL?
     @State private var confirmErase = false
@@ -86,7 +87,9 @@ struct MoreView: View {
                 } header: {
                     Text("Funciones")
                 } footer: {
-                    Text("Si suena una alarma, el doble toque la pospone o la apaga.")
+                    Text("Si suena una alarma, el doble toque la pospone o la apaga. " + (model.lastDoubleTapAt.map {
+                        "Último doble toque recibido: \(Fmt.dayTitle(DayKey.string($0))) a las \(Fmt.time(Int($0.timeIntervalSince1970)))."
+                    } ?? "Aún no se ha recibido ningún doble toque: el gesto no está confirmado en la Pulse Band 5.0. Para probarlo, con la pulsera conectada toca dos veces la parte superior; si funciona, aparecerá aquí la hora. Solo funciona mientras la pulsera está conectada, también con el iPhone bloqueado."))
                 }
 
                 dataSection
@@ -155,12 +158,14 @@ struct MoreView: View {
             HStack {
                 Image(systemName: "sensor.tag.radiowaves.forward.fill")
                     .font(.title2)
-                    .foregroundStyle(model.strapState.isConnected ? Theme.green : Theme.secondary)
+                    .foregroundStyle(ConnectionStatus(model).color)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(model.identity.name.isEmpty ? "Pulse Band 5.0" : Fmt.bandName(model.identity.name)).font(.headline)
                     StrapStatusLine()
                 }
             }
+            .accessibilityElement(children: .combine)
             if case .pairingRefused = model.strapState {
                 Text("La pulsera no acepta el emparejamiento. Sigue la guía: suele estar todavía vinculada a otra app o a un emparejamiento antiguo del iPhone.")
                     .font(.footnote)
@@ -283,9 +288,13 @@ struct MoreView: View {
             // Demo data only exists for the CI screenshots; if an old install still has it, offer to remove it.
             if model.demoActive {
                 Button(role: .destructive) {
-                    model.clearDemo()
+                    confirmClearDemo = true
                 } label: {
                     Label("Quitar datos de ejemplo", systemImage: "sparkles")
+                }
+                .confirmationDialog("Los datos de ejemplo están mezclados con los tuyos: quitarlos borra todo lo guardado en Pulso. Antes se hace una copia completa en Archivos → Copias de seguridad.",
+                                    isPresented: $confirmClearDemo, titleVisibility: .visible) {
+                    Button("Borrar todo", role: .destructive) { model.clearDemo() }
                 }
             }
             NavigationLink {

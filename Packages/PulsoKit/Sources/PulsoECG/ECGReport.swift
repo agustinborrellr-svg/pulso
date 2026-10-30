@@ -61,7 +61,8 @@ public enum ECGReport {
             c += "BT /\(bold ? "F2" : "F1") \(f(size)) Tf \(f(x)) \(f(y)) Td \(pdfText(s)) Tj ET\n"
         }
         c += "0 0 0 rg\n"
-        text("ECG de una derivación - \(analysis.rhythm.title)", left, pageH - 16 * mm, size: 15, bold: true)
+        text(rec.source == .simulated ? "SIMULACIÓN - NO ES UN ECG REAL NI UN RESULTADO MÉDICO"
+                                      : "ECG de una derivación - \(analysis.rhythm.title)", left, pageH - 16 * mm, size: 15, bold: true)
         var who = info.name.isEmpty ? "" : info.name
         if let a = info.age { who += (who.isEmpty ? "" : " · ") + "\(a) años" }
         let hrText = analysis.heartRate.map { "\(Int($0.rounded())) lpm de media" } ?? "frecuencia no disponible"

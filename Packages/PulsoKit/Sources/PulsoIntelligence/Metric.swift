@@ -39,9 +39,13 @@ public struct MetricResult: Equatable, Identifiable, Sendable {
     public var sampleSize: Int
     public var formula: String
     public var version: String
+    /// What the confidence actually rests on, when "confianza alta/baja" would overstate it
+    /// (e.g. coherence: only how many reference nights there are).
+    public var confidenceNote: String?
 
     public init(id: String, name: String, value: Double?, unit: String, summary: String, interval: ClosedRange<Double>? = nil,
-                confidence: Confidence, status: Status = .ok, sampleSize: Int, formula: String, version: String = "1.0") {
+                confidence: Confidence, status: Status = .ok, sampleSize: Int, formula: String, version: String = "1.0",
+                confidenceNote: String? = nil) {
         self.id = id
         self.name = name
         self.value = value
@@ -53,6 +57,7 @@ public struct MetricResult: Equatable, Identifiable, Sendable {
         self.sampleSize = sampleSize
         self.formula = formula
         self.version = version
+        self.confidenceNote = confidenceNote
     }
 
     public static func insufficient(_ id: String, _ name: String, unit: String = "", need: String, have: Int,
@@ -62,6 +67,12 @@ public struct MetricResult: Equatable, Identifiable, Sendable {
     }
 
     public var isAvailable: Bool { status == .ok && value != nil }
+
+    /// Still waiting for data. A finished analysis without a number ("no se ve límite") is a result, not locked.
+    public var isLocked: Bool {
+        if case .insufficient = status { return true }
+        return false
+    }
 
     /// For a locked metric, how far along it is: what you have vs the first number in what it needs
     /// ("14 noches…" → 14). Nil when the requirement is not a count.
@@ -73,9 +84,23 @@ public struct MetricResult: Equatable, Identifiable, Sendable {
     }
 }
 
+/// Pearson correlation with its uncertainty.
+public enum Association {
+    /// Fisher-z interval for r (default 90 %). Nil below 4 pairs.
+    public static func fisherInterval(r: Double, n: Int, level: Double = 0.9) -> ClosedRange<Double>? {
+        guard n >= 4, r.isFinite else { return nil }
+        let z = atanh(Num.clamp(r, -0.999999, 0.999999))
+        let half = (level >= 0.95 ? 1.959964 : 1.644854) / Double(n - 3).squareRoot()
+        return tanh(z - half)...tanh(z + half)
+    }
+}
+
 // MARK: - Statistics toolkit (no dependencies)
 
 enum Num {
+    /// Decimal comma in every sentence shown to the user.
+    static let spanish = Locale(identifier: "es_ES")
+
     static func mean(_ x: [Double]) -> Double? { x.isEmpty ? nil : x.reduce(0, +) / Double(x.count) }
 
     static func median(_ x: [Double]) -> Double? {
@@ -149,6 +174,56 @@ enum Num {
         let t = z + 7.5
         for i in 1..<9 { a += c[i] / (z + Double(i)) }
         return 0.5 * log(2 * Double.pi) + (z + 0.5) * log(t) - t + log(a)
+    }
+
+    /// Regularized incomplete beta I_x(a, b) (continued fraction, Numerical Recipes).
+    static func incompleteBeta(_ x: Double, _ a: Double, _ b: Double) -> Double {
+        guard x > 0 else { return 0 }
+        guard x < 1 else { return 1 }
+        let front = exp(lnGamma(a + b) - lnGamma(a) - lnGamma(b) + a * log(x) + b * log(1 - x))
+        func cf(_ x: Double, _ a: Double, _ b: Double) -> Double {
+            var c = 1.0, d = 1 - (a + b) * x / (a + 1)
+            if abs(d) < 1e-300 { d = 1e-300 }
+            d = 1 / d
+            var h = d
+            for m in 1...300 {
+                let m = Double(m)
+                var num = m * (b - m) * x / ((a + 2 * m - 1) * (a + 2 * m))
+                d = 1 + num * d; if abs(d) < 1e-300 { d = 1e-300 }
+                c = 1 + num / c; if abs(c) < 1e-300 { c = 1e-300 }
+                d = 1 / d; h *= d * c
+                num = -(a + m) * (a + b + m) * x / ((a + 2 * m) * (a + 2 * m + 1))
+                d = 1 + num * d; if abs(d) < 1e-300 { d = 1e-300 }
+                c = 1 + num / c; if abs(c) < 1e-300 { c = 1e-300 }
+                d = 1 / d
+                let del = d * c
+                h *= del
+                if abs(del - 1) < 1e-12 { break }
+            }
+            return h
+        }
+        return x < (a + 1) / (a + b + 2) ? front * cf(x, a, b) / a : 1 - front * cf(1 - x, b, a) / b
+    }
+
+    /// Two-sided p-value of Student's t with `df` degrees of freedom.
+    static func tTwoSidedP(_ t: Double, df: Double) -> Double {
+        guard df > 0, t.isFinite else { return t.isFinite ? 1 : 0 }
+        return incompleteBeta(df / (df + t * t), df / 2, 0.5)
+    }
+
+    /// Benjamini–Hochberg q-values (same order as `p`).
+    static func benjaminiHochberg(_ p: [Double]) -> [Double] {
+        let m = p.count
+        guard m > 0 else { return [] }
+        let order = p.indices.sorted { p[$0] < p[$1] }
+        var q = [Double](repeating: 1, count: m)
+        var running = 1.0
+        for rank in stride(from: m, through: 1, by: -1) {
+            let i = order[rank - 1]
+            running = min(running, p[i] * Double(m) / Double(rank))
+            q[i] = min(1, running)
+        }
+        return q
     }
 
     /// P(χ²_k ≥ x).

@@ -29,25 +29,31 @@ struct StrainDetailView: View {
 
     private func hero(_ d: DaySummary) -> some View {
         let advice = model.coachAdvice(for: d)
+        let justified = d.recovery != nil && !d.calibrating
         return VStack(spacing: 14) {
             ZStack {
                 Dial(progress: (d.strain ?? 0) / 21, color: Theme.strain, lineWidth: 22)
-                // Target band on the dial.
-                Circle()
-                    .trim(from: advice.strainTarget.lowerBound / 21, to: min(1, advice.strainTarget.upperBound / 21))
-                    .stroke(Color.white.opacity(0.35), style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .padding(-17)
+                if justified {
+                    Circle()
+                        .trim(from: advice.strainTarget.lowerBound / 21, to: min(1, advice.strainTarget.upperBound / 21))
+                        .stroke(Color.white.opacity(0.35), style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .padding(-17)
+                }
                 VStack(spacing: 6) {
-                    Text(Fmt.dec(d.strain)).font(.system(size: 64, weight: .heavy)).monospacedDigit().foregroundStyle(.white)
+                    Text(Fmt.dec(d.strain)).scaledFont(64, weight: .heavy, relativeTo: .largeTitle, maxScale: 1.3).monospacedDigit().foregroundStyle(.white)
                     Caps("Esfuerzo del día", size: 13)
                 }
             }
             .frame(width: 250, height: 250)
             .padding(.vertical, 18)
-            Text("Objetivo de hoy según tu recuperación: \(Int(advice.strainTarget.lowerBound))–\(Int(advice.strainTarget.upperBound))")
+            Text(justified ? "Objetivo de hoy según tu recuperación: \(Int(advice.strainTarget.lowerBound))–\(Int(advice.strainTarget.upperBound))"
+                 : "Sin objetivo: hace falta una recuperación calculada.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.secondary)
+            if let running = model.inProgressText(d) {
+                Caps(running, size: 10, color: Theme.secondary, weight: .semibold)
+            }
         }
         .frame(maxWidth: .infinity)
     }
@@ -83,8 +89,8 @@ struct StrainDetailView: View {
                         ForEach(0..<5, id: \.self) { i in
                             HStack(spacing: 8) {
                                 Rectangle().fill(Theme.zoneColor(i + 1)).frame(width: 9, height: 9)
-                                Text(Fmt.hmm(z[i])).font(.system(size: 15, weight: .bold)).monospacedDigit().foregroundStyle(.white)
-                                Text("Zona \(i + 1)").font(.system(size: 15)).foregroundStyle(.white)
+                                Text(Fmt.hmm(z[i])).scaledFont(15, weight: .bold, relativeTo: .body).monospacedDigit().foregroundStyle(.white)
+                                Text("Zona \(i + 1)").scaledFont(15, relativeTo: .body).foregroundStyle(.white)
                             }
                         }
                     }
@@ -112,7 +118,7 @@ struct StrainDetailView: View {
                     HStack(spacing: 12) {
                         ZStack {
                             Dial(progress: w.strain / 21, color: Theme.strain, lineWidth: 4)
-                            Text(Fmt.dec(w.strain)).font(.system(size: 13, weight: .bold)).foregroundStyle(.white)
+                            Text(Fmt.dec(w.strain)).scaledFont(13, weight: .bold, relativeTo: .caption1).foregroundStyle(.white)
                         }
                         .frame(width: 46, height: 46)
                         VStack(alignment: .leading, spacing: 3) {
@@ -147,7 +153,7 @@ struct StressMonitorView: View {
             if let day = model.selected {
                 gauge(day)
                 PCard {
-                    StressLine(hourly: day.stressHourly, sleep: sleepHours(day))
+                    StressLine(hourly: day.stressHourly, startHour: day.cycleStartHour)
                         .frame(height: 220)
                 }
                 levels(day)
@@ -180,7 +186,7 @@ struct StressMonitorView: View {
             }
             VStack(spacing: 4) {
                 Caps(v == nil ? "Calculando" : Theme.stressLevel(v), size: 15, color: v == nil ? .white : Theme.stressColor(v))
-                if let v { Text(Fmt.dec(v)).font(.system(size: 44, weight: .bold)).monospacedDigit().foregroundStyle(.white) }
+                if let v { Text(Fmt.dec(v)).scaledFont(44, weight: .bold, relativeTo: .largeTitle, maxScale: 1.3).monospacedDigit().foregroundStyle(.white) }
             }
             .offset(y: -20)
             HStack {
@@ -192,14 +198,6 @@ struct StressMonitorView: View {
         .frame(width: 250, height: 250)
         .frame(maxWidth: .infinity)
         .padding(.bottom, -100)
-    }
-
-    private func sleepHours(_ d: DaySummary) -> ClosedRange<Int>? {
-        guard let a = d.sleepStart, let b = d.sleepEnd else { return nil }
-        let cal = Calendar.current
-        let ha = cal.component(.hour, from: Date(timeIntervalSince1970: TimeInterval(a)))
-        let hb = cal.component(.hour, from: Date(timeIntervalSince1970: TimeInterval(b)))
-        return ha <= hb ? ha...hb : 0...hb
     }
 
     /// Hours of the day at each level, against the average of the same weekday in previous weeks.
@@ -224,7 +222,7 @@ struct StressMonitorView: View {
             HStack(alignment: .top) {
                 ForEach(0..<3, id: \.self) { i in
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("\(Int(now[i])) h").font(.system(size: 20, weight: .bold)).monospacedDigit().foregroundStyle(.white)
+                        Text("\(Int(now[i])) h").scaledFont(20, weight: .bold, relativeTo: .body).monospacedDigit().foregroundStyle(.white)
                         if let usual, usual[i] > 0 {
                             DeltaChip(text: "\(Int(abs(now[i] - usual[i]) / usual[i] * 100)) %",
                                       delta: Delta(now[i], usual[i], higherIsBetter: i == 0 ? true : false))

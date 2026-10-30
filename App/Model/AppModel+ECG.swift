@@ -19,7 +19,7 @@ extension AppModel {
         ecgSession = session
         ecgProgress = 0
         if simulated {
-            let sim = ECGSimulator(rate: rate, seconds: 30, heartRate: Double(liveHR ?? 66), pattern: .sinus,
+            let sim = ECGSimulator(rate: rate, seconds: 30, heartRate: 66, pattern: .sinus,
                                    seed: UInt64(Date().timeIntervalSince1970))
             ecgSimulatedSamples = sim.generate()
             ecgSimulatedStart = Date()
@@ -86,7 +86,7 @@ extension AppModel {
 
     /// PDF for the doctor.
     func ecgPDF(_ rec: ECGRecording) -> URL? {
-        guard let full = fullECG(rec) else { return nil }
+        guard let full = fullECG(rec), full.source != .simulated else { return nil }
         let a = ECGAnalyzer.analyze(full)
         let label: String
         switch full.source {

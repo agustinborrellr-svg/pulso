@@ -6,33 +6,66 @@ import ActivityKit
 
 struct SnapshotEntry: TimelineEntry {
     let date: Date
-    let snap: WidgetSnapshot
+    /// nil = no real data (App Group missing or the app hasn't written yet): the widget says so.
+    let snap: WidgetSnapshot?
 }
 
 struct SnapshotProvider: TimelineProvider {
+    /// Gallery / redacted preview only: sample numbers are fine here, never at runtime.
     func placeholder(in context: Context) -> SnapshotEntry { SnapshotEntry(date: Date(), snap: .placeholder) }
 
     func getSnapshot(in context: Context, completion: @escaping (SnapshotEntry) -> Void) {
-        completion(SnapshotEntry(date: Date(), snap: WidgetSnapshot.load() ?? .placeholder))
+        let real = WidgetSnapshot.load()
+        completion(SnapshotEntry(date: Date(), snap: real ?? (context.isPreview ? .placeholder : nil)))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SnapshotEntry>) -> Void) {
-        let entry = SnapshotEntry(date: Date(), snap: WidgetSnapshot.load() ?? .placeholder)
+        let entry = SnapshotEntry(date: Date(), snap: WidgetSnapshot.load())
         completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(30 * 60))))
     }
 }
 
+/// Widget colours: the app's palette (`PulsoPalette`), so a recovery green is the same everywhere.
 enum WTheme {
-    static let bg = Color(red: 0.035, green: 0.043, blue: 0.055)
-    static let green = Color(red: 0.16, green: 0.84, blue: 0.45)
-    static let yellow = Color(red: 1.00, green: 0.78, blue: 0.18)
-    static let red = Color(red: 1.00, green: 0.30, blue: 0.30)
-    static let strain = Color(red: 0.24, green: 0.56, blue: 1.00)
-    static let sleep = Color(red: 0.58, green: 0.50, blue: 1.00)
+    static let bg = PulsoPalette.background
+    static let green = PulsoPalette.recoveryHigh
+    static let yellow = PulsoPalette.recoveryMid
+    static let red = PulsoPalette.recoveryLow
+    static let strain = PulsoPalette.strain
+    static let sleep = PulsoPalette.sleep
+    static let secondary = PulsoPalette.secondary
 
-    static func recovery(_ v: Double?) -> Color {
-        guard let v else { return .gray }
-        return v >= 67 ? green : (v >= 34 ? yellow : red)
+    static func recovery(_ v: Double?) -> Color { PulsoPalette.recovery(v) }
+}
+
+/// Honest empty state: no sample numbers dressed up as yours.
+struct NoDataWidgetView: View {
+    @Environment(\.widgetFamily) var family
+
+    var body: some View {
+        switch family {
+        case .accessoryCircular:
+            ZStack {
+                AccessoryWidgetBackground()
+                Image(systemName: "waveform.path.ecg")
+            }
+            .accessibilityLabel("Abre Pulso para ver tus datos")
+        case .accessoryInline:
+            Text("Abre Pulso para ver tus datos")
+        case .accessoryRectangular:
+            VStack(alignment: .leading, spacing: 2) {
+                Label("Pulso", systemImage: "waveform.path.ecg").font(.headline)
+                Text("Abre Pulso para ver tus datos").font(.caption)
+            }
+        default:
+            VStack(alignment: .leading, spacing: 6) {
+                Image(systemName: "waveform.path.ecg").font(.title3.weight(.semibold)).foregroundStyle(WTheme.red)
+                Spacer(minLength: 0)
+                Text("Sin datos todavía").font(.headline).foregroundStyle(.white)
+                Text("Abre Pulso para ver tus datos").font(.caption).foregroundStyle(WTheme.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
     }
 }
 
@@ -52,8 +85,13 @@ struct Ring: View {
                     .rotationEffect(.degrees(-90))
                 Text(value).font(.system(.headline, design: .rounded).weight(.bold)).monospacedDigit().minimumScaleFactor(0.6)
             }
-            if !label.isEmpty { Text(label).font(.system(size: 9, weight: .bold)).foregroundStyle(color) }
+            if !label.isEmpty {
+                Text(label).font(.caption2.weight(.bold)).lineLimit(1).minimumScaleFactor(0.8).foregroundStyle(color)
+            }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label.isEmpty ? "Recuperación" : label)
+        .accessibilityValue(value)
     }
 }
 
@@ -64,7 +102,18 @@ struct DayWidgetView: View {
     let entry: SnapshotEntry
 
     var body: some View {
-        let s = entry.snap
+        if let s = entry.snap { content(s) } else { NoDataWidgetView() }
+    }
+
+    /// "Datos de ayer" when the snapshot is from an earlier day.
+    private func staleNote(_ s: WidgetSnapshot) -> String? {
+        let age = entry.date.timeIntervalSince(s.updated)
+        guard age > 12 * 3600 else { return nil }
+        return "Actualizado " + s.updated.formatted(.relative(presentation: .named, unitsStyle: .abbreviated))
+    }
+
+    @ViewBuilder
+    private func content(_ s: WidgetSnapshot) -> some View {
         switch family {
         case .accessoryCircular:
             Gauge(value: (s.recovery ?? 0) / 100) {
@@ -91,6 +140,7 @@ struct DayWidgetView: View {
                 Ring(progress: s.sleepPerformance ?? 0, color: WTheme.sleep,
                      value: s.sleepPerformance.map { "\(Int(($0 * 100).rounded()))" } ?? "–", label: "SUEÑO")
                 VStack(alignment: .leading, spacing: 4) {
+                    if let note = staleNote(s) { Text(note).font(.caption2.bold()).foregroundStyle(WTheme.yellow).lineLimit(2) }
                     if let h = s.headline { Text(h).font(.caption2).foregroundStyle(.secondary).lineLimit(3) }
                     if let t = s.strainTarget { Text("Objetivo \(t)").font(.caption2.bold()).foregroundStyle(WTheme.strain) }
                     if let a = s.nextAlarm { Label(a.formatted(date: .omitted, time: .shortened), systemImage: "alarm").font(.caption2) }
@@ -107,6 +157,7 @@ struct DayWidgetView: View {
                     Label(s.sleepPerformance.map { "\(Int(($0 * 100).rounded()))%" } ?? "–", systemImage: "moon.fill").foregroundStyle(WTheme.sleep)
                 }
                 .font(.caption2.bold())
+                if let note = staleNote(s) { Text(note).font(.caption2).foregroundStyle(WTheme.yellow).lineLimit(1).minimumScaleFactor(0.8) }
             }
         }
     }
@@ -127,16 +178,7 @@ struct DayWidget: Widget {
 // MARK: - Workout Live Activity
 
 struct WorkoutLiveActivity: Widget {
-    static func zoneColor(_ z: Int) -> Color {
-        switch z {
-        case 1: return Color(red: 0.55, green: 0.75, blue: 1.0)
-        case 2: return Color(red: 0.25, green: 0.85, blue: 0.55)
-        case 3: return Color(red: 1.0, green: 0.80, blue: 0.20)
-        case 4: return Color(red: 1.0, green: 0.50, blue: 0.20)
-        case 5: return Color(red: 1.0, green: 0.25, blue: 0.30)
-        default: return .gray
-        }
-    }
+    static func zoneColor(_ z: Int) -> Color { PulsoPalette.zone(z) }
 
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkoutActivityAttributes.self) { context in
