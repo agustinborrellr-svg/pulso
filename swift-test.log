@@ -1,0 +1,400 @@
+Test Case '-[PulsoFeaturesTests.FeaturesTests testNextOccurrenceRespectsWeekdaysAndSkip]' started.
+Test Case '-[PulsoFeaturesTests.FeaturesTests testNextOccurrenceRespectsWeekdaysAndSkip]' passed (0.000 seconds).
+Test Case '-[PulsoFeaturesTests.FeaturesTests testPerDayTimes]' started.
+Test Case '-[PulsoFeaturesTests.FeaturesTests testPerDayTimes]' passed (0.001 seconds).
+Test Case '-[PulsoFeaturesTests.FeaturesTests testRingingWithoutAnswerAutoSnoozesThenHandsOverToPhone]' started.
+Test Case '-[PulsoFeaturesTests.FeaturesTests testRingingWithoutAnswerAutoSnoozesThenHandsOverToPhone]' passed (0.000 seconds).
+Test Case '-[PulsoFeaturesTests.FeaturesTests testSmartSessionMonitorsSyncsAndWakesEarly]' started.
+Test Case '-[PulsoFeaturesTests.FeaturesTests testSmartSessionMonitorsSyncsAndWakesEarly]' passed (0.015 seconds).
+Test Case '-[PulsoFeaturesTests.FeaturesTests testSnoozeAndStopFlow]' started.
+Test Case '-[PulsoFeaturesTests.FeaturesTests testSnoozeAndStopFlow]' passed (0.000 seconds).
+Test Case '-[PulsoFeaturesTests.FeaturesTests testStrainTargetAndOffWristAndInactivity]' started.
+Test Case '-[PulsoFeaturesTests.FeaturesTests testStrainTargetAndOffWristAndInactivity]' passed (0.011 seconds).
+Test Case '-[PulsoFeaturesTests.FeaturesTests testUpcomingAndEarliestAmongMany]' started.
+Test Case '-[PulsoFeaturesTests.FeaturesTests testUpcomingAndEarliestAmongMany]' passed (0.001 seconds).
+Test Suite 'FeaturesTests' passed at 2026-10-30 22:54:57.332.
+	 Executed 19 tests, with 0 failures (0 unexpected) in 0.044 (0.046) seconds
+Test Suite 'ImportedHistoryTests' started at 2026-10-30 22:54:57.332.
+Test Case '-[PulsoIntelligenceTests.ImportedHistoryTests testImportedHistoryFeedsIntelligenceAndVO2]' started.
+/Users/runner/work/pulso/pulso/Packages/PulsoKit/Tests/PulsoIntelligenceTests/ImportedHistoryTests.swift:9: -[PulsoIntelligenceTests.ImportedHistoryTests testImportedHistoryFeedsIntelligenceAndVO2] : Test skipped - PULSO_WHOOP_EXPORT not set
+Test Case '-[PulsoIntelligenceTests.ImportedHistoryTests testImportedHistoryFeedsIntelligenceAndVO2]' skipped (0.001 seconds).
+Test Case '-[PulsoIntelligenceTests.ImportedHistoryTests testImportedNightKeepsStagesAndVitals]' started.
+Test Case '-[PulsoIntelligenceTests.ImportedHistoryTests testImportedNightKeepsStagesAndVitals]' passed (0.000 seconds).
+Test Suite 'ImportedHistoryTests' passed at 2026-10-30 22:54:57.333.
+	 Executed 2 tests, with 1 test skipped and 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'IntegrationsTests' started at 2026-10-30 22:54:57.333.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testAuthorizeURLAndCallback]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testAuthorizeURLAndCallback]' passed (0.002 seconds).
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testDuplicateUploadAndErrors]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testDuplicateUploadAndErrors]' passed (0.037 seconds).
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testExpiredTokenRefreshesOnceForParallelCalls]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testExpiredTokenRefreshesOnceForParallelCalls]' passed (0.002 seconds).
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testFirstImportPagesThroughEverything]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testFirstImportPagesThroughEverything]' passed (0.001 seconds).
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testFITCRCProperty]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testFITCRCProperty]' passed (0.000 seconds).
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testFITStructure]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testFITStructure]' passed (0.003 seconds).
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testFITWritesFileForPythonCheck]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testFITWritesFileForPythonCheck]' passed (0.052 seconds).
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testHeartRateBroadcastRoundTrip]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testHeartRateBroadcastRoundTrip]' passed (0.001 seconds).
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testRateLimitPausesFurtherRequests]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testRateLimitPausesFurtherRequests]' passed (0.001 seconds).
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testSportMapping]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testSportMapping]' passed (0.000 seconds).
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testTCXIsWellFormed]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testTCXIsWellFormed]' passed (0.056 seconds).
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testTokenExchangeRefreshAndActivities]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testTokenExchangeRefreshAndActivities]' passed (0.001 seconds).
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testTrackFromSamplesPrefersStoredSeconds]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testTrackFromSamplesPrefersStoredSeconds]' passed (0.000 seconds).
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testUnauthorizedRefreshesAndRetriesThenDisconnectsCleanly]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testUnauthorizedRefreshesAndRetriesThenDisconnectsCleanly]' passed (0.001 seconds).
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testUploadPollsUntilActivity]' started.
+Test Case '-[PulsoIntegrationsTests.IntegrationsTests testUploadPollsUntilActivity]' passed (0.019 seconds).
+Test Suite 'IntegrationsTests' passed at 2026-10-30 22:54:57.512.
+	 Executed 15 tests, with 0 failures (0 unexpected) in 0.176 (0.179) seconds
+Test Suite 'IntelligenceTests' started at 2026-10-30 22:54:57.512.
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testDebtAccumulatesAndDecays]' started.
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testDebtAccumulatesAndDecays]' passed (0.024 seconds).
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testDeviationFlagsIllnessAndUnusualCombinations]' started.
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testDeviationFlagsIllnessAndUnusualCombinations]' passed (0.039 seconds).
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testHabitImpactWithInterval]' started.
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testHabitImpactWithInterval]' passed (0.082 seconds).
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testImportedNightsCountForTimingButNotForAwakenings]' started.
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testImportedNightsCountForTimingButNotForAwakenings]' passed (0.012 seconds).
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testLoadResponseMeasuresRecovery]' started.
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testLoadResponseMeasuresRecovery]' passed (0.039 seconds).
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testPredictorBeatsReferenceAndScenariosMoveTheRightWay]' started.
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testPredictorBeatsReferenceAndScenariosMoveTheRightWay]' passed (0.207 seconds).
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testReportOnDemoData]' started.
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testReportOnDemoData]' passed (206.985 seconds).
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testSleepEffectsRecoversAwakeningCost]' started.
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testSleepEffectsRecoversAwakeningCost]' passed (0.006 seconds).
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testSleepRegularityIndex]' started.
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testSleepRegularityIndex]' passed (0.013 seconds).
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testStatisticsToolkit]' started.
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testStatisticsToolkit]' passed (0.000 seconds).
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testWorkoutRecoveryCurveAndDrift]' started.
+Test Case '-[PulsoIntelligenceTests.IntelligenceTests testWorkoutRecoveryCurveAndDrift]' passed (0.057 seconds).
+Test Suite 'IntelligenceTests' passed at 2026-10-30 22:58:24.978.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 207.464 (207.466) seconds
+Test Suite 'LiveMetricsTests' started at 2026-10-30 22:58:24.978.
+Test Case '-[PulsoAnalyticsTests.LiveMetricsTests testCoherenceHighWhenBreathingSlowly]' started.
+Test Case '-[PulsoAnalyticsTests.LiveMetricsTests testCoherenceHighWhenBreathingSlowly]' passed (0.008 seconds).
+Test Case '-[PulsoAnalyticsTests.LiveMetricsTests testLapsAndStrainInverse]' started.
+Test Case '-[PulsoAnalyticsTests.LiveMetricsTests testLapsAndStrainInverse]' passed (0.000 seconds).
+Test Case '-[PulsoAnalyticsTests.LiveMetricsTests testOrthostaticRiseAndRatio]' started.
+Test Case '-[PulsoAnalyticsTests.LiveMetricsTests testOrthostaticRiseAndRatio]' passed (0.001 seconds).
+Test Case '-[PulsoAnalyticsTests.LiveMetricsTests testPoincareSD1MatchesRMSSD]' started.
+Test Case '-[PulsoAnalyticsTests.LiveMetricsTests testPoincareSD1MatchesRMSSD]' passed (0.001 seconds).
+Test Case '-[PulsoAnalyticsTests.LiveMetricsTests testRecoveryAndPeak]' started.
+Test Case '-[PulsoAnalyticsTests.LiveMetricsTests testRecoveryAndPeak]' passed (0.001 seconds).
+Test Case '-[PulsoAnalyticsTests.LiveMetricsTests testScanAgainstBaseline]' started.
+Test Case '-[PulsoAnalyticsTests.LiveMetricsTests testScanAgainstBaseline]' passed (0.001 seconds).
+Test Case '-[PulsoAnalyticsTests.LiveMetricsTests testZoneGuard]' started.
+Test Case '-[PulsoAnalyticsTests.LiveMetricsTests testZoneGuard]' passed (0.000 seconds).
+Test Suite 'LiveMetricsTests' passed at 2026-10-30 22:58:24.990.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.011 (0.012) seconds
+Test Suite 'LiveSessionTests' started at 2026-10-30 22:58:24.990.
+Test Case '-[PulsoAnalyticsTests.LiveSessionTests testBreathingSessionSummary]' started.
+Test Case '-[PulsoAnalyticsTests.LiveSessionTests testBreathingSessionSummary]' passed (0.001 seconds).
+Test Case '-[PulsoAnalyticsTests.LiveSessionTests testEmptyAndSparsePeriods]' started.
+Test Case '-[PulsoAnalyticsTests.LiveSessionTests testEmptyAndSparsePeriods]' passed (0.000 seconds).
+Test Case '-[PulsoAnalyticsTests.LiveSessionTests testHistoryBinsKeepGapsAndStats]' started.
+Test Case '-[PulsoAnalyticsTests.LiveSessionTests testHistoryBinsKeepGapsAndStats]' passed (0.000 seconds).
+Test Case '-[PulsoAnalyticsTests.LiveSessionTests testMergePrefersFullerSourceAndRebinAlignsToLocalTime]' started.
+Test Case '-[PulsoAnalyticsTests.LiveSessionTests testMergePrefersFullerSourceAndRebinAlignsToLocalTime]' passed (0.000 seconds).
+Test Case '-[PulsoAnalyticsTests.LiveSessionTests testOrthostaticCoverageNamesThePhaseWithoutRR]' started.
+Test Case '-[PulsoAnalyticsTests.LiveSessionTests testOrthostaticCoverageNamesThePhaseWithoutRR]' passed (0.001 seconds).
+Test Case '-[PulsoAnalyticsTests.LiveSessionTests testRecoveryProblemSaysWhatWasMissing]' started.
+Test Case '-[PulsoAnalyticsTests.LiveSessionTests testRecoveryProblemSaysWhatWasMissing]' passed (0.000 seconds).
+Test Suite 'LiveSessionTests' passed at 2026-10-30 22:58:24.994.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.003 (0.003) seconds
+Test Suite 'MaxHRAnchorTests' started at 2026-10-30 22:58:24.994.
+Test Case '-[PulsoAnalyticsTests.MaxHRAnchorTests testOneSpuriousPeakDoesNotSetTheMax]' started.
+Test Case '-[PulsoAnalyticsTests.MaxHRAnchorTests testOneSpuriousPeakDoesNotSetTheMax]' passed (0.000 seconds).
+Test Suite 'MaxHRAnchorTests' passed at 2026-10-30 22:58:24.994.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'MetricsTruthTests' started at 2026-10-30 22:58:24.994.
+Test Case '-[PulsoAnalyticsTests.MetricsTruthTests testMetricsMatchTheKnownPhysiology]' started.
+Test Case '-[PulsoAnalyticsTests.MetricsTruthTests testMetricsMatchTheKnownPhysiology]' passed (135.781 seconds).
+Test Suite 'MetricsTruthTests' passed at 2026-10-30 23:00:40.775.
+	 Executed 1 test, with 0 failures (0 unexpected) in 135.781 (135.781) seconds
+Test Suite 'NightStatusTests' started at 2026-10-30 23:00:40.775.
+Test Case '-[PulsoAnalyticsTests.NightStatusTests testMorningCoveredButNoSleepIsNotDetected]' started.
+Test Case '-[PulsoAnalyticsTests.NightStatusTests testMorningCoveredButNoSleepIsNotDetected]' passed (0.002 seconds).
+Test Case '-[PulsoAnalyticsTests.NightStatusTests testMorningWithoutDownloadedNightIsAwaitingData]' started.
+Test Case '-[PulsoAnalyticsTests.NightStatusTests testMorningWithoutDownloadedNightIsAwaitingData]' passed (0.000 seconds).
+Test Case '-[PulsoAnalyticsTests.NightStatusTests testStillAwakeAfterMidnightIsYesterdaysCycle]' started.
+Test Case '-[PulsoAnalyticsTests.NightStatusTests testStillAwakeAfterMidnightIsYesterdaysCycle]' passed (0.000 seconds).
+Test Case '-[PulsoAnalyticsTests.NightStatusTests testTodaysCycleIsAlwaysOK]' started.
+Test Case '-[PulsoAnalyticsTests.NightStatusTests testTodaysCycleIsAlwaysOK]' passed (0.001 seconds).
+Test Case '-[PulsoAnalyticsTests.NightStatusTests testUsesTheUsualWakeTime]' started.
+Test Case '-[PulsoAnalyticsTests.NightStatusTests testUsesTheUsualWakeTime]' passed (0.000 seconds).
+Test Suite 'NightStatusTests' passed at 2026-10-30 23:00:40.783.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.003 (0.007) seconds
+Test Suite 'PhysioNetValidationTests' started at 2026-10-30 23:00:40.783.
+Test Case '-[PulsoECGTests.PhysioNetValidationTests testAtrialFibrillationDetectionOnRealECGs]' started.
+/Users/runner/work/pulso/pulso/Packages/PulsoKit/Tests/PulsoECGTests/PhysioNetValidationTests.swift:9: -[PulsoECGTests.PhysioNetValidationTests testAtrialFibrillationDetectionOnRealECGs] : Test skipped - PULSO_ECG_DIR not set
+Test Case '-[PulsoECGTests.PhysioNetValidationTests testAtrialFibrillationDetectionOnRealECGs]' skipped (0.003 seconds).
+Test Suite 'PhysioNetValidationTests' passed at 2026-10-30 23:00:40.786.
+	 Executed 1 test, with 1 test skipped and 0 failures (0 unexpected) in 0.003 (0.003) seconds
+Test Suite 'PlanAndNormsTests' started at 2026-10-30 23:00:40.786.
+Test Case '-[PulsoAnalyticsTests.PlanAndNormsTests testNormalHelpers]' started.
+Test Case '-[PulsoAnalyticsTests.PlanAndNormsTests testNormalHelpers]' passed (0.000 seconds).
+Test Case '-[PulsoAnalyticsTests.PlanAndNormsTests testPlanProgress]' started.
+Test Case '-[PulsoAnalyticsTests.PlanAndNormsTests testPlanProgress]' passed (0.002 seconds).
+Test Case '-[PulsoAnalyticsTests.PlanAndNormsTests testVO2Norms]' started.
+Test Case '-[PulsoAnalyticsTests.PlanAndNormsTests testVO2Norms]' passed (0.000 seconds).
+Test Case '-[PulsoAnalyticsTests.PlanAndNormsTests testWeekStartsOnMonday]' started.
+Test Case '-[PulsoAnalyticsTests.PlanAndNormsTests testWeekStartsOnMonday]' passed (0.000 seconds).
+Test Suite 'PlanAndNormsTests' passed at 2026-10-30 23:00:40.791.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.003 (0.005) seconds
+Test Suite 'ProtocolTests' started at 2026-10-30 23:00:40.791.
+Test Case '-[WhoopProtocolTests.ProtocolTests testChecksumStandardVectors]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testChecksumStandardVectors]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testClientHelloIsByteIdentical]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testClientHelloIsByteIdentical]' passed (0.001 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testClockPayloadLayout]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testClockPayloadLayout]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testCorruptFrameIsIgnoredByOffload]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testCorruptFrameIsIgnoredByOffload]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testDeframerReassemblesFragmentsAndSkipsGarbage]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testDeframerReassemblesFragmentsAndSkipsGarbage]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testForbiddenOpcodesCannotBeBuilt]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testForbiddenOpcodesCannotBeBuilt]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testGen5CommandsArePaddedToFourBytes]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testGen5CommandsArePaddedToFourBytes]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testGetDataRangeCarriesExplicitRequestByte]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testGetDataRangeCarriesExplicitRequestByte]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testHapticRepeatByteCountsPulsesAfterTheFirst]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testHapticRepeatByteCountsPulsesAfterTheFirst]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testHelloDecode]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testHelloDecode]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testNegativeSkinTemperatureIsNotMisreadAsHot]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testNegativeSkinTemperatureIsNotMisreadAsHot]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testOffloadSessionChunksAndCompletes]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testOffloadSessionChunksAndCompletes]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testPublishedReferenceFrameValidates]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testPublishedReferenceFrameValidates]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testRealHistoryEndGivesTokenAndAck]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testRealHistoryEndGivesTokenAndAck]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testRealtimeDecode]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testRealtimeDecode]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testRealV18RecordDecodes]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testRealV18RecordDecodes]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testSendHistoricalDataCarriesExplicitRequestByte]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testSendHistoricalDataCarriesExplicitRequestByte]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testStandardHeartRateMeasurement]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testStandardHeartRateMeasurement]' passed (0.000 seconds).
+Test Case '-[WhoopProtocolTests.ProtocolTests testUndecodedHistoryRecordsTravelWithTheirChunk]' started.
+Test Case '-[WhoopProtocolTests.ProtocolTests testUndecodedHistoryRecordsTravelWithTheirChunk]' passed (0.000 seconds).
+Test Suite 'ProtocolTests' passed at 2026-10-30 23:00:40.798.
+	 Executed 19 tests, with 0 failures (0 unexpected) in 0.005 (0.007) seconds
+Test Suite 'PulsoAgeTests' started at 2026-10-30 23:00:40.798.
+Test Case '-[PulsoAnalyticsTests.PulsoAgeTests testHealthyHabitsMakeYouYounger]' started.
+Test Case '-[PulsoAnalyticsTests.PulsoAgeTests testHealthyHabitsMakeYouYounger]' passed (0.073 seconds).
+Test Case '-[PulsoAnalyticsTests.PulsoAgeTests testImprovingLatelyRaisesPaceBelowOne]' started.
+Test Case '-[PulsoAnalyticsTests.PulsoAgeTests testImprovingLatelyRaisesPaceBelowOne]' passed (0.040 seconds).
+Test Case '-[PulsoAnalyticsTests.PulsoAgeTests testTooLittleDataGivesNoAge]' started.
+Test Case '-[PulsoAnalyticsTests.PulsoAgeTests testTooLittleDataGivesNoAge]' passed (0.031 seconds).
+Test Suite 'PulsoAgeTests' passed at 2026-10-30 23:00:40.942.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.144 (0.144) seconds
+Test Suite 'RealDataReplayTests' started at 2026-10-30 23:00:40.942.
+Test Case '-[PulsoAnalyticsTests.RealDataReplayTests testReplayRealBackup]' started.
+/Users/runner/work/pulso/pulso/Packages/PulsoKit/Tests/PulsoAnalyticsTests/RealDataReplayTests.swift:9: -[PulsoAnalyticsTests.RealDataReplayTests testReplayRealBackup] : Test skipped - PULSO_REAL_DB not set
+Test Case '-[PulsoAnalyticsTests.RealDataReplayTests testReplayRealBackup]' skipped (0.000 seconds).
+Test Suite 'RealDataReplayTests' passed at 2026-10-30 23:00:40.943.
+	 Executed 1 test, with 1 test skipped and 0 failures (0 unexpected) in 0.000 (0.001) seconds
+Test Suite 'RejectedWorkoutTests' started at 2026-10-30 23:00:40.943.
+Test Case '-[PulsoAnalyticsTests.RejectedWorkoutTests testADeletedAutoWorkoutStaysDeleted]' started.
+Test Case '-[PulsoAnalyticsTests.RejectedWorkoutTests testADeletedAutoWorkoutStaysDeleted]' passed (0.013 seconds).
+Test Case '-[PulsoAnalyticsTests.RejectedWorkoutTests testLowMotionWithHighHRIsNotCalledCycling]' started.
+Test Case '-[PulsoAnalyticsTests.RejectedWorkoutTests testLowMotionWithHighHRIsNotCalledCycling]' passed (0.000 seconds).
+Test Suite 'RejectedWorkoutTests' passed at 2026-10-30 23:00:40.958.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.013 (0.015) seconds
+Test Suite 'RelationByDateTests' started at 2026-10-30 23:00:40.958.
+Test Case '-[PulsoAnalyticsTests.RelationByDateTests testNextDayPairsByDateAcrossGaps]' started.
+Test Case '-[PulsoAnalyticsTests.RelationByDateTests testNextDayPairsByDateAcrossGaps]' passed (0.000 seconds).
+Test Suite 'RelationByDateTests' passed at 2026-10-30 23:00:40.958.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'SleepConfidenceNapTests' started at 2026-10-30 23:00:40.958.
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testAnEditedNapIsNeverDuplicatedByDetection]' started.
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testAnEditedNapIsNeverDuplicatedByDetection]' passed (83.646 seconds).
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testDecisionsMatchByOverlap]' started.
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testDecisionsMatchByOverlap]' passed (0.014 seconds).
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testLongDaytimeSleepCountsAsSleep]' started.
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testLongDaytimeSleepCountsAsSleep]' passed (166.273 seconds).
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testNightHasConfidenceWithReasons]' started.
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testNightHasConfidenceWithReasons]' passed (167.873 seconds).
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testNoDormiSuppressesTheDetectionForGood]' started.
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testNoDormiSuppressesTheDetectionForGood]' passed (85.969 seconds).
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testShortDaytimeSleepIsANapAndLowersTomorrowsNeed]' started.
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testShortDaytimeSleepIsANapAndLowersTomorrowsNeed]' passed (167.595 seconds).
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testSittingStillOnTheSofaIsNotANap]' started.
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testSittingStillOnTheSofaIsNotANap]' passed (85.754 seconds).
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testTheUsersAnswerWins]' started.
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testTheUsersAnswerWins]' passed (258.379 seconds).
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testTwoNapsTheSameDayBothCount]' started.
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testTwoNapsTheSameDayBothCount]' passed (81.457 seconds).
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testWithoutNightDataADaytimeRestNeverBecomesLastNight]' started.
+Test Case '-[PulsoAnalyticsTests.SleepConfidenceNapTests testWithoutNightDataADaytimeRestNeverBecomesLastNight]' passed (1.662 seconds).
+Test Suite 'SleepConfidenceNapTests' passed at 2026-10-30 23:18:59.585.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 1098.623 (1098.627) seconds
+Test Suite 'StepsTests' started at 2026-10-30 23:18:59.585.
+Test Case '-[PulsoAnalyticsTests.StepsTests testACounterResetIsNotSteps]' started.
+Test Case '-[PulsoAnalyticsTests.StepsTests testACounterResetIsNotSteps]' passed (0.001 seconds).
+Test Case '-[PulsoAnalyticsTests.StepsTests testStepsAcrossADataGapAreKept]' started.
+Test Case '-[PulsoAnalyticsTests.StepsTests testStepsAcrossADataGapAreKept]' passed (0.000 seconds).
+Test Suite 'StepsTests' passed at 2026-10-30 23:18:59.587.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds
+Test Suite 'StorageAndCycleTests' started at 2026-10-30 23:18:59.587.
+Test Case '-[PulsoAnalyticsTests.StorageAndCycleTests testHoursAfterMidnightBelongToYesterdayUntilYouSleep]' started.
+Test Case '-[PulsoAnalyticsTests.StorageAndCycleTests testHoursAfterMidnightBelongToYesterdayUntilYouSleep]' passed (93.029 seconds).
+Test Case '-[PulsoAnalyticsTests.StorageAndCycleTests testOldDatabaseIsMigratedWithoutLosingData]' started.
+Test Case '-[PulsoAnalyticsTests.StorageAndCycleTests testOldDatabaseIsMigratedWithoutLosingData]' passed (0.019 seconds).
+Test Case '-[PulsoAnalyticsTests.StorageAndCycleTests testRowsFromOlderVersionsStillDecode]' started.
+Test Case '-[PulsoAnalyticsTests.StorageAndCycleTests testRowsFromOlderVersionsStillDecode]' passed (0.003 seconds).
+Test Suite 'StorageAndCycleTests' passed at 2026-10-30 23:20:32.640.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 93.051 (93.052) seconds
+Test Suite 'StoreExtrasTests' started at 2026-10-30 23:20:32.640.
+Test Case '-[PulsoStoreTests.StoreExtrasTests testBackupIsAValidCopy]' started.
+Test Case '-[PulsoStoreTests.StoreExtrasTests testBackupIsAValidCopy]' passed (0.025 seconds).
+Test Case '-[PulsoStoreTests.StoreExtrasTests testBackupRotation]' started.
+Test Case '-[PulsoStoreTests.StoreExtrasTests testBackupRotation]' passed (0.010 seconds).
+Test Case '-[PulsoStoreTests.StoreExtrasTests testECGRoundTripAndListWithoutSamples]' started.
+Test Case '-[PulsoStoreTests.StoreExtrasTests testECGRoundTripAndListWithoutSamples]' passed (0.013 seconds).
+Test Case '-[PulsoStoreTests.StoreExtrasTests testLightBackupKeepsEverythingButSeconds]' started.
+Test Case '-[PulsoStoreTests.StoreExtrasTests testLightBackupKeepsEverythingButSeconds]' passed (0.024 seconds).
+Test Case '-[PulsoStoreTests.StoreExtrasTests testOldWorkoutJSONStillDecodes]' started.
+Test Case '-[PulsoStoreTests.StoreExtrasTests testOldWorkoutJSONStillDecodes]' passed (0.000 seconds).
+Test Case '-[PulsoStoreTests.StoreExtrasTests testProfileFromOlderVersionKeepsValues]' started.
+Test Case '-[PulsoStoreTests.StoreExtrasTests testProfileFromOlderVersionKeepsValues]' passed (0.000 seconds).
+Test Case '-[PulsoStoreTests.StoreExtrasTests testReDownloadNeverErasesStoredValues]' started.
+Test Case '-[PulsoStoreTests.StoreExtrasTests testReDownloadNeverErasesStoredValues]' passed (0.006 seconds).
+Test Case '-[PulsoStoreTests.StoreExtrasTests testWorkoutExternalIDsAndLookup]' started.
+Test Case '-[PulsoStoreTests.StoreExtrasTests testWorkoutExternalIDsAndLookup]' passed (0.004 seconds).
+Test Suite 'StoreExtrasTests' passed at 2026-10-30 23:20:32.724.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.083 (0.085) seconds
+Test Suite 'StoreTests' started at 2026-10-30 23:20:32.724.
+Test Case '-[PulsoStoreTests.StoreTests testDaysSleepsWorkoutsJournalKV]' started.
+Test Case '-[PulsoStoreTests.StoreTests testDaysSleepsWorkoutsJournalKV]' passed (0.006 seconds).
+Test Case '-[PulsoStoreTests.StoreTests testSamplesRoundTripAndDedup]' started.
+Test Case '-[PulsoStoreTests.StoreTests testSamplesRoundTripAndDedup]' passed (0.005 seconds).
+Test Suite 'StoreTests' passed at 2026-10-30 23:20:32.736.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.011 (0.012) seconds
+Test Suite 'StressTests' started at 2026-10-30 23:20:32.736.
+Test Case '-[PulsoAnalyticsTests.StressTests testAnOrdinaryDayReadsLowNotPermanentlyStressed]' started.
+Test Case '-[PulsoAnalyticsTests.StressTests testAnOrdinaryDayReadsLowNotPermanentlyStressed]' passed (0.000 seconds).
+Test Case '-[PulsoAnalyticsTests.StressTests testARealStressBoutStandsOut]' started.
+Test Case '-[PulsoAnalyticsTests.StressTests testARealStressBoutStandsOut]' passed (0.000 seconds).
+Test Suite 'StressTests' passed at 2026-10-30 23:20:32.737.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'TrendExplorerTests' started at 2026-10-30 23:20:32.737.
+Test Case '-[PulsoAnalyticsTests.TrendExplorerTests testImportedDaysDoNotCountAsWorn]' started.
+Test Case '-[PulsoAnalyticsTests.TrendExplorerTests testImportedDaysDoNotCountAsWorn]' passed (0.000 seconds).
+Test Case '-[PulsoAnalyticsTests.TrendExplorerTests testMissingDaysStayMissing]' started.
+Test Case '-[PulsoAnalyticsTests.TrendExplorerTests testMissingDaysStayMissing]' passed (0.000 seconds).
+Test Case '-[PulsoAnalyticsTests.TrendExplorerTests testMonthSummarySeparatesImportedAndMissing]' started.
+Test Case '-[PulsoAnalyticsTests.TrendExplorerTests testMonthSummarySeparatesImportedAndMissing]' passed (0.000 seconds).
+Test Case '-[PulsoAnalyticsTests.TrendExplorerTests testRangesAndYearBuckets]' started.
+Test Case '-[PulsoAnalyticsTests.TrendExplorerTests testRangesAndYearBuckets]' passed (0.013 seconds).
+Test Case '-[PulsoAnalyticsTests.TrendExplorerTests testRecentChangeFlagsOnlyBeyondNormalSwing]' started.
+Test Case '-[PulsoAnalyticsTests.TrendExplorerTests testRecentChangeFlagsOnlyBeyondNormalSwing]' passed (0.002 seconds).
+Test Case '-[PulsoAnalyticsTests.TrendExplorerTests testStandardized]' started.
+Test Case '-[PulsoAnalyticsTests.TrendExplorerTests testStandardized]' passed (0.000 seconds).
+Test Case '-[PulsoAnalyticsTests.TrendExplorerTests testVO2RecordIsLabelledEstimated]' started.
+Test Case '-[PulsoAnalyticsTests.TrendExplorerTests testVO2RecordIsLabelledEstimated]' passed (0.000 seconds).
+Test Suite 'TrendExplorerTests' passed at 2026-10-30 23:20:32.755.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.017 (0.018) seconds
+Test Suite 'TrendSeriesTests' started at 2026-10-30 23:20:32.755.
+Test Case '-[PulsoAnalyticsTests.TrendSeriesTests testEmptyHistory]' started.
+Test Case '-[PulsoAnalyticsTests.TrendSeriesTests testEmptyHistory]' passed (0.001 seconds).
+Test Case '-[PulsoAnalyticsTests.TrendSeriesTests testHalfYearIsWeekly]' started.
+Test Case '-[PulsoAnalyticsTests.TrendSeriesTests testHalfYearIsWeekly]' passed (0.004 seconds).
+Test Case '-[PulsoAnalyticsTests.TrendSeriesTests testTotalsAreWeekly]' started.
+Test Case '-[PulsoAnalyticsTests.TrendSeriesTests testTotalsAreWeekly]' passed (0.004 seconds).
+Test Case '-[PulsoAnalyticsTests.TrendSeriesTests testWeekWindowAverageAndPrevious]' started.
+Test Case '-[PulsoAnalyticsTests.TrendSeriesTests testWeekWindowAverageAndPrevious]' passed (0.000 seconds).
+Test Suite 'TrendSeriesTests' passed at 2026-10-30 23:20:32.765.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.010 (0.010) seconds
+Test Suite 'PulsoKitPackageTests.xctest' passed at 2026-10-30 23:20:32.765.
+	 Executed 187 tests, with 4 tests skipped and 0 failures (0 unexpected) in 2030.657 (2030.703) seconds
+Test Suite 'All tests' passed at 2026-10-30 23:20:32.765.
+	 Executed 187 tests, with 4 tests skipped and 0 failures (0 unexpected) in 2030.657 (2030.709) seconds
+demo 14 days: 126.1 s
+DEMO 2026-10-04 rec=- sleep=-1 need=-1 debt=-1 strain=-1.0
+DEMO 2026-10-05 rec=- sleep=418 need=480 debt=62 strain=13.3
+DEMO 2026-10-06 rec=- sleep=463 need=510 debt=58 strain=12.5
+DEMO 2026-10-07 rec=- sleep=414 need=505 debt=103 strain=12.9
+DEMO 2026-10-08 rec=- sleep=347 need=511 debt=193 strain=13.9
+DEMO 2026-10-09 rec=62 sleep=452 need=525 debt=136 strain=11.8
+DEMO 2026-10-10 rec=12 sleep=349 need=521 debt=204 strain=12.4
+DEMO 2026-10-11 rec=74 sleep=467 need=527 debt=122 strain=5.3
+DEMO 2026-10-12 rec=62 sleep=439 need=514 debt=102 strain=12.3
+DEMO 2026-10-13 rec=63 sleep=425 need=521 debt=113 strain=11.7
+DEMO 2026-10-14 rec=77 sleep=439 need=511 debt=103 strain=13.9
+DEMO 2026-10-15 rec=53 sleep=453 need=518 debt=90 strain=13.0
+DEMO 2026-10-16 rec=59 sleep=422 need=515 debt=112 strain=12.2
+DEMO 2026-10-17 rec=8 sleep=380 need=512 debt=163 strain=13.9
+DEMO 2026-10-18 rec=72 sleep=424 need=524 debt=149 strain=6.0
+DEMO 2026-10-19 rec=20 sleep=350 need=516 debt=205 strain=12.3
+DEMO 2026-10-20 rec=49 sleep=429 need=527 debt=160 strain=14.6
+DEMO 2026-10-21 rec=66 sleep=456 need=534 debt=118 strain=9.2
+DEMO 2026-10-22 rec=76 sleep=475 need=518 debt=64 strain=11.8
+DEMO 2026-10-23 rec=76 sleep=408 need=509 debt=109 strain=13.6
+DEMO 2026-10-24 rec=8 sleep=440 need=515 debt=105 strain=5.8
+DEMO 2026-10-25 rec=10 sleep=429 need=504 debt=104 strain=4.9
+INTEL [Hoy] Coherencia fisiológica: 5.0 /100 · Combinación muy poco habitual para ti: destaca temperatura (más alta de lo normal, 5,7 σ). Pasa con enfermedad, alcohol, viajes o mucho estrés.
+INTEL [Hoy] Deuda fisiológica: 2.4  · Llevas varios días con tus constantes fuera de lo habitual: tu cuerpo está acumulando carga. Subiendo esta semana.
+INTEL [Hoy] Recuperación prevista para mañana: 52.0 % · Si duermes tus 7,1 h habituales, mañana rondarías el 52 % (entre 32 y 71). Pesa sobre todo: sin alcohol (+10), deuda fisiológica (-9).
+INTEL [Hoy] Sorpresa fisiológica: – σ · Datos insuficientes: un modelo validado.
+INTEL [Hoy] Coste cardíaco del día: 20380.0 latidos · Ayer tu corazón hizo 20,380 latidos de más fuera de los entrenos, lo normal para ti. Hoy, en lo que va de día: 19,478 (sin comparar: el día no ha terminado). Estrés, calor, cafeína o enfermedad lo suben. No mide calorías.
+INTEL [Respuesta a la carga] Velocidad de recuperación: 0.0 noches · Tras un día exigente, tus constantes vuelven a lo normal en la primera noche.
+INTEL [Respuesta a la carga] Coste de recuperación: 0.0 σ·noche · Los días exigentes apenas te desajustan.
+INTEL [Respuesta a la carga] Consistencia de recuperación: 100.0 /100 · En carrera de intensidad moderada, tu recuperación es muy predecible.
+INTEL [Respuesta a la carga] Recuperación del pulso a 60 s: – lpm · Datos insuficientes: 3 entrenos intensos con el pulso medido justo al terminar.
+INTEL [Respuesta a la carga] Adaptación a la carga: 0.0 σ·noche / 30 d · Tu respuesta a cargas parecidas se mantiene estable.
+INTEL [Respuesta a la carga] Techo de carga: –  · Datos insuficientes: 20 días exigentes medidos (unos 2–3 meses).
+INTEL [Respuesta a la carga] Desfase de adaptación: – semanas · Datos insuficientes: 12 semanas con datos (llevas 4).
+INTEL [Sueño y ritmo] Regularidad del sueño: 84.0 /100 · Horarios de sueño muy regulares.
+INTEL [Sueño y ritmo] Jet lag social: 0.2 h · Duermes a horas parecidas entre semana y el fin de semana.
+INTEL [Sueño y ritmo] Índice de disrupción del ritmo: 14.0 /100 · Ritmo estable. Mide la irregularidad observable, no tu reloj biológico interno.
+INTEL [Sueño y ritmo] Mínimo de pulso nocturno: 34.0 % de la noche · Tu pulso toca fondo en la primera mitad de la noche: te recuperas pronto.
+INTEL [Sueño y ritmo] Coste de cada despertar: 0.7 pts · No se ve una relación clara entre tus despertares y tu recuperación.
+INTEL [Sueño y ritmo] Sensibilidad al horario: -7.6 pts/h · Tu recuperación no parece depender de a qué hora te acuestas, sino de cuánto duermes.
+INTEL [Hábitos y predicción] Impacto de tus hábitos: 1.0 con efecto claro · Alcohol se asocia a -46 puntos de recuperación al día siguiente (IC 90 % -56 a -35; 6 días con, 11 sin), VFC -29 %; tardas 2,0 noches en normalizarte.
+INTEL [Hábitos y predicción] Predictibilidad: –  · Datos insuficientes: 26 pares de días para validar.
+TRUTH 2026-10-05 cama=458/473 dormido=418 FCR=51.9/53.8 VFC=109 rec=- esf=13.3 
+TRUTH 2026-10-06 cama=513/528 dormido=463 FCR=50.1/51.5 VFC=106 rec=- esf=12.5 
+TRUTH 2026-10-07 cama=483/500 dormido=414 FCR=51.5/53.3 VFC=91 rec=- esf=12.9 
+TRUTH 2026-10-08 cama=387/401 dormido=347 FCR=56.1/57.9 VFC=76 rec=- esf=13.9 alcohol 
+TRUTH 2026-10-09 cama=502/517 dormido=452 FCR=51.3/53.1 VFC=98 rec=62 esf=11.8 
+TRUTH 2026-10-10 cama=408/423 dormido=349 FCR=53.6/55.5 VFC=70 rec=12 esf=12.4 alcohol 
+TRUTH 2026-10-11 cama=518/533 dormido=467 FCR=51.2/52.3 VFC=112 rec=74 esf=5.3 
+TRUTH 2026-10-12 cama=505/520 dormido=439 FCR=51.5/53.3 VFC=100 rec=62 esf=12.3 
+TRUTH 2026-10-13 cama=461/476 dormido=425 FCR=49.9/51.7 VFC=97 rec=63 esf=11.7 
+TRUTH 2026-10-14 cama=503/519 dormido=439 FCR=51.9/54.1 VFC=115 rec=77 esf=13.9 
+TRUTH 2026-10-15 cama=507/522 dormido=453 FCR=51.8/53.6 VFC=93 rec=53 esf=13.0 
+TRUTH 2026-10-16 cama=469/484 dormido=422 FCR=50.6/52.4 VFC=96 rec=59 esf=12.2 
+TRUTH 2026-10-17 cama=423/438 dormido=380 FCR=56.5/58.3 VFC=68 rec=8 esf=13.9 alcohol 
+TRUTH 2026-10-18 cama=468/483 dormido=424 FCR=50.8/52.6 VFC=108 rec=72 esf=6.0 
+TRUTH 2026-10-19 cama=387/403 dormido=350 FCR=55.2/57.3 VFC=78 rec=20 esf=12.3 alcohol 
+TRUTH 2026-10-20 cama=492/508 dormido=429 FCR=53.4/55.5 VFC=95 rec=49 esf=14.6 
+TRUTH 2026-10-21 cama=523/538 dormido=456 FCR=52.6/54.0 VFC=108 rec=66 esf=9.2 
+TRUTH 2026-10-22 cama=519/533 dormido=475 FCR=49.7/50.7 VFC=107 rec=76 esf=11.8 
+TRUTH 2026-10-23 cama=469/484 dormido=408 FCR=48.5/50.5 VFC=106 rec=76 esf=13.6 
+TRUTH 2026-10-24 cama=480/494 dormido=440 FCR=57.0/58.8 VFC=63 rec=8 esf=5.8 ENFERMO
+TRUTH 2026-10-25 cama=498/513 dormido=429 FCR=58.2/60.0 VFC=64 rec=10 esf=4.9 ENFERMO
+TRUTH error medio: cama 15.1 min, FC reposo 0.3 lpm
+TRUTH recuperación con alcohol [8, 12, 20] sin [62, 76, 66, 76, 72, 59, 62, 63, 53, 74, 77, 49]
+TRUTH esfuerzo duro 13.9 fácil 12.0 descanso 5.7
+TRUTH desviación de temperatura en los días de enfermedad [0.5949716567993164, 0.4954495429992676]
+CONF clean night: medium 73.0 ["Muchos minutos estaban a medio camino entre dos fases (pulso y VFC sin un patrón claro)."]
+CONF poor night: low 33.0 ["La pulsera no leyó bien el 30 % de la noche (floja, mal colocada o quitada).", "Muchos minutos estaban a medio camino entre dos fases (pulso y VFC sin un patrón claro)."]
+◇ Test run started.
+↳ Testing Library Version: 1501
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

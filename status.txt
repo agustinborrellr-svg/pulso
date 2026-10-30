@@ -1,0 +1,8 @@
+commit=5dfd624217553bbf64a000426141400a43802b58
+run=https://github.com/agustinborrellr-svg/pulso/actions/runs/41140158206
+date=2026-10-30T23:23:24Z
+tests=success
+build=success
+package=success
+ipa_bytes=4808310
+ipa_sha256=ecddf531fa6d592ca2882b5f28848ebe6ecf677f2968e8dc14d33cec079d6c5c
