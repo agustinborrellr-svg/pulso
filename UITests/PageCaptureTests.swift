@@ -47,10 +47,11 @@ final class PageCaptureTests: XCTestCase {
                 let name = String(format: "%02d-%@-%02d.png", n + 1, screen, step + 1)
                 try png.write(to: outDir.appendingPathComponent(name))
                 previous = png
-                // A slow drag with a hold at the end scrolls a predictable amount, without momentum.
+                // A slow drag along the left margin (outside the cards and charts) with a hold at the end scrolls a
+                // predictable amount, without momentum.
                 let window = app.windows.firstMatch
-                let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72))
-                let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.32))
+                let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.72))
+                let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.32))
                 start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.4)
                 sleep(1)
             }
