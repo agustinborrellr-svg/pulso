@@ -198,6 +198,7 @@ struct ImpactCard: View {
 struct AnalysisToolsLinks: View {
     var body: some View {
         VStack(spacing: 10) {
+            link("Comportamientos", "Qué ayuda y qué afecta a tu recuperación", "chart.bar.xaxis") { BehaviorsView() }
             link("Explorador de relaciones", "Cruza dos métricas: ¿duermes mejor cuando…?", "point.3.connected.trianglepath.dotted") { RelationExplorerView() }
             link("Calendario, rachas y récords", "Tus días en color y tus mejores marcas", "calendar") { CalendarRecordsView() }
             link("Informe mensual", "Resumen del mes en PDF para guardar o compartir", "doc.richtext") { MonthlyReportView() }

@@ -5,7 +5,7 @@ import PulsoAnalytics
 
 /// What each analysis claims has to match what it actually computed.
 final class AnalysisHonestyTests: XCTestCase {
-    let base = IntelligenceTests()
+    let base = IntelData()
 
     func day(_ i: Int) -> String { base.day(i) }
 

@@ -10,25 +10,9 @@ final class IntelligenceTests: XCTestCase {
         mutating func normal() -> Double { let u = max(next(), 1e-12), v = next(); return (-2 * log(u)).squareRoot() * cos(2 * .pi * v) }
     }
 
-    func day(_ i: Int) -> String { LoadResponse.shift("2026-08-01", i) }
+    func day(_ i: Int) -> String { IntelData().day(i) }
 
-    /// `n` normal nights with realistic noise and correlations (low HRV goes with higher RHR).
-    func normalDays(_ n: Int, seed: UInt64 = 1) -> [DaySummary] {
-        var r = LCG(s: seed)
-        return (0..<n).map { i in
-            var d = DaySummary(day: day(i))
-            let common = r.normal()
-            d.hrv = exp(log(65) + 0.12 * (-0.6 * common + 0.8 * r.normal()))
-            d.rhr = 54 + 1.5 * (0.6 * common + 0.8 * r.normal())
-            d.respRate = 14.5 + 0.3 * r.normal()
-            d.skinTemp = 34.4 + 0.1 * r.normal()
-            d.recovery = 60 + 12 * r.normal()
-            d.strain = 10 + 2 * r.normal()
-            d.sleepMinutes = 440 + 30 * r.normal()
-            d.disturbances = Int(3 + 2 * r.next())
-            return d
-        }
-    }
+    func normalDays(_ n: Int, seed: UInt64 = 1) -> [DaySummary] { IntelData().normalDays(n, seed: seed) }
 
     // MARK: Toolkit
 
@@ -316,6 +300,31 @@ final class IntelligenceTests: XCTestCase {
                 print("INTEL [\(s.title)] \(m.name): \(m.value.map { String(format: "%.1f", $0) } ?? "–") \(m.unit) · \(m.summary)")
                 if m.isAvailable { XCTAssertFalse(m.summary.isEmpty) }
             }
+        }
+    }
+}
+
+/// Shared synthetic data (a plain struct: on Linux an XCTestCase can't be created just to borrow its helpers).
+struct IntelData {
+    typealias LCG = IntelligenceTests.LCG
+
+    func day(_ i: Int) -> String { LoadResponse.shift("2026-08-01", i) }
+
+    /// `n` normal nights with realistic noise and correlations (low HRV goes with higher RHR).
+    func normalDays(_ n: Int, seed: UInt64 = 1) -> [DaySummary] {
+        var r = LCG(s: seed)
+        return (0..<n).map { i in
+            var d = DaySummary(day: day(i))
+            let common = r.normal()
+            d.hrv = exp(log(65) + 0.12 * (-0.6 * common + 0.8 * r.normal()))
+            d.rhr = 54 + 1.5 * (0.6 * common + 0.8 * r.normal())
+            d.respRate = 14.5 + 0.3 * r.normal()
+            d.skinTemp = 34.4 + 0.1 * r.normal()
+            d.recovery = 60 + 12 * r.normal()
+            d.strain = 10 + 2 * r.normal()
+            d.sleepMinutes = 440 + 30 * r.normal()
+            d.disturbances = Int(3 + 2 * r.next())
+            return d
         }
     }
 }

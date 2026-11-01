@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import UIKit
 import PulsoFeatures
 
 /// Local notifications: delivers / schedules the alert engine's output, the alarm categories with
@@ -105,10 +106,12 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
 
     /// Immediate notification (alarm banners, confirmations).
     func now(_ title: String, _ body: String, id: String = UUID().uuidString, category: String = Category.alert,
-             timeSensitive: Bool = false, sound: Bool = true) {
+             timeSensitive: Bool = false, sound: Bool = true, url: URL? = nil) {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
+        // Tapping it opens this address (e.g. a Shortcut, which iOS only runs with the app in front).
+        if let url { content.userInfo["openURL"] = url.absoluteString }
         content.categoryIdentifier = category
         content.interruptionLevel = timeSensitive ? .timeSensitive : .active
         if sound { content.sound = .default }
@@ -161,7 +164,9 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         let action = response.actionIdentifier
         let category = response.notification.request.content.categoryIdentifier
         let id = response.notification.request.identifier
+        let open = (response.notification.request.content.userInfo["openURL"] as? String).flatMap(URL.init(string:))
         DispatchQueue.main.async {
+            if let open, action == UNNotificationDefaultActionIdentifier { UIApplication.shared.open(open) }
             self.onAction?(action, category, id)
             completionHandler()
         }

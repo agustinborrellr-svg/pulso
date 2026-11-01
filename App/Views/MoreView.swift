@@ -64,24 +64,13 @@ struct MoreView: View {
                     } label: {
                         Label("Electrocardiograma", systemImage: "waveform.path.ecg.rectangle")
                     }
-                    Picker(selection: Binding(get: { model.settings.doubleTap }, set: { v in
-                        var s = model.settings
-                        s.doubleTap = v
-                        model.saveSettings(s)
-                    })) {
-                        ForEach(DoubleTapAction.allCases, id: \.self) { Text($0.label).tag($0) }
+                    NavigationLink {
+                        DoubleTapView()
                     } label: {
-                        Label("Doble toque en la pulsera", systemImage: "hand.tap")
-                    }
-                    if model.settings.doubleTap == .toggleWorkout {
-                        Picker(selection: Binding(get: { model.settings.quickSport }, set: { v in
-                            var s = model.settings
-                            s.quickSport = v
-                            model.saveSettings(s)
-                        })) {
-                            ForEach(SportCatalog.names, id: \.self) { Text($0).tag($0) }
+                        LabeledContent {
+                            Text(model.settings.doubleTap.label).lineLimit(1)
                         } label: {
-                            Label("Deporte del doble toque", systemImage: "figure.run")
+                            Label("Doble toque en la pulsera", systemImage: "hand.tap")
                         }
                     }
                 } header: {

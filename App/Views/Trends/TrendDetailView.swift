@@ -7,7 +7,12 @@ import PulsoAnalytics
 struct TrendDetailView: View {
     @EnvironmentObject var model: AppModel
     @State var metric: TrendMetric
-    @State private var period: TrendPeriod = .week
+    @State private var period: TrendPeriod
+
+    init(metric: TrendMetric, initialPeriod: TrendPeriod = .week) {
+        _metric = State(initialValue: metric)
+        _period = State(initialValue: initialPeriod)
+    }
     @State private var offset = 0
 
     private var today: String { model.currentDayKey }
@@ -58,6 +63,11 @@ struct TrendDetailView: View {
             MetricChart(metric: metric, points: w.points, period: period, highlightLast: offset == 0)
                 .frame(height: 280)
                 .padding(.top, 6)
+
+            if period == .halfYear {
+                PeriodAveragesChart(metric: metric, days: model.days.filter { $0.day >= w.from && $0.day <= w.to })
+                    .padding(.top, 8)
+            }
 
             if metric.aggregate == .total {
                 Label("El tiempo en zonas sale de tu pulso a lo largo del día y de tus entrenos.", systemImage: "info.circle")

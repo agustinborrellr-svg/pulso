@@ -203,6 +203,14 @@ struct ECGRecordView: View {
 struct ECGDetailView: View {
     let recording: ECGRecording
 
+    private func check(_ text: String, _ ok: Bool) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: ok ? "checkmark.square.fill" : "exclamationmark.square.fill")
+                .foregroundStyle(ok ? Theme.green : Theme.yellow)
+            Text(text).font(.subheadline).foregroundStyle(ok ? .white : Theme.yellow)
+        }
+    }
+
     var body: some View {
         ScrollView { ECGDetailContent(recording: recording) }
             .background(PulsoBackground())
@@ -248,6 +256,16 @@ struct ECGDetailContent: View {
                         }
                     }
                     Text(a.rhythm.explanation).font(.footnote).foregroundStyle(Theme.secondary)
+                    if a.rhythm != .inconclusive {
+                        VStack(alignment: .leading, spacing: 10) {
+                            check("Fibrilación auricular no detectada", a.rhythm != .irregular)
+                            check("Frecuencia alta no detectada", a.rhythm != .highHeartRate)
+                            check("Frecuencia baja no detectada", a.rhythm != .lowHeartRate)
+                            check("Ritmo sinusal", a.rhythm == .sinus)
+                        }
+                        .padding(12)
+                        .background(Color.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 10))
+                    }
                 }
             }
             if let f = full {

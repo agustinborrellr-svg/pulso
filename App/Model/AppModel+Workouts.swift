@@ -45,6 +45,14 @@ extension AppModel {
             markLap()
         case .breathing:
             startBreathingGuide()
+        case .speakStatus:
+            speakStatus()
+        case .scan:
+            quickScan()
+        case .webhook:
+            fireTapWebhook()
+        case .shortcut:
+            runTapShortcut()
         case .ignored:
             break
         }

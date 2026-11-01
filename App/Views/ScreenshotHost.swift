@@ -12,6 +12,7 @@ enum ShotScreen: String, Identifiable {
     case recovery, strain, stress, trendRecovery, trendStrain, trendHRV, device, pairing, deviceAdvanced
     case sleepQuestion, vo2, plan, addActivity
     case scan, coherence, poincare, orthostatic, explorer, calendar, monthly, storage, monitor
+    case behaviors, cycle, pressure, doubleTap, trendHRV6M
 
     var id: String { rawValue }
 
@@ -47,6 +48,13 @@ extension AppModel {
             refreshAlarmSchedule()
         }
         battery = 72
+        if cycleStarts.isEmpty { addCycleStart(DayKey.shift(DayKey.string(Date()), days: -19)) }
+        if bloodPressure.isEmpty {
+            let now = Int(Date().timeIntervalSince1970)
+            for (i, v) in [(118, 78), (122, 80), (116, 76), (125, 82), (130, 84), (121, 79), (119, 77)].enumerated() {
+                addBloodPressure(BloodPressureReading(ts: now - (6 - i) * 86400 - 3600, systolic: v.0, diastolic: v.1, pulse: 64))
+            }
+        }
         charging = false
         let finish = {
             try? Data("ok".utf8).write(to: AppMode.readyFlagURL)
@@ -155,6 +163,11 @@ struct ShotDestination: View {
                 case .calendar: CalendarRecordsView()
                 case .monthly: MonthlyReportView()
                 case .storage: StorageView()
+                case .behaviors: BehaviorsView()
+                case .cycle: CycleCalendarView()
+                case .pressure: BloodPressureView()
+                case .doubleTap: DoubleTapView()
+                case .trendHRV6M: TrendDetailView(metric: .hrv, initialPeriod: .halfYear)
                 case .monitor: MonitorView()
                 case .intelDetail:
                     if let m = model.intelligence?.metric("forecast") { MetricDetailView(metric: m) } else { Text("Calculando…") }

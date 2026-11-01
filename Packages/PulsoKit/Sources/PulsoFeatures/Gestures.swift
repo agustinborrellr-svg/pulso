@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// What a double tap on the strap does when no alarm is ringing.
 public enum DoubleTapAction: String, Codable, CaseIterable, Sendable {
@@ -11,6 +14,14 @@ public enum DoubleTapAction: String, Codable, CaseIterable, Sendable {
     case lap
     /// One minute of paced breathing guided by strap vibrations.
     case breathing
+    /// Says your recovery, strain and pulse out loud (headphones or speaker).
+    case speakStatus
+    /// 60-second still check; the result is spoken and notified.
+    case scan
+    /// Calls a web address of your choice: Home Assistant (open a door, switch a light), IFTTT, a Telegram/ntfy alert…
+    case webhook
+    /// Shows a notification that runs one of your Shortcuts when you tap it (iOS only runs them in the foreground).
+    case shortcut
 
     public var label: String {
         switch self {
@@ -19,6 +30,10 @@ public enum DoubleTapAction: String, Codable, CaseIterable, Sendable {
         case .toggleWorkout: return "Empezar / terminar entreno"
         case .lap: return "Marcar vuelta"
         case .breathing: return "Respiración guiada con vibración"
+        case .speakStatus: return "Decirme cómo estoy (voz)"
+        case .scan: return "Escanear 60 s"
+        case .webhook: return "Llamar a una dirección web (casa, avisos…)"
+        case .shortcut: return "Lanzar un Atajo"
         }
     }
 }
@@ -32,6 +47,10 @@ public enum GestureRouter {
         case stopWorkout
         case lap
         case breathing
+        case speakStatus
+        case scan
+        case webhook
+        case shortcut
         case ignored
     }
 
@@ -44,7 +63,37 @@ public enum GestureRouter {
         case .toggleWorkout: return workoutActive ? .stopWorkout : .startWorkout
         case .lap: return workoutActive ? .lap : .marker
         case .breathing: return .breathing
+        case .speakStatus: return .speakStatus
+        case .scan: return .scan
+        case .webhook: return .webhook
+        case .shortcut: return .shortcut
         }
+    }
+}
+
+/// The web call a double tap makes. Only http(s); a JSON body says what happened.
+public enum DoubleTapWebhook {
+    public enum Method: String, Codable, CaseIterable, Sendable { case post = "POST", get = "GET" }
+
+    public static func request(url: String, method: Method, heartRate: Int?, at date: Date) -> URLRequest? {
+        guard let u = URL(string: url.trimmingCharacters(in: .whitespacesAndNewlines)),
+              let scheme = u.scheme?.lowercased(), scheme == "https" || scheme == "http", u.host != nil else { return nil }
+        var r = URLRequest(url: u, timeoutInterval: 10)
+        r.httpMethod = method.rawValue
+        if method == .post {
+            var body: [String: Any] = ["event": "double_tap", "source": "pulso", "ts": Int(date.timeIntervalSince1970)]
+            if let heartRate { body["heart_rate"] = heartRate }
+            r.httpBody = try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
+            r.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        return r
+    }
+
+    /// The Shortcuts app URL that runs a shortcut by name.
+    public static func shortcutURL(name: String) -> URL? {
+        let n = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !n.isEmpty, let q = n.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else { return nil }
+        return URL(string: "shortcuts://run-shortcut?name=\(q)")
     }
 }
 
@@ -67,6 +116,11 @@ public struct FeatureSettings: Codable, Equatable, Sendable {
     public var healthWorkouts: Bool
     /// Show the "Laboratorio" tools (raw capture, haptic tester).
     public var labEnabled: Bool
+    /// Double tap → web call.
+    public var tapURL: String
+    public var tapMethod: DoubleTapWebhook.Method
+    /// Double tap → Shortcuts name.
+    public var tapShortcut: String
 
     public init() {
         doubleTap = .marker
@@ -78,10 +132,14 @@ public struct FeatureSettings: Codable, Equatable, Sendable {
         healthImport = true
         healthWorkouts = true
         labEnabled = false
+        tapURL = ""
+        tapMethod = .post
+        tapShortcut = ""
     }
 
     private enum CodingKeys: String, CodingKey {
         case doubleTap, quickSport, hrBroadcast, voiceCues, stravaAutoUpload, stravaImport, healthImport, healthWorkouts, labEnabled
+        case tapURL, tapMethod, tapShortcut
     }
 
     public init(from decoder: Decoder) throws {
@@ -96,6 +154,9 @@ public struct FeatureSettings: Codable, Equatable, Sendable {
         healthImport = try c.decodeIfPresent(Bool.self, forKey: .healthImport) ?? d.healthImport
         healthWorkouts = try c.decodeIfPresent(Bool.self, forKey: .healthWorkouts) ?? d.healthWorkouts
         labEnabled = try c.decodeIfPresent(Bool.self, forKey: .labEnabled) ?? d.labEnabled
+        tapURL = try c.decodeIfPresent(String.self, forKey: .tapURL) ?? d.tapURL
+        tapMethod = try c.decodeIfPresent(DoubleTapWebhook.Method.self, forKey: .tapMethod) ?? d.tapMethod
+        tapShortcut = try c.decodeIfPresent(String.self, forKey: .tapShortcut) ?? d.tapShortcut
     }
 }
 

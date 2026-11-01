@@ -32,6 +32,24 @@ struct HealthView: View {
                         ActionRow(icon: "lungs.fill", title: "Tu VO₂ máx y tu nivel cardiovascular")
                     }
                     .buttonStyle(.plain)
+                    NavigationLink { BehaviorsView() } label: {
+                        ActionRow(icon: "chart.bar.xaxis", title: "Qué ayuda y qué afecta a tu recuperación")
+                    }
+                    .buttonStyle(.plain)
+                    NavigationLink { BloodPressureView() } label: {
+                        ActionRow(icon: "gauge.with.needle", title: "Tensión arterial")
+                    }
+                    .buttonStyle(.plain)
+                    NavigationLink { ECGListView() } label: {
+                        ActionRow(icon: "waveform.path.ecg.rectangle", title: "Electrocardiograma")
+                    }
+                    .buttonStyle(.plain)
+                    if model.profile.cycleTracking {
+                        NavigationLink { CycleCalendarView() } label: {
+                            ActionRow(icon: "calendar.circle", title: "Ciclo menstrual")
+                        }
+                        .buttonStyle(.plain)
+                    }
                     ExplainerCard(title: "¿Qué es la Edad Pulso?",
                                   text: "Tu edad real ajustada por los hábitos que más se asocian a vivir más y mejor: dormir lo suficiente y con horario regular, moverte a diario, acumular tiempo en zonas de esfuerzo y tener buen VO₂ máx y un pulso en reposo bajo.\n\nCada hábito suma o resta como mucho entre 0,8 y 1,5 años según dónde esté entre un valor deficiente y uno óptimo. El ritmo de envejecimiento compara tu último mes con tus últimos 6 meses: por debajo de 1x, tus hábitos recientes van mejor que tu norma.")
                     Text("La Edad Pulso es una estimación orientativa calculada en tu iPhone, no una medida biológica ni un consejo médico.")
