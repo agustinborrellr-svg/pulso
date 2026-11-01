@@ -213,3 +213,12 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
   `shortcut` (notificación que abre `shortcuts://run-shortcut`). Pantalla `DoubleTapView`. Evento de la 5.0 sin confirmar.
 - Tests en Linux: `IntelData` (no instanciar XCTestCase para helpers). 195 tests del núcleo.
 
+## Estado (2026-11-01, Edad Pulso con estudios)
+
+- `PulsoAge`: años = ln(RR(valor)/RR(guía)) / 0,085 (Gompertz). Curvas: sueño (Liu 2017, Cappuccio 2010), regularidad (Pase 2023),
+  pasos (Ding 2025), zonas 1-3 (Lee 2022), zonas 4-5 (Ahmadi 2022), fuerza (Momma 2022), VO₂ (Lang 2024), FC reposo (Zhang 2016).
+  Aeróbico cuenta una vez (mejor de pasos / zonas 1-3 / zonas 4-5). Ventana 90 días, «último mes» 30 días, se calcula a fecha
+  del lunes (`AppModel.weekStart`). Ritmo = 1 + 12·(edad30 − edad90). Gus no quiere márgenes de error a la vista.
+- Sueño: `SleepScoreHeader` (anillo, horas acostarse/levantarse, `SleepFactors`). En vivo: `LiveHeroMonitor`, `VitalsGrid` con ficha
+  y rangos verde/naranja/rojo, `ChartScrub` para recorrer gráficas con el dedo. Laboratorio oculto (7 toques en Versión).
+

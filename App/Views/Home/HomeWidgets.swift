@@ -304,7 +304,7 @@ struct HomePulsoAgeCard: View {
     let small: Bool
 
     var body: some View {
-        let r = model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: model.currentDayKey, workouts: [])
+        let r = model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: AppModel.weekStart(model.currentDayKey), workouts: [])
         let diff = r.difference.map { abs($0) < 0.05 ? "Como tu edad real" : "\(Fmt.dec(abs($0))) años \($0 > 0 ? "mayor" : "menor")" }
         let color = r.difference.map { $0 > 0 ? Theme.worse : Theme.better } ?? Theme.secondary
         if small {
@@ -329,7 +329,7 @@ struct PulsoAgeDetailView: View {
 
     var body: some View {
         DetailScreen(title: "Edad Pulso") {
-            AgeOrbHero(result: model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: model.currentDayKey, workouts: []))
+            AgeOrbHero(result: model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: AppModel.weekStart(model.currentDayKey), workouts: []))
             AgeTrendCard()
             Text("Estimación orientativa calculada en tu iPhone, no una medida biológica. El detalle de cada hábito está en Salud.")
                 .font(.caption).foregroundStyle(Theme.secondary)

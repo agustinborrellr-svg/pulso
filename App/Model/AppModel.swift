@@ -292,14 +292,23 @@ final class AppModel: ObservableObject {
     func refreshPulsoAge() {
         let today = currentDayKey
         let workouts = (try? db.workouts(from: Int(Date().timeIntervalSince1970) - 400 * 86400, to: Int(Date().timeIntervalSince1970) + 86400)) ?? []
-        pulsoAge = PulsoAge.compute(days: days, profile: profile, today: today, workouts: workouts)
+        // Edad Pulso moves once a week: it is calculated as of this week's Monday.
+        let monday = Self.weekStart(today)
+        pulsoAge = PulsoAge.compute(days: days, profile: profile, today: monday, workouts: workouts)
         ageTrend = (0..<26).reversed().compactMap { w -> (day: String, age: Double)? in
-            let end = DayKey.shift(today, days: -7 * w)
+            let end = DayKey.shift(monday, days: -7 * w)
             let r = PulsoAge.compute(days: days.filter { $0.day <= end }, profile: profile, today: end, workouts: workouts)
             // A week only shows once most habits are measured: fewer would make the line jump as data comes and goes.
             guard r.measured >= 5 else { return nil }
             return r.pulsoAge.map { (end, $0) }
         }
+    }
+
+    /// Monday of the week containing `day`.
+    static func weekStart(_ day: String) -> String {
+        guard let d = DayKey.date(day) else { return day }
+        let weekday = Calendar(identifier: .gregorian).component(.weekday, from: d) // 1 = Sunday
+        return DayKey.shift(day, days: -((weekday + 5) % 7))
     }
 
     /// Counting every stored second scans the table, so it runs off the main thread.

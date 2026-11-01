@@ -8,7 +8,7 @@ struct HealthView: View {
     @State private var expanded: Set<String> = []
 
     var body: some View {
-        let result = model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: model.currentDayKey, workouts: [])
+        let result = model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: AppModel.weekStart(model.currentDayKey), workouts: [])
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
@@ -96,7 +96,7 @@ struct HealthView: View {
             .font(.caption2)
             .foregroundStyle(Theme.secondary)
             if r.pace == nil {
-                Text("Necesita al menos dos meses de datos para comparar tu último mes con tu norma.")
+                Text("Necesita al menos tres semanas de datos para comparar tu último mes con tus 90 días.")
                     .font(.caption).foregroundStyle(Theme.secondary)
             }
         }
@@ -126,8 +126,8 @@ struct HealthView: View {
             HStack(alignment: .center) {
                 Text(title).scaledFont(22, weight: .semibold, relativeTo: .title1).foregroundStyle(.white)
                 Spacer()
-                legend("arrowtriangle.down.fill", "Prom. de\n30 días")
-                legend("arrowtriangle.up", "Prom. de\n6 meses")
+                legend("arrowtriangle.down.fill", "Prom. de\n90 días")
+                legend("arrowtriangle.up", "Último\nmes")
             }
             .padding(.top, 10)
             PCard(padding: 0, spacing: 0) {
@@ -162,19 +162,28 @@ struct HealthView: View {
             }
             .buttonStyle(.plain)
             HStack(alignment: .center, spacing: 12) {
-                HabitRangeBar(item: item, text: format(item, item.recent))
+                HabitRangeBar(item: item, text: format(item, item.longTerm))
                     .frame(height: 54)
                 VStack(alignment: .trailing, spacing: 0) {
-                    Text(item.years.map { ($0 > 0 ? "+" : "") + Fmt.dec($0) } ?? "–")
+                    Text(item.counted ? (item.years.map { ($0 > 0 ? "+" : "") + Fmt.dec($0) } ?? "–") : "–")
                         .scaledFont(20, weight: .bold, relativeTo: .body)
                         .monospacedDigit()
-                        .foregroundStyle(item.years.map { $0 > 0.05 ? Theme.worse : ($0 < -0.05 ? Theme.better : Color.white) } ?? Theme.secondary)
+                        .foregroundStyle(item.counted ? (item.years.map { $0 > 0.05 ? Theme.worse : ($0 < -0.05 ? Theme.better : Color.white) } ?? Theme.secondary) : Theme.tertiary)
                     Text("años").font(.caption).foregroundStyle(Theme.secondary)
                 }
                 .frame(width: 58, alignment: .trailing)
             }
+            if !item.counted, item.years != nil {
+                Text("Ya cuenta tu mejor forma de hacer ejercicio aeróbico (pasos o zonas): no se suma dos veces.")
+                    .font(.caption).foregroundStyle(Theme.tertiary)
+            }
             if open {
                 Text(advice(item)).font(.subheadline).foregroundStyle(Color(white: 0.82)).fixedSize(horizontal: false, vertical: true)
+                if let r = item.recent {
+                    Text("Último mes: \(format(item, r))" + (item.recentYears.map { " (\($0 > 0 ? "+" : "")\(Fmt.dec($0)) años)" } ?? ""))
+                        .font(.caption).foregroundStyle(Theme.secondary)
+                }
+                Text("Basado en: \(item.source)").font(.caption2).foregroundStyle(Theme.tertiary)
                 if let metric = trendMetric(item.key) {
                     NavigationLink { TrendDetailView(metric: metric) } label: {
                         HStack(spacing: 6) {
@@ -214,11 +223,12 @@ struct HealthView: View {
 
     private func advice(_ item: PulsoAge.Item) -> String {
         switch item.key {
-        case "sleepHours": return "Dormir 7-9 horas de forma habitual es de lo que más pesa. Por debajo de 6 horas el riesgo sube de forma clara."
-        case "regularity": return "Acostarte y levantarte a horas parecidas, también el fin de semana, mejora la calidad del sueño y la recuperación."
-        case "zonesLight": return "Acumula unas 3-4 horas por semana en zonas 1-3: caminar rápido, bici suave, nadar tranquilo. Es la base aeróbica."
-        case "zonesHard": return "Un rato cada semana en zonas 4-5 (series, subidas, deportes intensos) mejora el VO₂ máx. 30-60 minutos semanales bastan."
-        case "steps": return "Más pasos al día se asocian a menos mortalidad, sobre todo hasta los 8.000-12.000."
+        case "sleepHours": return "Lo mejor son 7-8 horas. Cada hora por debajo de 7 sube el riesgo un 6 %; dormir 9 horas o más también lo sube."
+        case "regularity": return "Acostarte y levantarte a horas parecidas, también el fin de semana. La regularidad predice la salud a largo plazo incluso más que las horas."
+        case "zonesLight": return "La recomendación son 150 minutos por semana de actividad moderada (zonas 1-3). Hasta unos 600 minutos el beneficio sigue creciendo."
+        case "zonesHard": return "75 minutos por semana de actividad intensa (zonas 4-5) equivalen a 150 moderados. Con unos 15 minutos ya se nota."
+        case "steps": return "El beneficio crece hasta unos 7.000 pasos al día; a partir de ahí añade poco."
+        case "strength": return "Lo ideal son 30-60 minutos por semana de fuerza (dos sesiones). Mucho más no añade beneficio."
         case "vo2max": return "Comparado con la media de tu edad y sexo. Sube con entrenos aeróbicos e intervalos; es lo que más predice salud a largo plazo."
         case "rhr": return "Un pulso en reposo más bajo suele indicar mejor forma. Baja con ejercicio aeróbico, buen sueño y menos alcohol."
         default: return ""
@@ -251,7 +261,20 @@ struct AgeOrbHero: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            Text("Edad real: \(Int(result.age)) años · \(result.measured) de 7 hábitos medidos")
+            HStack(spacing: 18) {
+                VStack(spacing: 2) {
+                    Text("\(Int(result.age))").scaledFont(20, weight: .bold).monospacedDigit().foregroundStyle(.white)
+                    Caps("Edad real", size: 10, color: Theme.secondary)
+                }
+                if let now = result.recentAge {
+                    VStack(spacing: 2) {
+                        Text(Fmt.dec(now)).scaledFont(20, weight: .bold).monospacedDigit()
+                            .foregroundStyle(now < (result.pulsoAge ?? now) ? Theme.better : (now > (result.pulsoAge ?? now) ? Theme.worse : .white))
+                        Caps("Con tu último mes", size: 10, color: Theme.secondary)
+                    }
+                }
+            }
+            Text("Con tus últimos 90 días · se actualiza cada lunes")
                 .font(.caption)
                 .foregroundStyle(Theme.secondary)
         }
@@ -347,14 +370,14 @@ struct HabitRangeBar: View {
                     }
                 }
                 .offset(y: 26)
-                if let p = item.position(item.recent) {
+                if let p = item.position(item.longTerm) {
                     VStack(spacing: 2) {
                         Text(text).scaledFont(13, weight: .bold, relativeTo: .caption1).monospacedDigit().foregroundStyle(.white).fixedSize()
                         Image(systemName: "arrowtriangle.down.fill").scaledFont(11, relativeTo: .caption1).foregroundStyle(.white)
                     }
                     .position(x: min(max(p * w, 40), w - 40), y: 12)
                 }
-                if let p = item.position(item.longTerm) {
+                if let p = item.position(item.recent) {
                     Image(systemName: "arrowtriangle.up").scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary)
                         .position(x: p * w, y: 40)
                 }
