@@ -203,14 +203,6 @@ struct ECGRecordView: View {
 struct ECGDetailView: View {
     let recording: ECGRecording
 
-    private func check(_ text: String, _ ok: Bool) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: ok ? "checkmark.square.fill" : "exclamationmark.square.fill")
-                .foregroundStyle(ok ? Theme.green : Theme.yellow)
-            Text(text).font(.subheadline).foregroundStyle(ok ? .white : Theme.yellow)
-        }
-    }
-
     var body: some View {
         ScrollView { ECGDetailContent(recording: recording) }
             .background(PulsoBackground())
@@ -225,6 +217,14 @@ struct ECGDetailContent: View {
     @State private var full: ECGRecording?
     @State private var analysis: ECGAnalysis?
     @State private var pdfURL: URL?
+
+    private func check(_ text: String, _ ok: Bool) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: ok ? "checkmark.square.fill" : "exclamationmark.square.fill")
+                .foregroundStyle(ok ? Theme.green : Theme.yellow)
+            Text(text).font(.subheadline).foregroundStyle(ok ? .white : Theme.yellow)
+        }
+    }
 
     var body: some View {
         let demo = recording.source == .simulated
