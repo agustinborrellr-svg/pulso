@@ -201,3 +201,15 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
   `PulsoPalette` compartida app/widgets, `.scaledFont` (Dynamic Type), `PulseLoader`, `ConnectionStatus`.
 - SpO₂ fuera de la recuperación (byte sin confirmar). ECG simulado = «Demostración», sin PDF.
 - Nada validado aún con la pulsera física.
+
+## Estado (2026-11-01, funciones tipo WHOOP)
+
+- `Behaviors` (PulsoIntelligence): impacto % en la recuperación de comportamientos automáticos (sueño ≥ mediana, horario
+  constante, entreno temprano/tardío, estrés alto, esfuerzo alto) y del diario; desbloqueo con 5 con / 5 sin. `BehaviorsView`.
+- `CyclePhases` + `CycleCalendarView` (reglas manuales en kv `cycle.starts` + detección por temperatura).
+- `BloodPressure` + `BloodPressureView`: lecturas manuales (kv `bp.readings`), categorías AHA. **Sin estimación inventada.**
+- `PeriodAverages`: medias por mes con % de cambio en la vista de tendencias a 6 meses. Checklist en el detalle del ECG.
+- Doble toque: acciones nuevas `speakStatus`, `scan`, `webhook` (Home Assistant/IFTTT/ntfy; vibra 1 ok / 3 fallo),
+  `shortcut` (notificación que abre `shortcuts://run-shortcut`). Pantalla `DoubleTapView`. Evento de la 5.0 sin confirmar.
+- Tests en Linux: `IntelData` (no instanciar XCTestCase para helpers). 195 tests del núcleo.
+

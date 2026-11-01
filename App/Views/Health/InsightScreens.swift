@@ -365,6 +365,15 @@ struct CycleCalendarView: View {
 
 struct BloodPressureView: View {
     @EnvironmentObject var model: AppModel
+
+    static func color(_ c: BloodPressure.Category) -> Color {
+        switch c {
+        case .normal: return Theme.green
+        case .elevated: return Theme.yellow
+        case .stage1: return Theme.stress
+        case .stage2, .crisis: return Theme.red
+        }
+    }
     @State private var range = 7
     @State private var adding = false
     @State private var sys = 120
@@ -395,7 +404,7 @@ struct BloodPressureView: View {
                     Text(avg.map { "\($0.systolic)/\($0.diastolic)" } ?? "–").scaledFont(44, weight: .bold).foregroundStyle(.white)
                     if let avg {
                         let c = BloodPressure.category(systolic: avg.systolic, diastolic: avg.diastolic)
-                        Text(c.label).font(.subheadline.bold()).foregroundStyle(c <= .elevated ? Theme.green : c == .stage1 ? Theme.yellow : Theme.red)
+                        Text(c.label).font(.subheadline.bold()).foregroundStyle(BloodPressureView.color(c))
                     } else {
                         Text("Sin lecturas").font(.subheadline).foregroundStyle(Theme.secondary)
                     }
@@ -425,10 +434,10 @@ struct BloodPressureView: View {
                     let c = BloodPressure.category(systolic: s, diastolic: di)
                     PointMark(x: .value("Día", d.day), y: .value("Sistólica", s))
                         .symbol(.square).symbolSize(70)
-                        .foregroundStyle(c <= .elevated ? Theme.green : c == .stage1 ? Theme.yellow : Theme.red)
+                        .foregroundStyle(BloodPressureView.color(c))
                     PointMark(x: .value("Día", d.day), y: .value("Diastólica", di))
                         .symbol(.square).symbolSize(70)
-                        .foregroundStyle(c <= .elevated ? Theme.green : c == .stage1 ? Theme.yellow : Theme.red)
+                        .foregroundStyle(BloodPressureView.color(c))
                 }
                 .chartXScale(domain: daily.map(\.day))
                 .chartXAxis {
