@@ -59,6 +59,7 @@
 		8110FAF9E2330C591FEE29DF /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 161B85AAB6D9A641FEAD08D1 /* HealthKit.framework */; };
 		836182DBF0E4BF1DC95FA0F9 /* GuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 606ADA2594C918C41A1C5114 /* GuideView.swift */; };
 		87264F32159262D093B193BD /* TrendMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF9DBA0290D4A8B60878C853 /* TrendMetric.swift */; };
+		8AB125BB95ACCB487DB44D33 /* AppModel+Insights.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3215D2AFB21F89E000A910B3 /* AppModel+Insights.swift */; };
 		8BA0AB154FC2582FB1B31783 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2392A2F04BF40C64240F84A4 /* WidgetKit.framework */; };
 		8DBE1C6BB50DC3274C07E853 /* PulsoFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = 7C50D970881B2336E0D252C3 /* PulsoFeatures */; };
 		90D59062F928BEE5C81D700F /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BE47694E320540F35105B8E /* CalendarView.swift */; };
@@ -86,6 +87,7 @@
 		D42A5C3F3FE889EED5495A47 /* AppModel+Naps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729BA767EEBCB9A245BC00B4 /* AppModel+Naps.swift */; };
 		D7B86C76BC94A6C6E8B74033 /* AddActivitySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 064AFFADF4B66E2B2C7202D1 /* AddActivitySheet.swift */; };
 		DBC004974ECE86C6D9A8E747 /* AppModel+Demo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F3DC5A42BA8A4BADF3BE76E /* AppModel+Demo.swift */; };
+		E1F4D50D0FB973F504CED0BF /* InsightScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0ADC4FA44562C503057DF6B /* InsightScreens.swift */; };
 		E3758F568EB87A93FF370950 /* PulsoIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0AC139972E0094CB92A056 /* PulsoIntents.swift */; };
 		F03B67D8FF4F21B199697EFE /* WeeklyPlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F042CEED18BE594DE7AC29F /* WeeklyPlanView.swift */; };
 		F10593404FC9F928B23D4502 /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD0D8A552052C57922C0CD0B /* CoreBluetooth.framework */; };
@@ -141,6 +143,7 @@
 		2D613820EAB6E5FBD202DAC9 /* AppModel+Backups.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Backups.swift"; sourceTree = "<group>"; };
 		2F1F7E70238E2E9C5503EB11 /* LiveToolsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveToolsViews.swift; sourceTree = "<group>"; };
 		307D9B110CF3B0638ABB3DBA /* StravaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StravaService.swift; sourceTree = "<group>"; };
+		3215D2AFB21F89E000A910B3 /* AppModel+Insights.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Insights.swift"; sourceTree = "<group>"; };
 		365C60DF1EDF99A64A3F77F5 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		3898427913C7120A8F0272D8 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		3B8F2F406A5B7FCB3747F4B8 /* DeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceView.swift; sourceTree = "<group>"; };
@@ -173,6 +176,7 @@
 		9837A227D7FF959A2E228C4F /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		997EE71197C65BA8057A3043 /* PulsoPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulsoPalette.swift; sourceTree = "<group>"; };
 		9D97BD4A2354F19625BDB43B /* AppModel+Alerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Alerts.swift"; sourceTree = "<group>"; };
+		A0ADC4FA44562C503057DF6B /* InsightScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightScreens.swift; sourceTree = "<group>"; };
 		A64EAE06663BC70D64B2C18E /* ECGView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ECGView.swift; sourceTree = "<group>"; };
 		B1A2041694349751380A8956 /* PulsoWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulsoWidgets.swift; sourceTree = "<group>"; };
 		B1AD882822FF8AF8A24324D7 /* SleepDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepDetailView.swift; sourceTree = "<group>"; };
@@ -434,6 +438,7 @@
 			children = (
 				64BE2C67A384FE73DFEB33EB /* AgeTrendCard.swift */,
 				805C7DCE635A375D7A897FF1 /* HealthView.swift */,
+				A0ADC4FA44562C503057DF6B /* InsightScreens.swift */,
 				EEE35576CE0CAEAC011BFBCC /* VO2MaxView.swift */,
 				4F042CEED18BE594DE7AC29F /* WeeklyPlanView.swift */,
 			);
@@ -453,6 +458,7 @@
 				4682CF202FFB386AFDDD3C77 /* AppModel+Diagnostics.swift */,
 				759E973D6AB94AEE832D905E /* AppModel+ECG.swift */,
 				8AFBF401D5B1A116A04CFB40 /* AppModel+Home.swift */,
+				3215D2AFB21F89E000A910B3 /* AppModel+Insights.swift */,
 				C503C8997F985D7830590883 /* AppModel+Integrations.swift */,
 				F0FA5FA79CF962FD0E9C9894 /* AppModel+Intelligence.swift */,
 				927947690F821AE0B1CE387C /* AppModel+LiveTests.swift */,
@@ -586,6 +592,7 @@
 				7AA299176873D0A166160DAD /* AppModel+Diagnostics.swift in Sources */,
 				1E3FAE6A1EA4A54D2681F14C /* AppModel+ECG.swift in Sources */,
 				3C3103588FC8F9BF6DF7EF5E /* AppModel+Home.swift in Sources */,
+				8AB125BB95ACCB487DB44D33 /* AppModel+Insights.swift in Sources */,
 				3898325454148FFC9C09DEB8 /* AppModel+Integrations.swift in Sources */,
 				4F82FFD8F50A9C4411C8C1D2 /* AppModel+Intelligence.swift in Sources */,
 				17B457C90EB2269DCA7F7E2C /* AppModel+LiveTests.swift in Sources */,
@@ -606,6 +613,7 @@
 				1E2BD294898DDCD216A96CB8 /* HealthView.swift in Sources */,
 				F5147F21E1E2FE581F46164C /* HomeView.swift in Sources */,
 				942C9E40CF45FEBC7869EB7B /* HomeWidgets.swift in Sources */,
+				E1F4D50D0FB973F504CED0BF /* InsightScreens.swift in Sources */,
 				409D00D09EB3F215AB48191C /* IntegrationsView.swift in Sources */,
 				541F11AB3780605F53186899 /* IntelligenceView.swift in Sources */,
 				168B5D31F86DE726CB4DC749 /* Keychain.swift in Sources */,
