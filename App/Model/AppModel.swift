@@ -291,10 +291,14 @@ final class AppModel: ObservableObject {
 
     func refreshPulsoAge() {
         let today = currentDayKey
-        pulsoAge = PulsoAge.compute(days: days, profile: profile, today: today)
+        let workouts = (try? db.workouts(from: Int(Date().timeIntervalSince1970) - 400 * 86400, to: Int(Date().timeIntervalSince1970) + 86400)) ?? []
+        pulsoAge = PulsoAge.compute(days: days, profile: profile, today: today, workouts: workouts)
         ageTrend = (0..<26).reversed().compactMap { w -> (day: String, age: Double)? in
             let end = DayKey.shift(today, days: -7 * w)
-            return PulsoAge.compute(days: days.filter { $0.day <= end }, profile: profile, today: end).pulsoAge.map { (end, $0) }
+            let r = PulsoAge.compute(days: days.filter { $0.day <= end }, profile: profile, today: end, workouts: workouts)
+            // A week only shows once most habits are measured: fewer would make the line jump as data comes and goes.
+            guard r.measured >= 5 else { return nil }
+            return r.pulsoAge.map { (end, $0) }
         }
     }
 

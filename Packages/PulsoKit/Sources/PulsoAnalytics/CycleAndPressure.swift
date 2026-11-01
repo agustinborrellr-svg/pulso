@@ -174,3 +174,49 @@ public enum PeriodAverages {
         return out
     }
 }
+
+// MARK: - Sleep score factors
+
+/// The four parts of the sleep score shown under its ring, each rated deficient / sufficient / optimal.
+public enum SleepFactors {
+    public enum Level: Int, Sendable { case deficient, sufficient, optimal }
+
+    public struct Factor: Equatable, Sendable, Identifiable {
+        public var id: String { key }
+        public var key: String
+        public var label: String
+        public var icon: String
+        /// 0–100.
+        public var value: Double
+        public var level: Level
+    }
+
+    static func level(_ v: Double, sufficient: Double, optimal: Double) -> Level {
+        v >= optimal ? .optimal : (v >= sufficient ? .sufficient : .deficient)
+    }
+
+    public static func of(_ d: DaySummary) -> [Factor] {
+        var out: [Factor] = []
+        if let s = d.sleepMinutes, let n = d.sleepNeedMinutes, n > 0 {
+            let v = min(100, s / n * 100)
+            out.append(Factor(key: "hoursVsNeed", label: "Horas vs. lo necesario", icon: "moon.zzz", value: v,
+                              level: level(v, sufficient: 70, optimal: 85)))
+        }
+        if let r = d.sleepConsistency {
+            out.append(Factor(key: "regularity", label: "Regularidad del sueño", icon: "clock.arrow.circlepath", value: r,
+                              level: level(r, sufficient: 60, optimal: 80)))
+        }
+        if let e = d.sleepEfficiency {
+            let v = e * 100
+            out.append(Factor(key: "efficiency", label: "Eficiencia del sueño", icon: "bed.double", value: v,
+                              level: level(v, sufficient: 80, optimal: 90)))
+        }
+        let restorative = d.restorativeMinutes ?? ((d.deepMinutes ?? 0) + (d.remMinutes ?? 0))
+        if let s = d.sleepMinutes, s > 0, restorative > 0 {
+            let v = min(100, restorative / s * 100)
+            out.append(Factor(key: "restorative", label: "Sueño reparador (profundo + REM)", icon: "sparkles", value: v,
+                              level: level(v, sufficient: 35, optimal: 45)))
+        }
+        return out
+    }
+}

@@ -206,10 +206,6 @@ struct PillarHero: View {
                       systemImage: "square.and.arrow.down")
                     .font(.caption).foregroundStyle(Theme.secondary)
             }
-            if let running = model.inProgressText(day) {
-                Text("Esfuerzo: \(running.lowercased()). Sigue sumando hasta que te duermas.")
-                    .font(.caption).foregroundStyle(Theme.secondary)
-            }
         }
     }
 
@@ -343,6 +339,8 @@ struct StressLine: View {
     let hourly: [Double?]
     var compact = false
     var startHour = 0
+    /// Hour offset (0 = cycle start) under the finger.
+    var selected: Binding<Int?> = .constant(nil)
 
     private var points: [(x: Int, v: Double, segment: Int)] {
         var out: [(Int, Double, Int)] = []
@@ -375,7 +373,16 @@ struct StressLine: View {
                         .symbolSize(24)
                 }
             }
+            if let k = selected.wrappedValue, let p = pts.first(where: { $0.x == k }) {
+                RuleMark(x: .value("Hora", k))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                PointMark(x: .value("Hora", k), y: .value("Estrés", p.v))
+                    .foregroundStyle(Theme.stressColor(p.v))
+                    .symbolSize(110)
+            }
         }
+        .chartScrub(selected)
         .chartYScale(domain: 0...3)
         .chartXScale(domain: 0...23)
         .chartYAxis {

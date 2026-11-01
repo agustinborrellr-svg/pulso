@@ -63,3 +63,23 @@ final class CycleAndPressureTests: XCTestCase {
         XCTAssertGreaterThan(weekly.count, 7)
     }
 }
+
+final class SleepFactorsTests: XCTestCase {
+    func testLevels() {
+        var d = DaySummary(day: "2026-11-01")
+        d.sleepMinutes = 333
+        d.sleepNeedMinutes = 546
+        d.sleepConsistency = 24
+        d.sleepEfficiency = 0.96
+        d.deepMinutes = 70
+        d.remMinutes = 90
+        let f = SleepFactors.of(d)
+        XCTAssertEqual(f.map(\.key), ["hoursVsNeed", "regularity", "efficiency", "restorative"])
+        XCTAssertEqual(f[0].value, 61, accuracy: 0.5)
+        XCTAssertEqual(f[0].level, .deficient)
+        XCTAssertEqual(f[1].level, .deficient)
+        XCTAssertEqual(f[2].level, .optimal)
+        XCTAssertEqual(f[3].level, .optimal, "48 % restorative")
+        XCTAssertTrue(SleepFactors.of(DaySummary(day: "2026-11-01")).isEmpty)
+    }
+}

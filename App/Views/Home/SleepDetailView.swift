@@ -7,6 +7,7 @@ import PulsoAnalytics
 struct SleepDetailView: View {
     @EnvironmentObject var model: AppModel
     @State private var stage: SleepStage? = .light
+    @State private var scrub: Date?
     @State private var editing: SleepSession?
     @State private var adding = false
     @State private var addingNap = false
@@ -15,6 +16,7 @@ struct SleepDetailView: View {
         DetailScreen(title: model.cycleTitle(model.selectedDay)) {
             if let day = model.selected, let s = model.sleep(for: day) ?? HistoryMerge.summarySleep(day) {
                 let detailed = model.sleep(for: day) != nil
+                SleepScoreHeader(day: day, session: s)
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("El sueño de anoche").scaledFont(22, weight: .semibold, relativeTo: .title1).foregroundStyle(.white)
@@ -76,13 +78,20 @@ struct SleepDetailView: View {
         let items: [(SleepStage, Double)] = [(.awake, s.minutesAwake), (.light, s.minutesLight), (.deep, s.minutesDeep), (.rem, s.minutesREM)]
         return PCard {
             CardHeader(title: "Horas de sueño")
-            HStack(spacing: 6) {
-                BigValue(value: Fmt.hmm(d.sleepMinutes), size: 30)
-                DeltaMark(delta: Delta(d.sleepMinutes, u, higherIsBetter: true))
+            if let t = scrub, let hr = NightHRChart.hr(s, at: t) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    BigValue(value: "\(Int(hr.rounded()))", unit: "lpm", size: 30)
+                }
+                Text(Fmt.clock(t)).font(.caption).foregroundStyle(Theme.secondary).padding(.top, -10)
+            } else {
+                HStack(spacing: 6) {
+                    BigValue(value: Fmt.hmm(d.sleepMinutes), size: 30)
+                    DeltaMark(delta: Delta(d.sleepMinutes, u, higherIsBetter: true))
+                }
+                if let u { Text(Fmt.hmm(u)).font(.caption).foregroundStyle(Theme.secondary).padding(.top, -10) }
             }
-            if let u { Text(Fmt.hmm(u)).font(.caption).foregroundStyle(Theme.secondary).padding(.top, -10) }
             if detailed {
-                NightHRChart(session: s, highlight: stage)
+                NightHRChart(session: s, highlight: stage, selected: $scrub)
                     .frame(height: 170)
             }
             HStack {
@@ -402,6 +411,15 @@ struct SleepDetailView: View {
 struct NightHRChart: View {
     let session: SleepSession
     let highlight: SleepStage?
+    var selected: Binding<Date?> = .constant(nil)
+
+    /// Heart rate of the 5-minute point nearest to `t`.
+    private var highlightColor: Color { highlight.map { Theme.stageColor($0) } ?? Color(white: 0.7) }
+
+    static func hr(_ s: SleepSession, at t: Date) -> Double? {
+        let ts = Int(t.timeIntervalSince1970)
+        return s.trend.filter { $0.hr != nil }.min { abs($0.ts - ts) < abs($1.ts - ts) }?.hr ?? nil
+    }
 
     var body: some View {
         let pts = session.trend.compactMap { p -> (Date, Double)? in p.hr.map { (Date(timeIntervalSince1970: TimeInterval(p.ts)), $0) } }
@@ -413,10 +431,19 @@ struct NightHRChart: View {
             }
             ForEach(pts, id: \.0) { p in
                 LineMark(x: .value("Hora", p.0), y: .value("FC", p.1))
-                    .foregroundStyle(Color(white: 0.7))
+                    .foregroundStyle(highlightColor)
                     .lineStyle(StrokeStyle(lineWidth: 1.4))
             }
+            if let t = selected.wrappedValue, let hr = Self.hr(session, at: t) {
+                RuleMark(x: .value("Hora", t))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                PointMark(x: .value("Hora", t), y: .value("FC", hr))
+                    .foregroundStyle(highlightColor)
+                    .symbolSize(90)
+            }
         }
+        .chartScrub(selected)
         .chartYScale(domain: .automatic(includesZero: false))
         .chartYAxis {
             AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { v in
@@ -521,3 +548,112 @@ enum StageRuns {
         return out
     }
 }
+
+/// The night at a glance: score ring, bed and wake times, and the four parts of the score rated
+/// deficient / sufficient / optimal.
+struct SleepScoreHeader: View {
+    let day: DaySummary
+    let session: SleepSession
+    @State private var shown = 0.0
+
+    var body: some View {
+        let score = day.sleepPerformance.map { $0 * 100 }
+        let factors = SleepFactors.of(day)
+        VStack(spacing: 18) {
+            ZStack {
+                Circle().stroke(Color.white.opacity(0.08), lineWidth: 16)
+                Circle().trim(from: 0, to: shown * (score ?? 0) / 100)
+                    .stroke(Theme.sleep, style: StrokeStyle(lineWidth: 16, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                VStack(spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 2) {
+                        Text(score.map { "\(Int($0.rounded()))" } ?? "–").scaledFont(64, weight: .bold, design: .rounded)
+                        Text("%").scaledFont(26, weight: .bold)
+                    }
+                    .foregroundStyle(.white)
+                    Caps("Calificación
+del sueño", size: 13).multilineTextAlignment(.center)
+                    if let score { LevelDashes(level: score >= 85 ? .optimal : (score >= 70 ? .sufficient : .deficient)) }
+                }
+            }
+            .frame(width: 240, height: 240)
+            .onAppear { withAnimation(.easeOut(duration: 0.9)) { shown = 1 } }
+            HStack(spacing: 0) {
+                clock("moon.fill", "Te dormiste", session.start)
+                Rectangle().fill(Theme.hairline).frame(width: 1, height: 36)
+                clock("sun.max.fill", "Te levantaste", session.end)
+            }
+            .padding(.vertical, 12)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
+            if !factors.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(factors) { f in
+                        HStack(spacing: 12) {
+                            Image(systemName: f.icon).foregroundStyle(Theme.secondary).frame(width: 24)
+                            Caps(f.label, size: 12).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
+                            LevelDashes(level: f.level)
+                            Text("\(Int(f.value.rounded())) %").scaledFont(22, weight: .bold).monospacedDigit().foregroundStyle(.white)
+                                .frame(minWidth: 64, alignment: .trailing)
+                        }
+                        .padding(.vertical, 14)
+                        if f.id != factors.last?.id { Divider().overlay(Theme.hairline) }
+                    }
+                    HStack(spacing: 16) {
+                        legend(Theme.worse, "Deficiente")
+                        legend(Color(white: 0.5), "Suficiente")
+                        legend(Theme.better, "Óptimo")
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
+                    .padding(.top, 6)
+                }
+                .padding(16)
+                .background(Theme.card, in: RoundedRectangle(cornerRadius: 18))
+            }
+        }
+    }
+
+    private func clock(_ icon: String, _ title: String, _ ts: Int) -> some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: icon).foregroundStyle(Theme.sleep)
+                Text(Fmt.time(ts)).scaledFont(24, weight: .bold).monospacedDigit().foregroundStyle(.white)
+            }
+            Caps(title, size: 10, color: Theme.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func legend(_ c: Color, _ t: String) -> some View {
+        HStack(spacing: 6) {
+            Capsule().fill(c).frame(width: 16, height: 4)
+            Text(t).font(.subheadline).foregroundStyle(.white)
+        }
+    }
+}
+
+/// Three dashes: the lit one says deficient (orange, left), sufficient (grey, middle) or optimal (green, right).
+struct LevelDashes: View {
+    let level: SleepFactors.Level
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<3, id: \.self) { i in
+                Capsule()
+                    .fill(i == level.rawValue ? color : Color.white.opacity(0.12))
+                    .frame(width: 26, height: 5)
+            }
+        }
+        .accessibilityLabel(["Deficiente", "Suficiente", "Óptimo"][level.rawValue])
+    }
+
+    private var color: Color {
+        switch level {
+        case .deficient: return Theme.worse
+        case .sufficient: return Color(white: 0.6)
+        case .optimal: return Theme.better
+        }
+    }
+}
+

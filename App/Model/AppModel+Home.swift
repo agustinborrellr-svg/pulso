@@ -178,11 +178,11 @@ extension AppModel {
     /// The cycle still running (it closes when you next fall asleep).
     func isOpenCycle(_ day: DaySummary) -> Bool { day.day == currentDayKey }
 
-    /// "En curso · hasta las 14:20" for the open cycle; nil once the day is closed.
+    /// "Actualizado 14:20" for the open cycle (shown once, in the strain detail); nil once the day is closed.
     func inProgressText(_ day: DaySummary) -> String? {
         guard isOpenCycle(day) else { return nil }
         let until = day.cycleEnd ?? lastSampleTs
-        return until.map { "En curso · hasta las \(Fmt.time($0))" } ?? "En curso"
+        return until.map { "Actualizado \(Fmt.time($0))" } ?? "Sumando"
     }
 
     /// Usual daily value over the `period` days before `day` (whole days only).

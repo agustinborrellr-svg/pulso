@@ -33,9 +33,9 @@ final class PulsoAgeTests: XCTestCase {
         XCTAssertEqual(good.age, 40)
         XCTAssertLessThan(good.difference ?? 0, -4)
         XCTAssertGreaterThan(bad.difference ?? 0, 3)
-        XCTAssertEqual(good.measured, 7)
-        // Total effect is bounded by the weights (±7.2 years).
-        XCTAssertLessThanOrEqual(abs(good.difference ?? 0), 7.2 + 1e-9)
+        XCTAssertEqual(good.measured, 8)
+        // Total effect is bounded by the penalties / benefits.
+        XCTAssertLessThanOrEqual(abs(good.difference ?? 0), 12 + 1e-9)
         // Same habits for six months: steady pace.
         XCTAssertEqual(good.pace ?? 0, 1, accuracy: 1e-9)
     }
@@ -60,5 +60,41 @@ final class PulsoAgeTests: XCTestCase {
         XCTAssertLessThan(r.pace ?? 9, 1, "better habits than your 6-month norm slow the clock")
         let sleep = r.items.first { $0.key == "sleepHours" }
         XCTAssertEqual(sleep?.position(sleep?.recent), 1)
+    }
+
+    /// The years each habit adds or takes off land where a WHOOP Age report put them for the same values.
+    func testMatchesReferenceReport() {
+        let specs = PulsoAge.specs(age: 25, sex: .male, zones: { _ in nil }, strength: { _ in nil })
+        func y(_ key: String, _ v: Double) -> Double { specs.first { $0.key == key }!.years(v)! }
+        XCTAssertEqual(y("sleepHours", 6 * 60 + 29), 0.5, accuracy: 0.1, "6:29 of sleep adds about half a year")
+        XCTAssertEqual(y("regularity", 56), 0.9, accuracy: 0.1)
+        XCTAssertEqual(y("zonesLight", 4 * 60 + 3), -1.2, accuracy: 0.1)
+        XCTAssertEqual(y("zonesHard", 2), 0.1, accuracy: 0.1)
+        XCTAssertEqual(y("strength", 2), 1.5, accuracy: 0.1)
+        XCTAssertEqual(y("steps", 8975), -0.2, accuracy: 0.1)
+        XCTAssertEqual(y("sleepHours", 7 * 60), 0, accuracy: 1e-9, "7 h is neutral")
+        XCTAssertEqual(y("sleepHours", 9 * 60), -0.8, accuracy: 1e-9, "capped at the optimal end")
+        XCTAssertEqual(y("rhr", 85), 1.2, accuracy: 1e-9, "decreasing scales work too")
+    }
+
+    /// Imported days have no whole-day zones: their workouts' zone minutes and strength sessions count instead.
+    func testImportedDaysUseWorkouts() {
+        var list = days(40, sleep: 420, steps: 8000, rhr: 60, vo2: 45, zones: [0, 0, 0, 0, 0], regularity: 70)
+        for i in list.indices { list[i].source = "whoop" }
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = .current
+        var ws: [Workout] = []
+        for d in list where d.day < "2026-10-26" {
+            let ts = Int(DayKey.date(d.day, calendar: cal)!.timeIntervalSince1970) + 18 * 3600
+            ws.append(Workout(start: ts, end: ts + 3600, sport: "Fuerza", source: .whoop, strain: 9, zoneMinutes: [20, 20, 10, 5, 0]))
+        }
+        let r = PulsoAge.compute(days: list, profile: profile(age: 30), today: "2026-10-26", workouts: ws, calendar: cal)
+        let light = r.items.first { $0.key == "zonesLight" }!
+        let strength = r.items.first { $0.key == "strength" }!
+        XCTAssertEqual(light.recent ?? 0, 50 * 7, accuracy: 1, "weekly minutes in zones 1-3 from the workouts")
+        XCTAssertEqual(strength.recent ?? 0, 60 * 7, accuracy: 1)
+        XCTAssertLessThan(light.years ?? 0, 0)
+        let none = PulsoAge.compute(days: list, profile: profile(age: 30), today: "2026-10-26").items.first { $0.key == "strength" }!
+        XCTAssertGreaterThan(none.years ?? 0, 1, "no strength sessions adds years")
     }
 }

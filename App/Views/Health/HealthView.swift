@@ -8,7 +8,7 @@ struct HealthView: View {
     @State private var expanded: Set<String> = []
 
     var body: some View {
-        let result = model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: model.currentDayKey)
+        let result = model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: model.currentDayKey, workouts: [])
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
@@ -343,7 +343,7 @@ struct HabitRangeBar: View {
             ZStack(alignment: .topLeading) {
                 HStack(spacing: 3) {
                     ForEach(0..<10, id: \.self) { i in
-                        Rectangle().fill(color(Double(i) / 9)).frame(height: 4)
+                        Rectangle().fill(color((Double(i) + 0.5) / 10)).frame(height: 4)
                     }
                 }
                 .offset(y: 26)
@@ -362,9 +362,16 @@ struct HabitRangeBar: View {
         }
     }
 
+    /// Orange below the neutral point, grey around it (adds nothing), green above.
     private func color(_ t: Double) -> Color {
-        t < 0.5 ? Color(red: 0.96, green: 0.65 - 0.25 * (0.5 - t), blue: 0.14 + 0.1 * t)
-            : Color(red: 0.96 - 1.7 * (t - 0.5), green: 0.65 + 0.4 * (t - 0.5), blue: 0.14 + 0.9 * (t - 0.5))
+        let n = item.neutralPosition
+        if abs(t - n) < 0.06 { return Color(white: 0.55) }
+        if t < n {
+            let k = t / max(n, 0.01) // 0 = poor end
+            return Color(red: 0.96 - 0.45 * k, green: 0.65 - 0.25 * k, blue: 0.14 + 0.06 * k)
+        }
+        let k = (t - n) / max(1 - n, 0.01)
+        return Color(red: 0.20 + 0.2 * k * 0, green: 0.45 + 0.45 * k, blue: 0.38 + 0.2 * k)
     }
 }
 

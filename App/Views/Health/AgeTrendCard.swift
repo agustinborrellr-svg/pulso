@@ -27,9 +27,13 @@ struct AgeTrendCard: View {
                 }
                 Chart {
                     ForEach(pts, id: \.day) { p in
+                        AreaMark(x: .value("Semana", p.day), yStart: .value("Edad real", Double(model.profile.age)), yEnd: .value("Edad Pulso", p.age))
+                            .foregroundStyle(LinearGradient(colors: [Theme.link.opacity(0.25), Theme.link.opacity(0.02)], startPoint: .top, endPoint: .bottom))
+                            .interpolationMethod(.catmullRom)
                         LineMark(x: .value("Semana", p.day), y: .value("Edad Pulso", p.age), series: .value("s", "pulso"))
                             .foregroundStyle(Theme.link)
-                            .interpolationMethod(.stepEnd)
+                            .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                            .interpolationMethod(.catmullRom)
                     }
                     RuleMark(y: .value("Edad real", Double(model.profile.age)))
                         .foregroundStyle(.white.opacity(0.8))

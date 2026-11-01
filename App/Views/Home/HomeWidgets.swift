@@ -88,9 +88,10 @@ struct HomeComparison {
     init(_ m: TrendMetric, day: DaySummary, period: Int, model: AppModel) {
         let v = m.value(day)
         value = m.format(v)
-        if m.accumulatesDuringDay, let running = model.inProgressText(day) {
+        if m.accumulatesDuringDay, model.isOpenCycle(day) {
+            // Still adding up today: no comparison yet, and no timestamp on every tile.
             delta = nil
-            caption = running
+            caption = nil
             return
         }
         let u = model.usual(m, before: day, period: period)
@@ -274,7 +275,7 @@ struct HomeActivityCard: View {
             }
         } else {
             PCard {
-                CardHeader(title: "Pasos y calorías", subtitle: model.inProgressText(day), chevron: true)
+                CardHeader(title: "Pasos y calorías", chevron: true)
                 HStack(alignment: .top) {
                     column("Pasos", steps)
                     Spacer()
@@ -303,7 +304,7 @@ struct HomePulsoAgeCard: View {
     let small: Bool
 
     var body: some View {
-        let r = model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: model.currentDayKey)
+        let r = model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: model.currentDayKey, workouts: [])
         let diff = r.difference.map { abs($0) < 0.05 ? "Como tu edad real" : "\(Fmt.dec(abs($0))) años \($0 > 0 ? "mayor" : "menor")" }
         let color = r.difference.map { $0 > 0 ? Theme.worse : Theme.better } ?? Theme.secondary
         if small {
@@ -328,7 +329,7 @@ struct PulsoAgeDetailView: View {
 
     var body: some View {
         DetailScreen(title: "Edad Pulso") {
-            AgeOrbHero(result: model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: model.currentDayKey))
+            AgeOrbHero(result: model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: model.currentDayKey, workouts: []))
             AgeTrendCard()
             Text("Estimación orientativa calculada en tu iPhone, no una medida biológica. El detalle de cada hábito está en Salud.")
                 .font(.caption).foregroundStyle(Theme.secondary)

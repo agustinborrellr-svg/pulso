@@ -147,14 +147,16 @@ struct StrainDetailView: View {
 struct StressMonitorView: View {
     @EnvironmentObject var model: AppModel
     @State private var showInfo = false
+    @State private var hour: Int?
 
     var body: some View {
         DetailScreen(title: "Monitor de estrés", subtitle: model.cycleTitle(model.selectedDay)) {
             if let day = model.selected {
                 gauge(day)
                 PCard {
-                    StressLine(hourly: day.stressHourly, startHour: day.cycleStartHour)
+                    StressLine(hourly: day.stressHourly, startHour: day.cycleStartHour, selected: $hour)
                         .frame(height: 220)
+                    Text("Desliza el dedo por la gráfica para ver cada hora.").font(.caption2).foregroundStyle(Theme.tertiary)
                 }
                 levels(day)
                 SectionHeading(text: "Tendencias")
@@ -166,7 +168,11 @@ struct StressMonitorView: View {
     }
 
     private func current(_ d: DaySummary) -> Double? {
-        d.stressHourly.last { $0 != nil } ?? nil
+        if let k = hour {
+            let h = (d.cycleStartHour + k) % 24
+            if h < d.stressHourly.count, let v = d.stressHourly[h] { return v }
+        }
+        return d.stressHourly.last { $0 != nil } ?? nil
     }
 
     private func gauge(_ d: DaySummary) -> some View {
@@ -180,13 +186,22 @@ struct StressMonitorView: View {
                         style: StrokeStyle(lineWidth: 10, lineCap: .round))
             if let v {
                 // Marker on the arc.
-                Circle().fill(.white).frame(width: 18, height: 18)
+                Capsule().fill(.white).frame(width: 28, height: 8)
+                    .shadow(color: .white.opacity(0.6), radius: 6)
                     .offset(x: -125)
                     .rotationEffect(.degrees(min(3, max(0, v)) / 3 * 180))
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: v)
             }
             VStack(spacing: 4) {
+                if let v {
+                    Text(Fmt.dec(v)).scaledFont(52, weight: .bold, relativeTo: .largeTitle, maxScale: 1.3).monospacedDigit().foregroundStyle(.white)
+                        .contentTransition(.numericText(value: v))
+                        .animation(.snappy, value: v)
+                }
                 Caps(v == nil ? "Calculando" : Theme.stressLevel(v), size: 15, color: v == nil ? .white : Theme.stressColor(v))
-                if let v { Text(Fmt.dec(v)).scaledFont(44, weight: .bold, relativeTo: .largeTitle, maxScale: 1.3).monospacedDigit().foregroundStyle(.white) }
+                if let k = hour {
+                    Text(String(format: "%02d:00", (d.cycleStartHour + k) % 24)).font(.subheadline.monospacedDigit()).foregroundStyle(.white)
+                }
             }
             .offset(y: -20)
             HStack {

@@ -16,6 +16,7 @@ struct MoreView: View {
     @State private var pendingStrap: DiscoveredStrap?
     @State private var diagnosticsURL: URL?
     @State private var showGuide = false
+    @State private var versionTaps = 0
 
     var body: some View {
         NavigationStack {
@@ -83,25 +84,24 @@ struct MoreView: View {
 
                 dataSection
 
-                Section {
-                    Toggle(isOn: Binding(get: { model.settings.labEnabled }, set: { v in
-                        var s = model.settings
-                        s.labEnabled = v
-                        model.saveSettings(s)
-                    })) {
-                        Label("Herramientas de laboratorio", systemImage: "flask")
-                    }
-                    if model.settings.labEnabled {
+                // Developer tools: hidden until the version is tapped 7 times.
+                if model.settings.labEnabled {
+                    Section {
                         NavigationLink {
                             LabView()
                         } label: {
                             Label("Laboratorio", systemImage: "testtube.2")
                         }
+                        Button("Ocultar herramientas de desarrollo") {
+                            var s = model.settings
+                            s.labEnabled = false
+                            model.saveSettings(s)
+                        }
+                    } header: {
+                        Text("Desarrollo")
+                    } footer: {
+                        Text("Graba los mensajes de la pulsera que Pulso aún no entiende y prueba vibraciones. Sirve para investigar la pulsera; no hace falta para usar la app.")
                     }
-                } header: {
-                    Text("Avanzado")
-                } footer: {
-                    Text("Para la pulsera de pruebas: captura de tramas, probador de vibraciones y detalles de conexión.")
                 }
 
                 Section("Información") {
@@ -113,6 +113,17 @@ struct MoreView: View {
                     Text("Pulso no es un dispositivo médico: todas las métricas son estimaciones de bienestar.")
                         .font(.footnote)
                         .foregroundStyle(Theme.secondary)
+                    LabeledContent("Versión", value: (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.1")
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            versionTaps += 1
+                            if versionTaps >= 7, !model.settings.labEnabled {
+                                var s = model.settings
+                                s.labEnabled = true
+                                model.saveSettings(s)
+                                versionTaps = 0
+                            }
+                        }
                 }
                         }
             .listRowBackground(Theme.card)
@@ -226,14 +237,15 @@ struct MoreView: View {
             } label: {
                 Label("Registro de conexión", systemImage: "list.bullet.rectangle")
             }
-            Button {
-                model.diagnosticsReport { diagnosticsURL = $0 }
-            } label: {
-                Label("Preparar diagnóstico", systemImage: "stethoscope")
-            }
             if let url = diagnosticsURL {
                 ShareLink(item: url) {
-                    Label("Enviar diagnóstico", systemImage: "square.and.arrow.up")
+                    Label("Enviar el informe (WhatsApp, correo…)", systemImage: "square.and.arrow.up")
+                }
+            } else {
+                Button {
+                    model.diagnosticsReport { diagnosticsURL = $0 }
+                } label: {
+                    Label("¿Problemas con la pulsera? Crear informe", systemImage: "stethoscope")
                 }
             }
             if model.strap.hasSavedStrap {
