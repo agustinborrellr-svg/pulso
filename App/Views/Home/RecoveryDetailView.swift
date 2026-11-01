@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 import PulsoStore
 import PulsoAnalytics
 
@@ -14,6 +15,7 @@ struct RecoveryDetailView: View {
                 effort(day)
                 vitals(day)
                 behaviours(day)
+                HRVTrendCard(days: model.days.filter { $0.day <= day.day })
                 RecoveryBreakdown(day: day)
                 quality(day)
                 SectionHeading(text: "Tendencias semanales")
@@ -236,3 +238,53 @@ struct FlowLayout: Layout {
         }
     }
 }
+
+/// The 7-day HRV average against your normal range (the way sports science reads HRV).
+struct HRVTrendCard: View {
+    let days: [DaySummary]
+
+    var body: some View {
+        let s = Array(HRVTrend.series(days).suffix(60))
+        if let last = s.last {
+            PCard {
+                CardHeader(title: "Tendencia de tu VFC", subtitle: "Media de 7 noches frente a tu rango normal")
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    BigValue(value: "\(Int(last.rolling.rounded()))", unit: "ms", size: 30)
+                    Text(text(last.status)).font(.subheadline.weight(.semibold)).foregroundStyle(color(last.status))
+                }
+                Chart {
+                    ForEach(s) { p in
+                        AreaMark(x: .value("Día", DayKey.date(p.day) ?? Date()), yStart: .value("bajo", p.low), yEnd: .value("alto", p.high))
+                            .foregroundStyle(Color.white.opacity(0.08))
+                        LineMark(x: .value("Día", DayKey.date(p.day) ?? Date()), y: .value("VFC", p.rolling))
+                            .foregroundStyle(Theme.hrv)
+                            .interpolationMethod(.catmullRom)
+                    }
+                    PointMark(x: .value("Día", DayKey.date(last.day) ?? Date()), y: .value("VFC", last.rolling))
+                        .foregroundStyle(color(last.status)).symbolSize(70)
+                }
+                .chartYScale(domain: .automatic(includesZero: false))
+                .frame(height: 150)
+                Text("Una noche suelta dice poco; lo que importa es si tu media de 7 noches sale de la banda gris.")
+                    .font(.caption).foregroundStyle(Theme.secondary)
+            }
+        }
+    }
+
+    private func text(_ st: HRVTrend.Status) -> String {
+        switch st {
+        case .within: return "dentro de tu normal"
+        case .below: return "por debajo: más descanso"
+        case .above: return "por encima: buena adaptación"
+        }
+    }
+
+    private func color(_ st: HRVTrend.Status) -> Color {
+        switch st {
+        case .within: return .white
+        case .below: return Theme.worse
+        case .above: return Theme.better
+        }
+    }
+}
+

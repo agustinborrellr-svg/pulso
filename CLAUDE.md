@@ -222,3 +222,12 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
 - Sueño: `SleepScoreHeader` (anillo, horas acostarse/levantarse, `SleepFactors`). En vivo: `LiveHeroMonitor`, `VitalsGrid` con ficha
   y rangos verde/naranja/rojo, `ChartScrub` para recorrer gráficas con el dedo. Laboratorio oculto (7 toques en Versión).
 
+## Estado (2026-11-01, fórmulas con estudios)
+
+- `RRCorrection` (Lipponen & Tarvainen 2019, constantes de NeuroKit2: α 5,2, ventana 91, mediana 11, c1 0,13, c2 0,17)
+  dentro de `HRV.clean`; solo corre si hay un salto >15 % entre latidos (rendimiento). Corrige, no borra.
+- VO₂ máx por carreras (`Fitness.vo2maxFromRun`: ACSM 0,2·v+3,5 y %FCR = %VO₂R, Swain 1997); mediana de 90 días con ≥3
+  carreras sustituye a Uth en `HistoryMerge.days(workouts:)`.
+- `HRVTrend`: media de 7 noches de ln RMSSD vs 60 días ± 0,5 DE (Plews/Buchheit, AIS). Tarjeta en Recuperación.
+- Respiración solo en sueño no-REM (Natarajan 2021). Calorías: Keytel 2005 con VO₂ máx. `derivedVersion` 7. 205 tests.
+

@@ -52,7 +52,7 @@ public enum SleepAnalyzer {
         s.disturbances = bouts
 
         // 5-minute buckets: HR and RMSSD, tagged with the dominant stage.
-        struct Bucket { var ts: Int; var hr: Double?; var rmssd: Double?; var pairs: Int; var deep: Bool; var asleep: Bool }
+        struct Bucket { var ts: Int; var hr: Double?; var rmssd: Double?; var pairs: Int; var deep: Bool; var asleep: Bool; var nrem: Bool }
         var buckets: [Bucket] = []
         var b = start
         while b < end {
@@ -64,13 +64,15 @@ public enum SleepAnalyzer {
             let st = i0 < i1 ? Array(stages[i0..<i1]) : []
             let deepCount = st.filter { $0 == .deep }.count
             let asleepCount = st.filter { $0 != .awake }.count
+            let remCount = st.filter { $0 == .rem }.count
             buckets.append(Bucket(
                 ts: b,
                 hr: bs.count >= 120 ? Stats.mean(bs.compactMap { $0.hr }.map(Double.init)) : nil,
                 rmssd: HRV.rmssd(runs, minPairs: 60),
                 pairs: HRV.pairCount(runs),
                 deep: !st.isEmpty && Double(deepCount) / Double(st.count) >= 0.6,
-                asleep: !st.isEmpty && Double(asleepCount) / Double(st.count) >= 0.8
+                asleep: !st.isEmpty && Double(asleepCount) / Double(st.count) >= 0.8,
+                nrem: !st.isEmpty && Double(asleepCount) / Double(st.count) >= 0.8 && Double(remCount) / Double(st.count) < 0.2
             ))
             b = e
         }
@@ -95,7 +97,12 @@ public enum SleepAnalyzer {
             HRV.clean(Epochs.rrRuns(Epochs.slice(inRange, from: bucket.ts, to: bucket.ts + 300), from: bucket.ts, to: bucket.ts + 300))
         }
         s.hrvSDNN = HRV.sdnn(asleepRuns, minBeats: 300)
-        s.respRate = HRV.respiratoryRate(asleepRuns.isEmpty ? allRuns : asleepRuns)
+        // Breathing from respiratory sinus arrhythmia only in non-REM sleep: in REM breathing is irregular and the
+        // arrhythmia weaker (Natarajan et al., npj Digit Med 2021, validated against polysomnography that way).
+        let nremRuns = buckets.filter { $0.nrem }.flatMap { bucket -> [RRRun] in
+            HRV.clean(Epochs.rrRuns(Epochs.slice(inRange, from: bucket.ts, to: bucket.ts + 300), from: bucket.ts, to: bucket.ts + 300))
+        }
+        s.respRate = HRV.respiratoryRate(nremRuns) ?? HRV.respiratoryRate(asleepRuns.isEmpty ? allRuns : asleepRuns)
 
         // SpO₂ and skin temperature are computed on the strap; average them over asleep minutes.
         let asleepEpochs = zip(epochs, stages).filter { $0.1 != .awake }.map { $0.0 }

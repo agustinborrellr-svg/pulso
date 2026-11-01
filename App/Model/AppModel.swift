@@ -272,7 +272,8 @@ final class AppModel: ObservableObject {
             let imported = try db.importedDays().filter { $0.day >= from }
             sleepCache = [:]
             daytimeSleepCache = [:]
-            days = HistoryMerge.days(measured: measured, imported: imported, profile: profile)
+            days = HistoryMerge.days(measured: measured, imported: imported, profile: profile,
+                                         workouts: (try? db.workouts(from: Int(Date().timeIntervalSince1970) - 500 * 86400, to: Int(Date().timeIntervalSince1970) + 86400)) ?? [])
             liveExtraLoad = 0
             refreshPulsoAge()
             let journal = try db.allJournal()

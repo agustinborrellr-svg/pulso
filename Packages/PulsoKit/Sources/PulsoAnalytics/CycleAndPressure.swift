@@ -214,8 +214,45 @@ public enum SleepFactors {
         let restorative = d.restorativeMinutes ?? ((d.deepMinutes ?? 0) + (d.remMinutes ?? 0))
         if let s = d.sleepMinutes, s > 0, restorative > 0 {
             let v = min(100, restorative / s * 100)
-            out.append(Factor(key: "restorative", label: "Sueño reparador (profundo + REM)", icon: "sparkles", value: v,
+            out.append(Factor(key: "restorative", label: "Sueño reparador", icon: "sparkles", value: v,
                               level: level(v, sufficient: 35, optimal: 45)))
+        }
+        return out
+    }
+}
+
+// MARK: - HRV trend (7-day rolling ln RMSSD)
+
+/// The way sports science reads nightly HRV (Plews & Buchheit; Australian Institute of Sport HRV guide): the natural
+/// log of RMSSD averaged over 7 days (at least 4 nights), compared with your normal range = the 60-day mean of
+/// ln RMSSD ± the smallest worthwhile change, 0.5 × its standard deviation. A single night means little; a 7-day
+/// average leaving the range does.
+public enum HRVTrend {
+    public enum Status: String, Sendable { case within, below, above }
+
+    public struct Point: Equatable, Sendable, Identifiable {
+        public var id: String { day }
+        public var day: String
+        /// 7-day mean of ln RMSSD, back in ms (e^mean).
+        public var rolling: Double
+        public var low: Double
+        public var high: Double
+        public var status: Status
+    }
+
+    public static func series(_ days: [DaySummary], calendar: Calendar = .current) -> [Point] {
+        let sorted = days.filter { ($0.hrv ?? 0) > 0 }.sorted { $0.day < $1.day }
+        let ln = Dictionary(sorted.map { ($0.day, log($0.hrv!)) }, uniquingKeysWith: { a, _ in a })
+        var out: [Point] = []
+        for d in sorted {
+            let week = (0..<7).compactMap { ln[DayKey.shift(d.day, days: -$0, calendar: calendar)] }
+            guard week.count >= 4 else { continue }
+            let base = sorted.filter { $0.day <= d.day && $0.day > DayKey.shift(d.day, days: -60, calendar: calendar) }.map { log($0.hrv!) }
+            guard base.count >= 14, let m = Stats.mean(base), let sd = Stats.sd(base) else { continue }
+            let r = week.reduce(0, +) / Double(week.count)
+            let swc = 0.5 * sd
+            let status: Status = r < m - swc ? .below : (r > m + swc ? .above : .within)
+            out.append(Point(day: d.day, rolling: exp(r), low: exp(m - swc), high: exp(m + swc), status: status))
         }
         return out
     }

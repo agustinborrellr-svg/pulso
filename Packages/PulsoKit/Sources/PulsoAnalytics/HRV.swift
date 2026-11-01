@@ -2,11 +2,13 @@ import Foundation
 
 /// Time- and frequency-domain HRV from beat-to-beat runs (Task Force 1996).
 public enum HRV {
-    /// Range filter (300–2000 ms) and Malik ectopic rejection (|beat − local median of 5| > 20 %).
-    /// A rejected beat splits the run so no successive difference spans it.
+    /// Artefact correction (Lipponen & Tarvainen 2019: ectopic, missed, extra and long/short beats are corrected,
+    /// not dropped), then a range filter (300–2000 ms) and Malik's rule (|beat − local median of 5| > 20 %) as a
+    /// last safety net. A beat still rejected splits the run so no successive difference spans it.
     public static func clean(_ runs: [RRRun]) -> [RRRun] {
         var out: [RRRun] = []
-        for run in runs {
+        for raw in runs {
+            let run = raw.count >= 15 ? RRCorrection.correct(raw.filter { $0 >= 250 && $0 <= 2500 }).rr : raw
             var cur: RRRun = []
             for i in 0..<run.count {
                 let v = run[i]

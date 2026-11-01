@@ -5,7 +5,37 @@ import PulsoStore
 public enum HistoryMerge {
     /// Measured days win; imported days fill the gaps. Imported days get the VO₂max the strap would have
     /// estimated for them (Uth: 15.3 × max HR / resting HR) with the same max HR the rest of the app uses.
-    public static func days(measured: [DaySummary], imported: [DaySummary], profile: Profile) -> [DaySummary] {
+    public static func days(measured: [DaySummary], imported: [DaySummary], profile: Profile, workouts: [Workout] = [],
+                            calendar: Calendar = .current) -> [DaySummary] {
+        let merged = mergeDays(measured: measured, imported: imported, profile: profile)
+        return withRunningVO2(merged, workouts: workouts, profile: profile, calendar: calendar)
+    }
+
+    /// Where there are three or more qualifying runs in the previous 90 days, the VO₂max comes from them
+    /// (`Fitness.vo2maxFromRun`) instead of from the resting heart rate, which overestimates it.
+    static func withRunningVO2(_ days: [DaySummary], workouts: [Workout], profile: Profile, calendar: Calendar) -> [DaySummary] {
+        let runs = workouts.filter { Fitness.runningSports.contains($0.sport) && ($0.distanceMeters ?? 0) > 0 && $0.avgHR > 0 }
+        guard runs.count >= 3 else { return days }
+        let sorted = days.sorted { $0.day < $1.day }
+        let maxHR = HeartRateModel.maxHR(override: profile.maxHROverride, age: profile.age,
+                                         dailyPeaks: sorted.suffix(400).compactMap(\.maxHR))
+        let estimates: [(ts: Int, vo2: Double)] = runs.compactMap { w in
+            let day = DayKey.string(ts: w.start, calendar: calendar)
+            let rest = Stats.median(sorted.filter { $0.day <= day && $0.day > DayKey.shift(day, days: -30, calendar: calendar) }.compactMap(\.rhr))
+            guard let rest, let v = Fitness.vo2maxFromRun(distanceMeters: w.distanceMeters!, seconds: Double(w.end - w.start),
+                                                          avgHR: w.avgHR, restingHR: rest, maxHR: maxHR) else { return nil }
+            return (w.start, v)
+        }
+        guard estimates.count >= 3 else { return days }
+        return days.map { d in
+            var d = d
+            let end = Int((DayKey.date(d.day, calendar: calendar) ?? Date()).timeIntervalSince1970) + 86400
+            if let v = Fitness.vo2maxFromRuns(estimates, through: end) { d.vo2max = (v * 10).rounded() / 10 }
+            return d
+        }
+    }
+
+    static func mergeDays(measured: [DaySummary], imported: [DaySummary], profile: Profile) -> [DaySummary] {
         let have = Set(measured.map(\.day))
         let extra = imported.filter { !have.contains($0.day) }
         let all = measured + extra

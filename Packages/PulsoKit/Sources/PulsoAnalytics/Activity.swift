@@ -102,11 +102,16 @@ public enum Calories {
         }
     }
 
-    /// kcal/min from HR (Keytel 2005).
-    public static func keytelPerMinute(hr: Double, _ p: Profile) -> Double {
+    /// kcal/min from HR (Keytel et al. 2005, J Sports Sci 23:289–297). With a VO₂max the fitness-adjusted equations
+    /// of the same paper are used (they explain more of the variance): kJ/min, divided by 4.184 for kcal.
+    public static func keytelPerMinute(hr: Double, _ p: Profile, vo2max: Double? = nil) -> Double {
         let w = p.weightKg, a = Double(p.age)
-        let male = (-55.0969 + 0.6309 * hr + 0.1988 * w + 0.2017 * a) / 4.184
-        let female = (-20.4022 + 0.4472 * hr - 0.1263 * w + 0.074 * a) / 4.184
+        var male = (-55.0969 + 0.6309 * hr + 0.1988 * w + 0.2017 * a) / 4.184
+        var female = (-20.4022 + 0.4472 * hr - 0.1263 * w + 0.074 * a) / 4.184
+        if let v = vo2max, (20...90).contains(v) {
+            male = (-95.7735 + 0.634 * hr + 0.404 * v + 0.394 * w + 0.271 * a) / 4.184
+            female = (-59.3954 + 0.45 * hr + 0.380 * v + 0.103 * w + 0.274 * a) / 4.184
+        }
         switch p.sex {
         case .male: return max(0, male)
         case .female: return max(0, female)
@@ -116,7 +121,7 @@ public enum Calories {
 
     /// Total and active kcal over the epochs; minutes with no data are billed at BMR.
     public static func compute(_ epochs: [MinuteEpoch], profile: Profile, model: HeartRateModel,
-                               activeWindows: [ClosedRange<Int>] = []) -> (total: Double, active: Double) {
+                               activeWindows: [ClosedRange<Int>] = [], vo2max: Double? = nil) -> (total: Double, active: Double) {
         let bmrMin = bmrPerDay(profile) / 1440
         var total = 0.0, active = 0.0
         for e in epochs {
@@ -129,12 +134,12 @@ public enum Calories {
             // Keytel's equation is only trusted from moderate intensity; below that it is blended towards
             // BMR between 30 % and 50 % of heart-rate reserve so walking and chores count without a cliff.
             if p >= 0.5 || (inWorkout && p >= 0.3) {
-                let k = max(bmrMin, keytelPerMinute(hr: hr, profile))
+                let k = max(bmrMin, keytelPerMinute(hr: hr, profile, vo2max: vo2max))
                 total += k
                 active += k - bmrMin
             } else if p >= 0.3 {
                 let w = (p - 0.3) / 0.2
-                let k = bmrMin + w * max(0, keytelPerMinute(hr: hr, profile) - bmrMin)
+                let k = bmrMin + w * max(0, keytelPerMinute(hr: hr, profile, vo2max: vo2max) - bmrMin)
                 total += k
                 active += k - bmrMin
             } else {
@@ -214,6 +219,30 @@ public enum Fitness {
         guard restingHR > 25 else { return nil }
         let v = 15.3 * maxHR / restingHR
         return (15...90).contains(v) ? v : nil
+    }
+
+    /// Sports whose distance and time give a running speed.
+    public static let runningSports: Set<String> = ["Carrera", "Cinta de correr", "Atletismo"]
+
+    /// VO₂max from one run. The ACSM running equation gives the oxygen cost of the average speed
+    /// (VO₂ = 0.2 × speed + 3.5 ml/kg/min, speed in m/min, flat ground; valid above 134 m/min = 8 km/h), and the
+    /// heart-rate reserve used equals the fraction of VO₂ reserve used (Swain & Leutholtz 1997, MSSE 29:410–414):
+    /// VO₂max = 3.5 + (VO₂ − 3.5) / %HRR. Only runs of 12+ minutes at 50–95 % of heart-rate reserve qualify.
+    public static func vo2maxFromRun(distanceMeters: Double, seconds: Double, avgHR: Double, restingHR: Double, maxHR: Double) -> Double? {
+        let minutes = seconds / 60
+        guard minutes >= 12, maxHR > restingHR + 20 else { return nil }
+        let speed = distanceMeters / minutes
+        guard (134...400).contains(speed) else { return nil }
+        let hrr = (avgHR - restingHR) / (maxHR - restingHR)
+        guard (0.5...0.95).contains(hrr) else { return nil }
+        let v = 3.5 + (0.2 * speed + 3.5 - 3.5) / hrr
+        return (20...90).contains(v) ? v : nil
+    }
+
+    /// Median of the run estimates in the 90 days up to `ts` (at least three runs); nil otherwise.
+    public static func vo2maxFromRuns(_ runs: [(ts: Int, vo2: Double)], through ts: Int) -> Double? {
+        let recent = runs.filter { $0.ts <= ts && $0.ts > ts - 90 * 86400 }.map(\.vo2)
+        return recent.count >= 3 ? Stats.median(recent) : nil
     }
 
     /// Age at which a population-average person has this VO₂max. Rough linear approximation of published

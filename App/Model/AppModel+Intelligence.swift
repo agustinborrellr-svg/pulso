@@ -32,7 +32,8 @@ extension AppModel {
             // The strap's days plus the WHOOP history: without a strap yet, the import alone feeds the analysis.
             let measured = (try? db.days(from: DayKey.shift(today, days: -150), to: today)) ?? []
             let imported = ((try? db.importedDays()) ?? []).filter { $0.day >= DayKey.shift(today, days: -150) }
-            let days = HistoryMerge.days(measured: measured, imported: imported, profile: profile)
+            let days = HistoryMerge.days(measured: measured, imported: imported, profile: profile,
+                                         workouts: (try? db.workouts(from: Int(Date().timeIntervalSince1970) - 500 * 86400, to: Int(Date().timeIntervalSince1970) + 86400)) ?? [])
             let sleeps = ((try? db.sleeps(from: from, to: nowTs + 3600)) ?? [])
                 + HistoryMerge.sleeps(from: imported, excluding: Set(measured.map(\.day)))
             let workouts = (try? db.workouts(from: from, to: nowTs + 3600)) ?? []

@@ -9,7 +9,7 @@ import PulsoStore
 public final class DayEngine {
     /// Version of the derived numbers (days, sleeps, workouts). Bump it whenever an algorithm changes: the app
     /// then recomputes every day from the raw seconds it still has.
-    public static let derivedVersion = 6
+    public static let derivedVersion = 7
 
     /// Daytime sleeps shorter than this are naps unless the user says otherwise.
     public static let napLimit = 3 * 3600
@@ -272,6 +272,8 @@ public final class DayEngine {
 
         // Workouts: re-detect automatic ones, keep manual/live ones and refresh their metrics.
         try db.deleteAutoWorkouts(from: cycleStart, to: d.cycleEnd!)
+        // Latest VO₂max before this day: Keytel's fitness-adjusted equation for the calories.
+        let fitnessVO2 = past.last { $0.vo2max != nil }?.vo2max
         var workouts = try db.workouts(from: cycleStart, to: d.cycleEnd!)
         let userWindows = workouts.map { $0.start...$0.end }
         for bout in WorkoutDetector.detect(cycleEpochs, model: model, stillThreshold: stillThr)
@@ -290,7 +292,7 @@ public final class DayEngine {
             workouts[i].zoneMinutes = ws.zoneMinutes
             workouts[i].avgHR = ws.avgHR ?? 0
             workouts[i].maxHR = ws.maxHR ?? 0
-            workouts[i].kcal = Calories.compute(we, profile: profile, model: model, activeWindows: [w.start...w.end]).total
+            workouts[i].kcal = Calories.compute(we, profile: profile, model: model, activeWindows: [w.start...w.end], vo2max: fitnessVO2).total
             workouts[i].id = try db.save(workouts[i])
         }
         d.workoutCount = workouts.count
@@ -298,7 +300,7 @@ public final class DayEngine {
 
         let energyFrom = main?.start ?? cycleStart
         let energyEpochs = Epochs.minutes(Epochs.slice(samples, from: energyFrom, to: d.cycleEnd!), from: energyFrom, to: d.cycleEnd!)
-        let kcal = Calories.compute(energyEpochs, profile: profile, model: model, activeWindows: workoutWindows)
+        let kcal = Calories.compute(energyEpochs, profile: profile, model: model, activeWindows: workoutWindows, vo2max: fitnessVO2)
         d.kcal = kcal.total.rounded()
         d.activeKcal = kcal.active.rounded()
 
