@@ -24,7 +24,9 @@ targets:
   Pulso:
     type: application
     platform: iOS
-    scheme: {}
+    scheme:
+      testTargets:
+        - PulsoUITests
     deploymentTarget: "17.0"
     sources:
       - path: App
@@ -63,6 +65,21 @@ targets:
         CODE_SIGN_ENTITLEMENTS: App/Resources/Pulso.entitlements
         GENERATE_INFOPLIST_FILE: NO
         SUPPORTS_MACCATALYST: NO
+
+  PulsoUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: UITests
+    dependencies:
+      - target: Pulso
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: es.gusborrell.pulso.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Pulso
+        TARGETED_DEVICE_FAMILY: "1"
 
   PulsoWidgets:
     type: app-extension

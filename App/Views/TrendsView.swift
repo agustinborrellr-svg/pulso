@@ -6,7 +6,11 @@ import PulsoAnalytics
 struct TrendsView: View {
     @EnvironmentObject var model: AppModel
     @State private var range: TrendRange = .month
-    @State private var mode = 1
+    @State private var mode: Int
+
+    init(initialMode: Int = 1) {
+        _mode = State(initialValue: initialMode)
+    }
     @AppStorage("trends.extra") private var extraRaw = ""
 
     private var extra: Binding<[TrendMetric]> {

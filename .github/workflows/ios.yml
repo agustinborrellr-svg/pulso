@@ -219,3 +219,56 @@ jobs:
           git add -A
           git commit -q -m "Capturas ${GITHUB_SHA::7}"
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-shots
+
+  pages:
+    # Full-length captures of every screen: commit message with [paginas].
+    if: contains(github.event.head_commit.message, '[paginas]')
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Elegir Xcode
+        run: |
+          XC=$(ls -d /Applications/Xcode_[0-9]*.app 2>/dev/null | grep -vi -e beta -e rc | sort -V | tail -1)
+          if [ -n "$XC" ]; then sudo xcode-select -s "$XC"; fi
+          xcodebuild -version
+
+      - name: Generar el proyecto
+        run: |
+          brew install xcodegen >/dev/null
+          xcodegen generate
+
+      - name: Capturar todas las páginas
+        run: |
+          set -x
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          c=[x for r,l in d.items() if 'iOS' in r for x in l if x['name'].startswith('iPhone') and 'Pro' in x['name'] and 'Max' not in x['name']]
+          c=c or [x for r,l in d.items() if 'iOS' in r for x in l if x['name'].startswith('iPhone')]
+          print(c[-1]['udid'])")
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
+          xcrun simctl ui "$UDID" appearance dark || true
+          mkdir -p "$PWD/pages"
+          export TEST_RUNNER_SHOTS_DIR="$PWD/pages"
+          xcodebuild test -project Pulso.xcodeproj -scheme Pulso -destination "id=$UDID"             -only-testing:PulsoUITests -derivedDataPath build-ui             CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO > ui-test.log 2>&1 || (grep -E "error:|failed|Fail" ui-test.log | head -60)
+          ls pages | wc -l
+
+      - name: Publicar en la rama ci-pages
+        if: always()
+        run: |
+          set +e
+          mkdir -p /tmp/pages && cp -R pages/. /tmp/pages/ 2>/dev/null
+          grep -E "error:|failed|Fail|Executed" ui-test.log | tail -80 > /tmp/pages/ui-test-summary.txt 2>/dev/null
+          tail -200 ui-test.log > /tmp/pages/ui-test-tail.log 2>/dev/null
+          echo "commit=${GITHUB_SHA}" > /tmp/pages/status.txt
+          cd /tmp/pages
+          git init -q -b ci-pages
+          git config user.name "pulso-ci"
+          git config user.email "pulso-ci@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Páginas ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-pages

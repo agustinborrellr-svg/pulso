@@ -12,7 +12,7 @@ enum ShotScreen: String, Identifiable {
     case recovery, strain, stress, trendRecovery, trendStrain, trendHRV, device, pairing, deviceAdvanced
     case sleepQuestion, vo2, plan, addActivity
     case scan, coherence, poincare, orthostatic, explorer, calendar, monthly, storage, monitor
-    case behaviors, cycle, pressure, doubleTap, trendHRV6M
+    case behaviors, cycle, pressure, doubleTap, trendHRV6M, trendsList
 
     var id: String { rawValue }
 
@@ -58,6 +58,9 @@ extension AppModel {
         charging = false
         let finish = {
             try? Data("ok".utf8).write(to: AppMode.readyFlagURL)
+            if let extra = ProcessInfo.processInfo.environment["PULSO_READY_PATH"] {
+                try? Data("ok".utf8).write(to: URL(fileURLWithPath: extra))
+            }
             done()
         }
         if (try? db.hasSamples()) == true {
@@ -164,6 +167,7 @@ struct ShotDestination: View {
                 case .monthly: MonthlyReportView()
                 case .storage: StorageView()
                 case .behaviors: BehaviorsView()
+                case .trendsList: TrendsView(initialMode: 0)
                 case .cycle: CycleCalendarView()
                 case .pressure: BloodPressureView()
                 case .doubleTap: DoubleTapView()
