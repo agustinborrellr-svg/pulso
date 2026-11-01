@@ -571,8 +571,7 @@ struct SleepScoreHeader: View {
                         Text("%").scaledFont(26, weight: .bold)
                     }
                     .foregroundStyle(.white)
-                    Caps("Calificación
-del sueño", size: 13).multilineTextAlignment(.center)
+                    Caps("Calificación\ndel sueño", size: 13).multilineTextAlignment(.center)
                     if let score { LevelDashes(level: score >= 85 ? .optimal : (score >= 70 ? .sufficient : .deficient)) }
                 }
             }
