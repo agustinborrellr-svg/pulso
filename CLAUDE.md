@@ -231,3 +231,14 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
 - `HRVTrend`: media de 7 noches de ln RMSSD vs 60 días ± 0,5 DE (Plews/Buchheit, AIS). Tarjeta en Recuperación.
 - Respiración solo en sueño no-REM (Natarajan 2021). Calorías: Keytel 2005 con VO₂ máx. `derivedVersion` 7. 205 tests.
 
+
+## Estado (2026-11-02, En vivo, constantes e Inteligencia por niveles)
+
+- En vivo: sin actividad solo `StartActivityCard` (+ Registrar actividad → `StartActivitySheet`: en directo o a mano); la gráfica,
+  los minis y el entreno solo aparecen con `liveWorkout` activo.
+- Constantes (`App/Views/Vitals/VitalsViews.swift`): `AppModel.vitalReadings()` / `vitalsSummary` (Bien/Regular/Mal = peor nivel).
+  Inicio: `HomeVitalsStatusTile` + `HomeStressStatusTile` bajo los diales. Drill-down: `VitalsCard` → `VitalsView` → `VitalDetailView` → tendencia.
+- Estrés: `StressLine` es una sola línea unida (monotone) con relleno; el color va por niveles con `StressLine.stops`.
+- Inteligencia (`IntelligenceSummary.swift`): `IntelHeroCard` (un veredicto) + 3 áreas + Herramientas; cada una abre
+  `IntelTodayView` / `IntelSectionView(title:)` / `IntelMoreView`, y sus métricas `MetricDetailView`.
+- CI: `[paginas:a,b,c]` en el commit captura solo esas pantallas (`SHOTS_ONLY`). Si GitHub no da Mac, `gh run rerun <id> --failed`.
