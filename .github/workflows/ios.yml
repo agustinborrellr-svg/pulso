@@ -221,8 +221,8 @@ jobs:
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-shots
 
   pages:
-    # Full-length captures of every screen: commit message with [paginas].
-    if: contains(github.event.head_commit.message, '[paginas]')
+    # Full-length captures of every screen: commit message with [paginas], or [paginas:a,b,c] for only those screens.
+    if: contains(github.event.head_commit.message, '[paginas')
     runs-on: macos-15
     timeout-minutes: 90
     steps:
@@ -240,8 +240,11 @@ jobs:
           xcodegen generate
 
       - name: Capturar todas las páginas
+        env:
+          MSG: ${{ github.event.head_commit.message }}
         run: |
           set -x
+          export TEST_RUNNER_SHOTS_ONLY="$(printf '%s' "$MSG" | sed -n 's/.*\[paginas:\([^]]*\)\].*/\1/p' | head -1)"
           UDID=$(xcrun simctl list devices available -j | python3 -c "
           import json,sys
           d=json.load(sys.stdin)['devices']

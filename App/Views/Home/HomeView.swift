@@ -20,6 +20,14 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     HomeTopBar()
                     pillarTabs
+                    if !model.days.isEmpty {
+                        // Like a health monitor: just whether your vitals are fine, so-so or off, and the stress level.
+                        HStack(alignment: .top, spacing: 10) {
+                            HomeVitalsStatusTile()
+                            HomeStressStatusTile()
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
                     if let q = model.pendingSleepQuestions.first {
                         SleepQuestionCard(session: q)
                     }
@@ -332,9 +340,9 @@ struct StressPreviewCard: View {
     }
 }
 
-/// Hourly stress as a line coloured by level. Runs from the hour the cycle started (waking up), so the hours
-/// after midnight come last instead of on the left; hours without readings break the line instead of being
-/// bridged.
+/// Hourly stress as one smooth, joined line over a soft fill, both coloured by level (green low, yellow medium,
+/// orange high). Runs from the hour the cycle started (waking up), so the hours after midnight come last instead
+/// of on the left. Hours without a reading are bridged, so the day reads as one curve.
 struct StressLine: View {
     let hourly: [Double?]
     var compact = false
@@ -342,42 +350,62 @@ struct StressLine: View {
     /// Hour offset (0 = cycle start) under the finger.
     var selected: Binding<Int?> = .constant(nil)
 
-    private var points: [(x: Int, v: Double, segment: Int)] {
-        var out: [(Int, Double, Int)] = []
-        var segment = 0, last: Int?
-        for k in 0..<24 {
+    private var points: [(x: Int, v: Double)] {
+        (0..<24).compactMap { k in
             let h = (startHour + k) % 24
-            guard h < hourly.count, let v = hourly[h] else { continue }
-            if let l = last, k - l > 1 { segment += 1 }
-            out.append((k, v, segment))
-            last = k
+            guard h < hourly.count, let v = hourly[h] else { return nil }
+            return (k, v)
         }
+    }
+
+    /// Colour stops for a vertical gradient that spans `lo`…`hi` in stress units, so each height gets the colour
+    /// of its own level (a gradient on a mark spans the mark's own bounds, not the axis).
+    static func stops(_ lo: Double, _ hi: Double, opacity: (Double) -> Double = { _ in 1 }) -> [Gradient.Stop] {
+        let span = max(hi - lo, 0.001)
+        func loc(_ v: Double) -> CGFloat { CGFloat(min(max((v - lo) / span, 0), 1)) }
+        func stop(_ v: Double, at l: Double) -> Gradient.Stop {
+            .init(color: Theme.stressColor(v).opacity(opacity(l)), location: loc(l))
+        }
+        var out = [stop(lo, at: lo)]
+        for t in [1.0, 2.0] where t > lo && t < hi {
+            out.append(stop(t - 0.01, at: max(lo, t - 0.15)))
+            out.append(stop(t, at: min(hi, t + 0.15)))
+        }
+        out.append(stop(hi, at: hi))
         return out
     }
 
     var body: some View {
         let pts = points
         let lo = pts.map(\.v).min() ?? 0, hi = pts.map(\.v).max() ?? 0
-        // A gradient on a line spans the line's own height: colour its ends by their real level.
-        let gradient = LinearGradient(colors: [Theme.stressColor(lo), Theme.stressColor((lo + hi) / 2), Theme.stressColor(hi)],
-                                      startPoint: .bottom, endPoint: .top)
+        let line = LinearGradient(stops: Self.stops(lo, hi), startPoint: .bottom, endPoint: .top)
+        let fill = LinearGradient(stops: Self.stops(0, max(hi, 0.01), opacity: { 0.04 + 0.30 * $0 / max(hi, 0.01) }),
+                                  startPoint: .bottom, endPoint: .top)
         Chart {
             ForEach(pts, id: \.x) { p in
-                LineMark(x: .value("Hora", p.x), y: .value("Estrés", p.v), series: .value("Tramo", p.segment))
-                    .foregroundStyle(gradient)
+                AreaMark(x: .value("Hora", p.x), yStart: .value("Base", 0), yEnd: .value("Estrés", p.v))
+                    .foregroundStyle(fill)
                     .interpolationMethod(.monotone)
-                    .lineStyle(StrokeStyle(lineWidth: 2.2))
-                if pts.filter({ $0.segment == p.segment }).count == 1 {
-                    PointMark(x: .value("Hora", p.x), y: .value("Estrés", p.v))
-                        .foregroundStyle(Theme.stressColor(p.v))
-                        .symbolSize(24)
-                }
+                LineMark(x: .value("Hora", p.x), y: .value("Estrés", p.v), series: .value("s", "estrés"))
+                    .foregroundStyle(line)
+                    .interpolationMethod(.monotone)
+                    .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
             }
-            if let k = selected.wrappedValue, let p = pts.first(where: { $0.x == k }) {
-                RuleMark(x: .value("Hora", k))
+            if pts.count == 1, let p = pts.first {
+                PointMark(x: .value("Hora", p.x), y: .value("Estrés", p.v))
+                    .foregroundStyle(Theme.stressColor(p.v))
+                    .symbolSize(30)
+            }
+            if let p = pts.last, pts.count > 1 {
+                PointMark(x: .value("Hora", p.x), y: .value("Estrés", p.v))
+                    .foregroundStyle(.white)
+                    .symbolSize(28)
+            }
+            if let k = selected.wrappedValue, let p = pts.min(by: { abs($0.x - k) < abs($1.x - k) }) {
+                RuleMark(x: .value("Hora", p.x))
                     .foregroundStyle(.white.opacity(0.7))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                PointMark(x: .value("Hora", k), y: .value("Estrés", p.v))
+                PointMark(x: .value("Hora", p.x), y: .value("Estrés", p.v))
                     .foregroundStyle(Theme.stressColor(p.v))
                     .symbolSize(110)
             }

@@ -3,63 +3,6 @@ import Charts
 import PulsoStore
 import PulsoIntelligence
 
-/// "Inteligencia": derived metrics, patterns and the personal forecast.
-struct IntelligenceContent: View {
-    @EnvironmentObject var model: AppModel
-    @State private var exportURL: URL?
-
-    var body: some View {
-        VStack(spacing: 16) {
-            AnalysisTodayCard()
-            if let d = model.today ?? model.days.last(where: { $0.recovery != nil }) { WaterfallCard(day: d) }
-            if let r = model.intelligence {
-                UnlockCard(report: r)
-                ImpactCard(items: r.habits)
-                AnalysisToolsLinks()
-                CoherenceCard(report: r)
-                ForecastCard(report: r)
-                ForEach(r.sections) { section in
-                    VStack(alignment: .leading, spacing: 10) {
-                        SectionTitle(title: section.title, subtitle: section.subtitle)
-                            .padding(.horizontal, 4)
-                        ForEach(section.metrics) { m in
-                            NavigationLink {
-                                MetricDetailView(metric: m)
-                            } label: {
-                                MetricCard(metric: m)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-                if !r.fingerprints.isEmpty { FingerprintCard(items: r.fingerprints) }
-                if !r.habits.isEmpty { HabitsCard(items: r.habits) }
-                Card {
-                    SectionTitle(title: "Tus datos")
-                    Button {
-                        exportURL = model.exportIntelligence()
-                    } label: {
-                        Label("Exportar el análisis (CSV)", systemImage: "tablecells")
-                    }
-                    if let url = exportURL {
-                        ShareLink(item: url) { Label("Compartir", systemImage: "square.and.arrow.up") }
-                    }
-                    Text("Métricas derivadas de tus propios datos y comparadas solo contigo. Muestran asociaciones, no causas, y no son un diagnóstico médico. Cuando no hay datos suficientes lo indican en vez de inventar un valor.")
-                        .font(.caption)
-                        .foregroundStyle(Theme.tertiary)
-                }
-            } else {
-                Card {
-                    HStack {
-                        ProgressView()
-                        Text("Calculando tu análisis…").foregroundStyle(Theme.secondary)
-                    }
-                }
-            }
-        }
-    }
-}
-
 /// Last night's coherence: what the percentile means, each signal against its usual band, and 14 nights.
 struct CoherenceCard: View {
     let report: IntelligenceReport

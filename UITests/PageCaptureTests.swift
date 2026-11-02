@@ -5,7 +5,8 @@ import XCTest
 final class PageCaptureTests: XCTestCase {
     /// Every screen the app can open in screenshot mode (`-PulsoScreen`), tabs first.
     static let screens = [
-        "today", "health", "trends", "trendsList", "live", "more",
+        "today", "health", "trends", "trendsList", "live", "liveIdle", "more",
+        "vitals", "vitalDetail", "startActivity", "intelToday", "intelLoad", "intelSleep", "intelHabits", "intelMore",
         "recovery", "sleep", "strain", "stress", "trendRecovery", "trendStrain", "trendHRV", "trendHRV6M",
         "vo2", "plan", "behaviors", "cycle", "pressure", "monitor", "calendar", "explorer", "monthly", "intelDetail", "whatif",
         "scan", "coherence", "poincare", "orthostatic", "workout",
@@ -37,7 +38,10 @@ final class PageCaptureTests: XCTestCase {
         while !FileManager.default.fileExists(atPath: flag.path) && Date() < deadline { sleep(2) }
         app.terminate()
 
-        for (n, screen) in Self.screens.enumerated() {
+        // SHOTS_ONLY (from "[paginas:a,b]" in the commit message): just those screens.
+        let only = (ProcessInfo.processInfo.environment["SHOTS_ONLY"] ?? "").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let screens = only.isEmpty ? Self.screens : only
+        for (n, screen) in screens.enumerated() {
             app = launch(screen, readyFlag: flag)
             sleep(5)
             var previous: Data?

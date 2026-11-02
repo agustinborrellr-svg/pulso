@@ -7,8 +7,6 @@ import PulsoIntegrations
 
 struct LiveView: View {
     @EnvironmentObject var model: AppModel
-    @State private var sport = "Carrera"
-    @State private var planID = ""
     @State private var confirmStop = false
     @State private var resp: Double?
     @State private var stress: Double?
@@ -23,36 +21,20 @@ struct LiveView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     LiveRunBanner()
-                    LiveHeroMonitor()
-                    liveStats
-                    HStack(spacing: 10) {
-                        NavigationLink { ScanView() } label: {
-                            Label("Escanear 60 s", systemImage: "dot.radiowaves.left.and.right")
-                                .font(.subheadline.weight(.semibold))
-                                .frame(maxWidth: .infinity).padding(.vertical, 13)
-                                .foregroundStyle(.black)
-                                .background(Color.white, in: Capsule())
-                        }
-                        if model.liveWorkout == nil {
-                            Button { startingWorkout = true } label: {
-                                Label("Entreno", systemImage: "play.fill")
-                                    .font(.subheadline.weight(.semibold))
-                                    .frame(maxWidth: .infinity).padding(.vertical, 13)
-                                    .foregroundStyle(.white)
-                                    .background(Theme.card, in: Capsule())
-                                    .overlay(Capsule().stroke(Theme.hairline))
-                            }
-                            .disabled(!model.strapState.isConnected)
-                        }
+                    if model.liveWorkout != nil {
+                        // Only while an activity runs: the live line, the minis and the workout itself.
+                        LiveHeroMonitor()
+                        liveStats
+                        workoutCard
+                    } else {
+                        StartActivityCard { startingWorkout = true }
                     }
-                    .buttonStyle(.plain)
-                    if model.liveWorkout != nil { workoutCard }
-                    SectionHeading(text: "Tus constantes")
-                    VitalsGrid()
+                    VitalsCard()
                     LiveHRHistoryCard()
                     SectionHeading(text: "Herramientas")
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
+                            ToolChip(icon: "dot.radiowaves.left.and.right", title: "Escanear", color: .white) { ScanView() }
                             ToolChip(icon: "wind", title: "Respirar", color: Theme.hrv) { BreathingView() }
                             ToolChip(icon: "circle.grid.cross", title: "Poincaré", color: Theme.sleep) { PoincareView() }
                             ToolChip(icon: "figure.stand", title: "Ortostático", color: Theme.yellow) { OrthostaticTestView() }
@@ -78,14 +60,9 @@ struct LiveView: View {
             .onDisappear { if model.liveWorkout == nil { model.setLive(false) } }
             .onChange(of: model.liveHR) { _, _ in refreshSlow() }
             .sheet(isPresented: $startingWorkout) {
-                NavigationStack {
-                    ScrollView { startCard.padding(16) }
-                        .background(PulsoBackground())
-                        .pulsoTitle("Registrar entreno")
-                        .onChange(of: model.liveWorkout != nil) { _, started in if started { startingWorkout = false } }
-                }
-                .presentationDetents([.medium])
-                .preferredColorScheme(.dark)
+                StartActivitySheet(isPresented: $startingWorkout)
+                    .presentationDetents([.medium, .large])
+                    .preferredColorScheme(.dark)
             }
         }
     }
@@ -126,36 +103,6 @@ struct LiveView: View {
             Text(k).scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary).lineLimit(1).minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity)
-    }
-
-    private var startCard: some View {
-        Card {
-            SectionTitle(title: "Registrar entreno", subtitle: "Esfuerzo y calorías en tiempo real")
-            Picker("Deporte", selection: $sport) {
-                ForEach(Self.sports, id: \.self) { Text($0) }
-            }
-            .pickerStyle(.menu)
-            .tint(.white)
-            Picker("Plan", selection: $planID) {
-                Text("Libre").tag("")
-                ForEach(IntervalPlan.presets) { p in Text(p.name).tag(p.id) }
-            }
-            .pickerStyle(.menu)
-            .tint(.white)
-            if let plan = IntervalPlan.presets.first(where: { $0.id == planID }) {
-                Text("\(plan.detail) · \(plan.totalSeconds / 60) min. La pulsera vibra en cada cambio y si te sales de la zona\(model.settings.voiceCues ? ", y una voz te guía" : "").")
-                    .font(.caption)
-                    .foregroundStyle(Theme.secondary)
-            }
-            Button {
-                model.startWorkout(sport: sport, plan: IntervalPlan.presets.first { $0.id == planID })
-            } label: {
-                Label("Empezar", systemImage: "play.fill").frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(Theme.green)
-            .disabled(!model.strapState.isConnected)
-        }
     }
 
     private var workoutCard: some View {
@@ -252,6 +199,100 @@ struct LiveView: View {
     static func duration(_ s: TimeInterval) -> String {
         let t = Int(s)
         return t >= 3600 ? String(format: "%d:%02d:%02d", t / 3600, (t % 3600) / 60, t % 60) : String(format: "%02d:%02d", t / 60, t % 60)
+    }
+}
+
+/// «Registrar actividad»: start one now (live chart, zones, strain) or add one you already did.
+struct StartActivitySheet: View {
+    @EnvironmentObject var model: AppModel
+    @Binding var isPresented: Bool
+    @State private var sport = "Carrera"
+    @State private var planID = ""
+    @State private var addingManual = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView { card.padding(16) }
+                .background(PulsoBackground())
+                .pulsoTitle("Registrar actividad")
+                .onChange(of: model.liveWorkout != nil) { _, started in if started { isPresented = false } }
+        }
+    }
+
+    private var card: some View {
+        Card {
+            SectionTitle(title: "Empezar ahora", subtitle: "Pulso, zonas, esfuerzo y calorías en directo")
+            Picker("Deporte", selection: $sport) {
+                ForEach(LiveView.sports, id: \.self) { Text($0) }
+            }
+            .pickerStyle(.menu)
+            .tint(.white)
+            Picker("Plan", selection: $planID) {
+                Text("Libre").tag("")
+                ForEach(IntervalPlan.presets) { p in Text(p.name).tag(p.id) }
+            }
+            .pickerStyle(.menu)
+            .tint(.white)
+            if let plan = IntervalPlan.presets.first(where: { $0.id == planID }) {
+                Text("\(plan.detail) · \(plan.totalSeconds / 60) min. La pulsera vibra en cada cambio y si te sales de la zona\(model.settings.voiceCues ? ", y una voz te guía" : "").")
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondary)
+            }
+            Button {
+                model.startWorkout(sport: sport, plan: IntervalPlan.presets.first { $0.id == planID })
+            } label: {
+                Label("Empezar", systemImage: "play.fill").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Theme.green)
+            .disabled(!model.strapState.isConnected)
+            if !model.strapState.isConnected {
+                Text("Conecta la pulsera para registrarla en directo.").font(.caption).foregroundStyle(Theme.yellow)
+            }
+            Button { addingManual = true } label: {
+                Label("¿Ya la hiciste? Añádela a mano", systemImage: "clock.arrow.circlepath").font(.subheadline)
+            }
+            .foregroundStyle(Theme.link)
+            .sheet(isPresented: $addingManual, onDismiss: { isPresented = false }) { AddActivitySheet() }
+        }
+    }
+
+}
+
+/// The sheet on its own, for the screenshot run.
+struct StartActivityPreview: View {
+    @State private var open = true
+    var body: some View { StartActivitySheet(isPresented: $open) }
+}
+
+/// En vivo without an activity: one big «+» to start one. The live chart appears only once it runs.
+struct StartActivityCard: View {
+    @EnvironmentObject var model: AppModel
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                Image(systemName: "plus")
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(.black)
+                    .frame(width: 60, height: 60)
+                    .background(Color.white, in: Circle())
+                VStack(alignment: .leading, spacing: 4) {
+                    Caps("Registrar actividad", size: 14)
+                    Text(model.liveHR.map { "Ahora \($0) lpm · verás tu pulso, zonas y esfuerzo en directo" }
+                         ?? (model.strapState.isConnected ? "Verás tu pulso, zonas y esfuerzo en directo" : "Conecta la pulsera para empezar"))
+                        .font(.caption).foregroundStyle(Theme.secondary)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Theme.hairline))
+        }
+        .buttonStyle(.plain)
     }
 }
 

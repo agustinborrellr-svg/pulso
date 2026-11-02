@@ -13,6 +13,7 @@ enum ShotScreen: String, Identifiable {
     case sleepQuestion, vo2, plan, addActivity
     case scan, coherence, poincare, orthostatic, explorer, calendar, monthly, storage, monitor
     case behaviors, cycle, pressure, doubleTap, trendHRV6M, trendsList
+    case liveIdle, vitals, vitalDetail, startActivity, intelToday, intelLoad, intelSleep, intelHabits, intelMore
 
     var id: String { rawValue }
 
@@ -21,7 +22,7 @@ enum ShotScreen: String, Identifiable {
         case .today: return 0
         case .health: return 1
         case .trends: return 2
-        case .live: return 3
+        case .live, .liveIdle: return 3
         case .more: return 4
         default: return nil
         }
@@ -56,7 +57,9 @@ extension AppModel {
             }
         }
         charging = false
-        let finish = {
+        let finish = { [weak self] in
+            // The demo can end the day before the current cycle: open Inicio on a day that has data.
+            if let self, self.selected == nil, let last = self.days.last?.day { self.selectedDay = last }
             try? Data("ok".utf8).write(to: AppMode.readyFlagURL)
             if let extra = ProcessInfo.processInfo.environment["PULSO_READY_PATH"] {
                 try? Data("ok".utf8).write(to: URL(fileURLWithPath: extra))
@@ -173,6 +176,14 @@ struct ShotDestination: View {
                 case .doubleTap: DoubleTapView()
                 case .trendHRV6M: TrendDetailView(metric: .hrv, initialPeriod: .halfYear)
                 case .monitor: MonitorView()
+                case .vitals: VitalsView()
+                case .vitalDetail: VitalDetailView(id: "hrv")
+                case .startActivity: StartActivityPreview()
+                case .intelToday: IntelTodayView()
+                case .intelLoad: IntelSectionView(title: "Respuesta a la carga")
+                case .intelSleep: IntelSectionView(title: "Sueño y ritmo")
+                case .intelHabits: IntelSectionView(title: "Hábitos y predicción")
+                case .intelMore: IntelMoreView()
                 case .intelDetail:
                     if let m = model.intelligence?.metric("forecast") { MetricDetailView(metric: m) } else { Text("Calculando…") }
                 default: EmptyView()
