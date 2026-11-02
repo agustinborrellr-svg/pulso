@@ -43,7 +43,8 @@ final class PageCaptureTests: XCTestCase {
         let screens = only.isEmpty ? Self.screens : only
         for (n, screen) in screens.enumerated() {
             app = launch(screen, readyFlag: flag)
-            sleep(5)
+            // The first relaunch still finishes analysing the demo's last days: give it longer.
+            sleep(n == 0 ? 25 : 5)
             var previous: Data?
             for step in 0..<14 {
                 let png = XCUIScreen.main.screenshot().pngRepresentation

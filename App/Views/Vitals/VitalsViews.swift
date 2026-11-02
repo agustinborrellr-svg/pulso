@@ -97,7 +97,7 @@ extension AppModel {
         var out: [VitalReading] = []
         func add(_ id: String, _ icon: String, _ title: String, _ short: String, _ metric: TrendMetric, _ key: KeyPath<DaySummary, Double?>,
                  unit: String, bad: Int, fmt: @escaping (Double) -> String, base: (Baselines) -> Baseline?, log: Bool = false,
-                 explanation: String) {
+                 phrase: String, explanation: String) {
             guard let (v, d) = latestDay(with: key) else { return }
             let b = Baselines.from(history: days.filter { $0.day < d.day && $0.day >= DayKey.shift(d.day, days: -30) })
             let toUser: (Double) -> Double = log ? { exp($0) } : { $0 }
@@ -114,7 +114,7 @@ extension AppModel {
                 outer = lo2...hi2
                 chip = level == .green ? "en tu rango"
                     : ((bad >= 0 && x > bl.center) ? (level == .red ? "muy alta" : "alta") : (level == .red ? "muy baja" : "baja")) + " para ti"
-                detail = "Tu \(title.lowercased()) de \(fmt(v)) \(unit) \(level == .green ? "está dentro de" : "está fuera de") tu rango típico de \(fmt(lo)) a \(fmt(hi)) \(unit)."
+                detail = "Tu \(phrase) de \(fmt(v)) \(unit) \(level == .green ? "está dentro de" : "está fuera de") tu rango típico de \(fmt(lo)) a \(fmt(hi)) \(unit)."
                 switch bad {
                 case 1: limits = [(.green, "Verde = \(fmt(hi)) \(unit) e inferior"), (.orange, "Naranja = \(fmt(hi)) a \(fmt(hi2)) \(unit)"), (.red, "Rojo = \(fmt(hi2)) \(unit) y superior")]
                 case -1: limits = [(.green, "Verde = \(fmt(lo)) \(unit) y superior"), (.orange, "Naranja = \(fmt(lo2)) a \(fmt(lo)) \(unit)"), (.red, "Rojo = \(fmt(lo2)) \(unit) e inferior")]
@@ -129,14 +129,19 @@ extension AppModel {
                                     range: range, outer: outer, bad: bad, format: fmt, history: history))
         }
         add("hrv", "waveform.path.ecg", "VFC", "VFC", .hrv, \.hrv, unit: "ms", bad: -1, fmt: { Fmt.int($0) }, base: { $0.lnHRV }, log: true,
+            phrase: "VFC",
             explanation: "La variación del tiempo entre latidos. Alta = tu sistema nervioso está relajado y te recuperas bien; baja = fatiga física o mental, deshidratación, alcohol, estrés o enfermedad.")
         add("rhr", "heart", "FC en reposo", "FC en reposo", .rhr, \.rhr, unit: "lpm", bad: 1, fmt: { Fmt.int($0) }, base: { $0.rhr },
+            phrase: "FC en reposo",
             explanation: "Las veces que late tu corazón por minuto en tu sueño más tranquilo. Más alta de lo habitual suele indicar entreno duro el día anterior, alcohol, poco sueño o que estás incubando algo.")
         add("resp", "lungs", "Frecuencia respiratoria", "Respiración", .respRate, \.respRate, unit: "rpm", bad: 1, fmt: { Fmt.dec($0) }, base: { $0.resp },
+            phrase: "frecuencia respiratoria",
             explanation: "Respiraciones por minuto mientras duermes. Es muy estable de una noche a otra: si sube, suele ser por enfermedad, alcohol o un entreno muy exigente.")
         add("temp", "thermometer.medium", "Temperatura cutánea", "Temperatura", .skinTemp, \.skinTemp, unit: "°C", bad: 0, fmt: { Fmt.dec($0) }, base: { $0.temp },
+            phrase: "temperatura de la piel",
             explanation: "La temperatura de la piel durante la noche. Cambia con el ambiente y la ropa de cama; una subida varias noches seguidas puede anunciar fiebre o, en mujeres, la fase lútea.")
         add("spo2", "drop", "Oxígeno en sangre (SpO₂)", "SpO₂", .spo2, \.spo2, unit: "%", bad: -1, fmt: { Fmt.int($0) }, base: { $0.spo2 },
+            phrase: "SpO₂",
             explanation: "Cuánto oxígeno llevan los glóbulos rojos. Lectura experimental de la pulsera: úsala solo como tendencia.")
         return out
     }

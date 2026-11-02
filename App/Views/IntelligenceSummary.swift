@@ -154,6 +154,7 @@ struct IntelArea: Identifiable {
 
     static func headline(_ m: MetricResult) -> String {
         guard let v = m.value else { return "–" }
+        if m.unit == "noches" && v < 1 { return "< 1 noche" }
         let unit = m.unit.count <= 8 ? " " + m.unit : ""
         return MetricFormat.value(v) + unit
     }

@@ -57,9 +57,7 @@ extension AppModel {
             }
         }
         charging = false
-        let finish = { [weak self] in
-            // The demo can end the day before the current cycle: open Inicio on a day that has data.
-            if let self, self.selected == nil, let last = self.days.last?.day { self.selectedDay = last }
+        let finish = {
             try? Data("ok".utf8).write(to: AppMode.readyFlagURL)
             if let extra = ProcessInfo.processInfo.environment["PULSO_READY_PATH"] {
                 try? Data("ok".utf8).write(to: URL(fileURLWithPath: extra))
