@@ -78,8 +78,11 @@ public enum SleepAnalyzer {
         }
         s.trend = buckets.map { TrendPoint(ts: $0.ts, hr: $0.hr, hrv: $0.rmssd) }
 
-        // Nightly HRV + RHR: WHOOP-style, from deep-sleep windows; fall back to the calmest asleep windows
-        // of the second half of the night.
+        // Nightly HRV as WHOOP describes it since 2025: overlapping 5-minute windows every 30 s across the whole
+        // sleep, wake windows removed, weighted average with more weight on likely deep sleep and later in the night.
+        s.hrv = weightedNightHRV(inRange, stages: stages, start: start, end: end)
+
+        // RHR: deep-sleep windows; fall back to the calmest asleep windows of the second half of the night.
         var hrvWindows = buckets.filter { $0.deep && $0.rmssd != nil }
         if hrvWindows.count < 2 {
             let asleep = buckets.filter { $0.asleep && $0.rmssd != nil && $0.hr != nil }
@@ -87,7 +90,7 @@ public enum SleepAnalyzer {
             let pool = secondHalf.count >= 3 ? secondHalf : asleep
             hrvWindows = Array(pool.sorted { ($0.hr ?? 999) < ($1.hr ?? 999) }.prefix(max(2, pool.count / 3)))
         }
-        s.hrv = Stats.mean(hrvWindows.compactMap { $0.rmssd })
+        if s.hrv == nil { s.hrv = Stats.mean(hrvWindows.compactMap { $0.rmssd }) }
         let hrvHRs = hrvWindows.compactMap { $0.hr }
         let asleepHR = buckets.filter { $0.asleep }.compactMap { $0.hr }
         s.rhr = Stats.mean(hrvHRs) ?? Stats.percentile(asleepHR, 10)
@@ -111,5 +114,33 @@ public enum SleepAnalyzer {
         let temps = asleepEpochs.compactMap { $0.temp }
         s.skinTemp = temps.count >= 30 ? Stats.median(temps) : nil
         return s
+    }
+
+    /// Extra weight of a window that is all deep sleep, and of the last window of the night vs the first.
+    /// WHOOP does not publish its weights; these only follow the direction it describes.
+    static let deepWeight = 1.0
+    static let lateWeight = 1.0
+
+    /// 5-minute RMSSD windows stepped every 30 s; a window counts when at most one of its minutes is awake.
+    /// Weight = (1 + deepWeight × deep share) × (1 + lateWeight × position in the night).
+    static func weightedNightHRV(_ samples: [Sample], stages: [SleepStage], start: Int, end: Int) -> Double? {
+        guard end - start >= 600, !stages.isEmpty else { return nil }
+        var sum = 0.0, wsum = 0.0
+        var t = start
+        while t + 300 <= end {
+            defer { t += 30 }
+            let i0 = (t - start) / 60, i1 = min(stages.count, (t + 300 - start + 59) / 60)
+            guard i0 < i1 else { continue }
+            let st = stages[i0..<i1]
+            guard st.filter({ $0 == .awake }).count <= 1 else { continue }
+            let runs = HRV.clean(Epochs.rrRuns(Epochs.slice(samples, from: t, to: t + 300), from: t, to: t + 300))
+            guard let r = HRV.rmssd(runs, minPairs: 60) else { continue }
+            let deep = Double(st.filter { $0 == .deep }.count) / Double(st.count)
+            let late = Double(t - start) / Double(max(1, end - start - 300))
+            let w = (1 + deepWeight * deep) * (1 + lateWeight * late)
+            sum += w * r
+            wsum += w
+        }
+        return wsum > 0 ? sum / wsum : nil
     }
 }

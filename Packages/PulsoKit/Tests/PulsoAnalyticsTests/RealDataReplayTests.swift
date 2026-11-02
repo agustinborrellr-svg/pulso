@@ -16,6 +16,11 @@ final class RealDataReplayTests: XCTestCase {
         func t(_ ts: Int?) -> String { ts.map { Date(timeIntervalSince1970: TimeInterval($0)).formatted(date: .omitted, time: .shortened) } ?? "–" }
         for d in days {
             print("DAY \(d.day) cycle \(t(d.cycleStart))→\(t(d.cycleEnd)) recovery \(d.recovery.map { "\($0)" } ?? "nil") strain \(d.strain ?? -1) steps \(d.steps ?? -1) kcal \(Int(d.kcal ?? -1)) sleep \(d.sleepMinutes ?? -1) naps \(d.napMinutes ?? 0) stressAvg \(d.stressAvg ?? -1) high \(d.stressHighMinutes ?? -1) maxHR \(d.maxHR ?? -1)")
+            func f(_ v: Double?) -> String { v.map { String(format: "%.1f", $0) } ?? "–" }
+            print("NIGHT \(d.day) \(t(d.sleepStart))→\(t(d.sleepEnd)) hrv \(f(d.hrv)) rhr \(f(d.rhr)) resp \(f(d.respRate)) "
+                  + "asleep \(f(d.sleepMinutes)) inBed \(f(d.inBedMinutes)) deep \(f(d.deepMinutes)) rem \(f(d.remMinutes)) "
+                  + "need \(f(d.sleepNeedMinutes)) debt \(f(d.sleepDebtMinutes)) perf \(f(d.sleepPerformance.map { $0 * 100 })) "
+                  + "consistency \(f(d.sleepConsistency)) eff \(f(d.sleepEfficiency.map { $0 * 100 }))")
             print("STRESS \(d.stressHourly.enumerated().compactMap { i, v in v.map { "\(i)h:\(String(format: "%.2f", $0))" } }.joined(separator: " "))")
         }
         for s in try db.sleeps(from: bounds.first - 86400, to: bounds.last + 86400) {

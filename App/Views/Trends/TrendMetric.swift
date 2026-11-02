@@ -315,7 +315,7 @@ enum TrendMetric: String, CaseIterable, Identifiable {
         case .recovery:
             return ("¿Qué es la recuperación?", "La recuperación mide lo preparado que está tu cuerpo para soportar esfuerzo. Se calcula por la noche con tu VFC, tu frecuencia cardíaca en reposo, tu respiración, tu temperatura y tu oxígeno, comparados con tu propio normal de las últimas semanas.\n\nEl esfuerzo, el estrés, el alcohol o enfermar pueden bajarla aunque hayas dormido bien, y al revés. Apunta tus hábitos en el diario para ver cuáles te afectan.")
         case .hrv:
-            return ("¿Qué es la VFC?", "La variabilidad de la frecuencia cardíaca es la variación de tiempo entre latido y latido (RMSSD, en milisegundos), medida durante el sueño profundo. Una VFC más alta que tu normal suele indicar que tu sistema nervioso está relajado y recuperado; más baja, que está gestionando estrés, cansancio o algo que incubas.\n\nCompárala solo contigo mismo: varía mucho de una persona a otra.")
+            return ("¿Qué es la VFC?", "La variabilidad de la frecuencia cardíaca es la variación de tiempo entre latido y latido (RMSSD, en milisegundos), medida durante todo el sueño con más peso al sueño profundo. Una VFC más alta que tu normal suele indicar que tu sistema nervioso está relajado y recuperado; más baja, que está gestionando estrés, cansancio o algo que incubas.\n\nCompárala solo contigo mismo: varía mucho de una persona a otra.")
         case .rhr:
             return ("¿Qué es la frecuencia cardíaca en reposo?", "Es tu pulso más bajo y estable durante el sueño. Bajar con el tiempo suele indicar mejor forma física. Una subida de varios latidos sobre tu normal es una de las señales más claras de cansancio, alcohol, calor o enfermedad.")
         case .respRate:
@@ -349,7 +349,7 @@ enum TrendMetric: String, CaseIterable, Identifiable {
         case .steps:
             return ("¿Qué son los pasos?", "Pasos estimados a partir del contador de la pulsera. Más pasos al día se asocian a mejor salud cardiovascular, sobre todo hasta unos 8.000-10.000.")
         case .zonesLight, .zonesHard:
-            return ("¿En qué consiste el entrenamiento por zonas?", "Las zonas se calculan con tu reserva de frecuencia cardíaca (FC máx. − FC en reposo):\n• Zona 5 (90-100 %): intensidad máxima\n• Zona 4 (80-89 %): alta\n• Zona 3 (70-79 %): moderada\n• Zona 2 (60-69 %): ligera\n• Zona 1 (50-59 %): muy ligera\n\nLas zonas 1-3 construyen la base aeróbica; las 4-5, la potencia. Para la salud, lo más útil es acumular bastante tiempo en 2-3 y algo en 4-5 cada semana.")
+            return ("¿En qué consiste el entrenamiento por zonas?", "Las zonas se calculan con tu reserva de frecuencia cardíaca (FC máx. − FC en reposo):\n• Zona 5 (90-100 %): intensidad máxima\n• Zona 4 (80-89 %): alta\n• Zona 3 (70-79 %): moderada\n• Zona 2 (60-69 %): ligera\n• Zona 1 (40-59 %): muy ligera\n\nLas zonas 1-3 construyen la base aeróbica; las 4-5, la potencia. Para la salud, lo más útil es acumular bastante tiempo en 2-3 y algo en 4-5 cada semana.")
         case .vo2max:
             return ("¿Qué es el VO₂ máx?", "La cantidad máxima de oxígeno que tu cuerpo puede usar durante el ejercicio. Es la métrica que mejor refleja la salud cardiovascular a largo plazo. Pulso la estima con tu pulso en reposo, tu frecuencia máxima y tus entrenos; es una estimación, no una prueba de laboratorio.")
         case .stress, .stressHigh:

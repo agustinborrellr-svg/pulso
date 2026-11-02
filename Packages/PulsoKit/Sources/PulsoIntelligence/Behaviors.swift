@@ -10,6 +10,8 @@ import PulsoAnalytics
 /// Each one unlocks with at least `minEach` days with it and `minEach` without. Association, not causation.
 public enum Behaviors {
     public static let minEach = 5
+    /// Days of answers that count.
+    public static let windowDays = 90
 
     public struct Item: Equatable, Sendable, Identifiable {
         public var id: String { key }
@@ -45,17 +47,31 @@ public enum Behaviors {
                                label: (String) -> String, calendar: Calendar = .current) -> Report {
         let sorted = days.sorted { $0.day < $1.day }
         let byDay = Dictionary(sorted.map { ($0.day, $0) }, uniquingKeysWith: { a, _ in a })
+        // WHOOP counts the answers of the last 90 days.
+        let windowStart = sorted.last.map { DayKey.shift($0.day, days: -windowDays, calendar: calendar) } ?? ""
         var items: [Item] = []
 
-        func item(_ key: String, _ label: String, automatic: Bool, lag: Int, flags: [String: Bool]) -> Item {
+        /// The impact is the behaviour's isolated contribution, as WHOOP describes it: the coefficient of the behaviour
+        /// in recovery ~ behaviour + sleep score + previous day's strain (sleep behaviours are not adjusted for the sleep
+        /// score, which is what they act through). Falls back to the plain difference when the fit is not possible.
+        func item(_ key: String, _ label: String, automatic: Bool, lag: Int, flags: [String: Bool], adjustSleep: Bool = true) -> Item {
             var with: [Double] = [], without: [Double] = []
-            for (day, on) in flags {
-                guard let r = byDay[DayKey.shift(day, days: lag, calendar: calendar)]?.recovery else { continue }
+            var rows: [[Double]] = [], ys: [Double] = []
+            for (day, on) in flags where day >= windowStart {
+                let target = DayKey.shift(day, days: lag, calendar: calendar)
+                guard let d = byDay[target], let r = d.recovery else { continue }
                 if on { with.append(r) } else { without.append(r) }
+                let prevStrain = byDay[DayKey.shift(target, days: -1, calendar: calendar)]?.strain
+                if let s = prevStrain, let p = d.sleepPerformance ?? (adjustSleep ? nil : 0) {
+                    rows.append(adjustSleep ? [1, on ? 1 : 0, p * 100, s] : [1, on ? 1 : 0, s])
+                    ys.append(r)
+                }
             }
             var it = Item(key: key, label: label, automatic: automatic, yes: with.count, no: without.count)
             if with.count >= minEach, without.count >= minEach, let a = Stats.mean(with), let b = Stats.mean(without), b > 0 {
-                it.impactPct = (a - b) / b * 100
+                let both = rows.filter { $0[1] == 1 }.count >= minEach && rows.filter { $0[1] == 0 }.count >= minEach
+                let effect = (both ? Stats.ols(rows, ys)?[1] : nil) ?? (a - b)
+                it.impactPct = effect / b * 100
                 it.withMean = a
                 it.withoutMean = b
             }
@@ -68,7 +84,7 @@ public enum Behaviors {
             let t = Int(med.rounded())
             var f: [String: Bool] = [:]
             for d in sorted { if let p = d.sleepPerformance { f[d.day] = p * 100 >= Double(t) } }
-            items.append(item("auto.sleepScore", "\(t) %+ calificación del sueño", automatic: true, lag: 0, flags: f))
+            items.append(item("auto.sleepScore", "\(t) %+ calificación del sueño", automatic: true, lag: 0, flags: f, adjustSleep: false))
         }
 
         // Consistent wake / bed time: within 30 min of your median of the previous 14 nights.
@@ -91,9 +107,9 @@ public enum Behaviors {
             return f
         }
         items.append(item("auto.wakeConsistent", "Hora de despertar constante", automatic: true, lag: 0,
-                          flags: consistency({ $0.sleepEnd }, wrapEvening: false)))
+                          flags: consistency({ $0.sleepEnd }, wrapEvening: false), adjustSleep: false))
         items.append(item("auto.bedConsistent", "Hora de dormir constante", automatic: true, lag: 0,
-                          flags: consistency({ $0.sleepStart }, wrapEvening: true)))
+                          flags: consistency({ $0.sleepStart }, wrapEvening: true), adjustSleep: false))
 
         // Training early (starts before 12:00) / late (starts from 19:00), against every other day.
         let measured = Set(sorted.filter { $0.recovery != nil || $0.strain != nil }.map(\.day))

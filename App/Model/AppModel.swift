@@ -223,7 +223,8 @@ final class AppModel: ObservableObject {
     }
 
     var heartRateModel: HeartRateModel {
-        let rhr = Baseline.from(days.suffix(30).compactMap { $0.rhr }, floor: 1)?.center ?? 60
+        // Same as the day engine: rolling 14-day resting HR.
+        let rhr = Stats.median(days.suffix(14).compactMap { $0.rhr }) ?? 60
         let maxHR = HeartRateModel.maxHR(override: profile.maxHROverride, age: profile.age,
                                          dailyPeaks: days.suffix(180).compactMap { $0.maxHR })
         return HeartRateModel(restingHR: rhr, maxHR: maxHR)

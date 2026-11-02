@@ -45,6 +45,42 @@ public enum Stats {
         return s[lo] + (s[hi] - s[lo]) * frac
     }
 
+    /// Ordinary least squares: coefficients b for y ≈ X·b (each row of X includes its own intercept column).
+    /// Nil when there are too few rows or the columns are collinear.
+    public static func ols(_ x: [[Double]], _ y: [Double]) -> [Double]? {
+        guard let k = x.first?.count, k > 0, x.count == y.count, x.count > k else { return nil }
+        // Normal equations (XᵀX) b = Xᵀy, solved by Gaussian elimination with partial pivoting.
+        var a = [[Double]](repeating: [Double](repeating: 0, count: k + 1), count: k)
+        for (row, v) in zip(x, y) {
+            for i in 0..<k {
+                for j in 0..<k { a[i][j] += row[i] * row[j] }
+                a[i][k] += row[i] * v
+            }
+        }
+        for c in 0..<k {
+            guard let p = (c..<k).max(by: { abs(a[$0][c]) < abs(a[$1][c]) }), abs(a[p][c]) > 1e-9 else { return nil }
+            a.swapAt(c, p)
+            for r in 0..<k where r != c {
+                let f = a[r][c] / a[c][c]
+                for j in c...k { a[r][j] -= f * a[c][j] }
+            }
+        }
+        return (0..<k).map { a[$0][k] / a[$0][$0] }
+    }
+
+    /// Value where the cumulative weight reaches half the total (weights ≤ 0 are ignored).
+    public static func weightedMedian(_ x: [(value: Double, weight: Double)]) -> Double? {
+        let s = x.filter { $0.weight > 0 }.sorted { $0.value < $1.value }
+        let total = s.reduce(0) { $0 + $1.weight }
+        guard total > 0 else { return nil }
+        var acc = 0.0
+        for p in s {
+            acc += p.weight
+            if acc >= total / 2 { return p.value }
+        }
+        return s.last?.value
+    }
+
     /// Sample standard deviation (n-1).
     public static func sd(_ x: [Double]) -> Double? {
         guard x.count > 1, let m = mean(x) else { return nil }

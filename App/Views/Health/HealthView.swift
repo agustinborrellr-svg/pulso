@@ -51,7 +51,7 @@ struct HealthView: View {
                         .buttonStyle(.plain)
                     }
                     ExplainerCard(title: "¿Qué es la Edad Pulso?",
-                                  text: "Tu edad real ajustada por los hábitos que más se asocian a vivir más y mejor: dormir lo suficiente y con horario regular, moverte a diario, acumular tiempo en zonas de esfuerzo y tener buen VO₂ máx y un pulso en reposo bajo.\n\nCada hábito suma o resta como mucho entre 0,8 y 1,5 años según dónde esté entre un valor deficiente y uno óptimo. El ritmo de envejecimiento compara tu último mes con tus últimos 6 meses: por debajo de 1x, tus hábitos recientes van mejor que tu norma.")
+                                  text: "Tu edad real ajustada por los hábitos que más se asocian a vivir más y mejor: dormir lo suficiente y con horario regular, moverte a diario, acumular tiempo en zonas de esfuerzo y tener buen VO₂ máx y un pulso en reposo bajo.\n\nCada hábito se compara con el mínimo recomendado para tu edad y sexo: cumplirlo suma 0 años, quedarte por debajo suma y pasarte resta. El tiempo en zonas solo cuenta dentro de actividades. El ritmo de envejecimiento proyecta tu edad dentro de 6 meses si mantienes tu último mes: 1x es al ritmo del calendario, por debajo vas más despacio.")
                     Text("La Edad Pulso es una estimación orientativa calculada en tu iPhone, no una medida biológica ni un consejo médico.")
                         .font(.caption)
                         .foregroundStyle(Theme.secondary)
@@ -96,7 +96,7 @@ struct HealthView: View {
             .font(.caption2)
             .foregroundStyle(Theme.secondary)
             if r.pace == nil {
-                Text("Necesita al menos tres semanas de datos para comparar tu último mes con tus 90 días.")
+                Text("Necesita al menos tres semanas de datos para comparar tu último mes con tus 6 meses.")
                     .font(.caption).foregroundStyle(Theme.secondary)
             }
         }
@@ -126,7 +126,7 @@ struct HealthView: View {
             HStack(alignment: .center) {
                 Text(title).scaledFont(22, weight: .semibold, relativeTo: .title1).foregroundStyle(.white)
                 Spacer()
-                legend("arrowtriangle.down.fill", "Prom. de\n90 días")
+                legend("arrowtriangle.down.fill", "Prom. de\n6 meses")
                 legend("arrowtriangle.up", "Último\nmes")
             }
             .padding(.top, 10)
@@ -274,7 +274,7 @@ struct AgeOrbHero: View {
                     }
                 }
             }
-            Text("Con tus últimos 90 días · se actualiza cada lunes")
+            Text("Con tus últimos 6 meses · se actualiza cada lunes")
                 .font(.caption)
                 .foregroundStyle(Theme.secondary)
         }

@@ -24,67 +24,77 @@ final class PulsoAgeTests: XCTestCase {
         }
     }
 
-    func spec(_ key: String, age: Int = 30) -> PulsoAge.Spec {
-        PulsoAge.specs(age: age, sex: .male, zones: { _ in nil }, strength: { _ in nil }).first { $0.key == key }!
+    func spec(_ key: String, age: Int = 30, sex: Sex = .male) -> PulsoAge.Spec {
+        PulsoAge.specs(age: age, sex: sex, zones: { _ in nil }, strength: { _ in nil }).first { $0.key == key }!
     }
 
-    /// Each habit's years come straight from the study's relative risk through the Gompertz rate.
-    func testYearsFollowThePublishedRisks() {
-        let g = PulsoAge.gompertz
-        XCTAssertEqual(spec("sleepHours").years(6 * 60)!, log(1.06) / g, accuracy: 1e-9, "RR 1.06 for 6 h (Liu 2017)")
-        XCTAssertEqual(spec("sleepHours").years(7.5 * 60)!, 0, accuracy: 1e-9, "7–8 h is the reference")
-        XCTAssertEqual(spec("sleepHours").years(9 * 60)!, log(1.30) / g, accuracy: 1e-9, "RR 1.30 at 9 h (Cappuccio 2010)")
-        XCTAssertEqual(spec("regularity").years(41)!, log(1.53) / g, accuracy: 1e-9, "Pase 2023")
-        XCTAssertEqual(spec("regularity").years(75)!, log(0.90) / g, accuracy: 1e-9)
-        XCTAssertEqual(spec("steps").years(2000)!, log(1 / 0.53) / g, accuracy: 1e-9, "Ding 2025")
-        XCTAssertEqual(spec("steps").years(9000)!, 0, accuracy: 1e-9, "no extra benefit past 7 000")
-        XCTAssertEqual(spec("strength").years(0)!, log(1 / 0.85) / g, accuracy: 1e-9, "Momma 2022")
-        XCTAssertEqual(spec("strength").years(45)!, 0, accuracy: 1e-9)
-        XCTAssertGreaterThan(spec("strength").years(200)!, 0, "J-shape: very high volumes lose the benefit")
-        XCTAssertEqual(spec("rhr").years(70)!, log(1.09) / g, accuracy: 1e-9, "Zhang 2016: RR 1.09 per 10 bpm")
-        let avg = 47 - 0.4 * 10.0
-        XCTAssertEqual(spec("vo2max").years(avg + 3.5)!, log(0.86) / g, accuracy: 1e-6, "RR 0.86 per MET")
-        XCTAssertEqual(spec("vo2max").years(avg + 30)!, log(sqrt(0.47)) / g, accuracy: 1e-6, "bounded by high vs low fitness")
-        // Same values as a reference report, within half a year.
-        XCTAssertEqual(spec("sleepHours").years(6 * 60 + 29)!, 0.5, accuracy: 0.25)
-        XCTAssertEqual(spec("regularity").years(56)!, 0.9, accuracy: 0.25)
-        XCTAssertEqual(spec("strength").years(2)!, 1.5, accuracy: 0.5)
+    /// Years = 10 · ln(HR) (white paper), from the slopes the white paper cites.
+    func testYearsFollowTheWhitePaper() {
+        XCTAssertEqual(spec("sleepHours").years(6 * 60)!, 10 * log(1.12), accuracy: 1e-9, "short sleep HR 1.12 (Itani 2017)")
+        XCTAssertEqual(spec("sleepHours").years(7 * 60)!, 0, accuracy: 1e-9, "7 h is the neutral point")
+        XCTAssertLessThan(spec("sleepHours").years(8 * 60)!, 0, "7–9 h: a small benefit")
+        XCTAssertEqual(spec("sleepHours").years(10 * 60)!, 0, accuracy: 1e-9, "over 9 h: no effect")
+        XCTAssertEqual(spec("regularity").years(70)!, 0, accuracy: 1e-9)
+        XCTAssertEqual(spec("rhr").years(70)!, 10 * log(1.09), accuracy: 1e-9, "Zhang 2016: +9 % per 10 bpm")
+        XCTAssertEqual(spec("rhr", sex: .female).years(64)!, 0, accuracy: 1e-9, "64 bpm for women")
+        XCTAssertEqual(spec("vo2max").years(44 + 3.5)!, 10 * log(0.87), accuracy: 1e-6, "−13 % per MET over the age-30 target of 44")
+        XCTAssertEqual(PulsoAge.vo2Target(age: 30, sex: .female), 38)
+        XCTAssertEqual(PulsoAge.vo2Target(age: 100, sex: .male), 21)
+        XCTAssertEqual(spec("steps").years(8000)!, 0, accuracy: 1e-9)
+        XCTAssertEqual(spec("steps", age: 65).years(5600)!, 0, accuracy: 1e-9, "5 600 steps from 60")
+        XCTAssertEqual(spec("strength").years(40)!, 0, accuracy: 1e-9)
+        XCTAssertEqual(spec("strength").years(300)!, spec("strength").years(120)!, accuracy: 1e-9, "no extra benefit past 120 min")
+        XCTAssertEqual(spec("zonesHard").years(10)!, 0, accuracy: 1e-9)
+        XCTAssertEqual(spec("zonesLight", age: 80).neutral, 70, "zones 1-3 target falls with age")
+    }
+
+    /// The white paper's median 30-year-old members score −1.6 years (lean body mass, not in Pulso, ~0).
+    func testWhitePaperMedianMembers() {
+        func total(sex: Sex, sleep: Double, cons: Double, steps: Double, light: Double, hard: Double, strength: Double,
+                   vo2: Double, rhr: Double) -> Double {
+            let v: [String: Double] = ["sleepHours": sleep, "regularity": cons, "steps": steps, "zonesLight": light,
+                                       "zonesHard": hard, "strength": strength, "vo2max": vo2, "rhr": rhr]
+            return PulsoAge.specs(age: 30, sex: sex, zones: { _ in nil }, strength: { _ in nil })
+                .reduce(0) { $0 + ($1.years(v[$1.key]) ?? 0) * PulsoAge.adjustment }
+        }
+        XCTAssertEqual(total(sex: .male, sleep: 420, cons: 67, steps: 10900, light: 141, hard: 6, strength: 46, vo2: 46.8, rhr: 58),
+                       -1.6, accuracy: 0.3)
+        XCTAssertEqual(total(sex: .female, sleep: 438, cons: 68, steps: 11500, light: 124, hard: 7, strength: 56, vo2: 40, rhr: 63),
+                       -1.6, accuracy: 0.3)
     }
 
     func testHealthyHabitsMakeYouYounger() {
         let p = profile(age: 40)
-        let good = PulsoAge.compute(days: days(100, sleep: 7.5 * 60, steps: 9000, rhr: 50, vo2: 48, zones: [20, 20, 10, 8, 4], regularity: 80),
-                                    profile: p, today: "2026-10-27")
-        let bad = PulsoAge.compute(days: days(100, sleep: 5.5 * 60, steps: 3000, rhr: 74, vo2: 30, zones: [2, 0, 0, 0, 0], regularity: 45),
-                                   profile: p, today: "2026-10-27")
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = .current
+        func workouts(_ list: [DaySummary], zones: [Double], sport: String) -> [Workout] {
+            list.map { d in
+                let ts = Int(DayKey.date(d.day, calendar: cal)!.timeIntervalSince1970) + 18 * 3600
+                return Workout(start: ts, end: ts + 2400, sport: sport, source: .manual, strain: 9, zoneMinutes: zones)
+            }
+        }
+        let goodDays = days(200, sleep: 7.5 * 60, steps: 9000, rhr: 50, vo2: 48, zones: [], regularity: 85)
+        let good = PulsoAge.compute(days: goodDays, profile: p, today: "2026-10-27",
+                                    workouts: workouts(goodDays, zones: [20, 10, 5, 3, 2], sport: "Fuerza"), calendar: cal)
+        let bad = PulsoAge.compute(days: days(200, sleep: 5.5 * 60, steps: 3000, rhr: 74, vo2: 30, zones: [], regularity: 45),
+                                   profile: p, today: "2026-10-27", calendar: cal)
         XCTAssertEqual(good.age, 40)
         XCTAssertLessThan(good.difference ?? 0, -2)
-        XCTAssertGreaterThan(bad.difference ?? 0, 8)
-        // Same habits for 90 days: steady age.
+        XCTAssertGreaterThan(bad.difference ?? 0, 6)
+        // Same habits for 6 months: steady age, pace 1x.
         XCTAssertEqual(good.pace ?? 0, 1, accuracy: 1e-9)
         XCTAssertEqual(good.recentAge ?? 0, good.pulsoAge ?? 1, accuracy: 1e-9)
     }
 
-    /// Steps, moderate and vigorous minutes are one habit: only the best of them counts.
-    func testAerobicActivityCountsOnce() {
-        let p = profile(age: 30)
-        let r = PulsoAge.compute(days: days(100, sleep: 450, steps: 9000, rhr: 60, vo2: 43, zones: [0, 0, 0, 0, 0], regularity: 60),
-                                 profile: p, today: "2026-10-27")
-        let counted = r.items.filter { PulsoAge.aerobicKeys.contains($0.key) && $0.counted }
-        XCTAssertEqual(counted.map(\.key), ["steps"], "9 000 steps meet the aerobic guideline; zero zone minutes don't add years")
-        XCTAssertEqual(r.difference ?? 9, PulsoAge.specs(age: 30, sex: .male, zones: { _ in nil }, strength: { _ in nil })
-            .first { $0.key == "strength" }!.years(0)!, accuracy: 0.01, "only the missing strength training remains")
-    }
-
     func testRecentMonthSetsThePace() {
         let p = profile(age: 35)
-        var list = days(120, sleep: 5.5 * 60, steps: 6000, rhr: 60, vo2: 40, zones: [10, 5, 0, 0, 0], regularity: 50)
+        var list = days(200, sleep: 5.5 * 60, steps: 6000, rhr: 60, vo2: 40, zones: [10, 5, 0, 0, 0], regularity: 50)
         for i in (list.count - 30)..<list.count {
             list[i].sleepMinutes = 7.5 * 60
             list[i].sleepConsistency = 75
         }
         let r = PulsoAge.compute(days: list, profile: p, today: "2026-10-27")
-        XCTAssertLessThan(r.recentAge ?? 99, r.pulsoAge ?? 0, "your last month is younger than your 90 days")
+        XCTAssertLessThan(r.recentAge ?? 99, r.pulsoAge ?? 0, "your last month is younger than your 6 months")
         XCTAssertLessThan(r.pace ?? 9, 1)
         let sleep = r.items.first { $0.key == "sleepHours" }!
         XCTAssertEqual(sleep.recent ?? 0, 450, accuracy: 1e-9)
@@ -114,7 +124,7 @@ final class PulsoAgeTests: XCTestCase {
         let strength = r.items.first { $0.key == "strength" }!
         XCTAssertEqual(light.longTerm ?? 0, 50 * 7, accuracy: 1, "weekly minutes in zones 1-3 from the workouts")
         XCTAssertEqual(strength.longTerm ?? 0, 10 * 7, accuracy: 1)
-        XCTAssertTrue(light.counted, "350 min/week beats 3 000 steps")
+        XCTAssertTrue(light.counted)
         XCTAssertLessThan(light.years ?? 0, 0)
     }
 }
