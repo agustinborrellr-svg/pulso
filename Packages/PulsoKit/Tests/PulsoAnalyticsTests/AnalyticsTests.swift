@@ -82,11 +82,11 @@ final class AnalyticsTests: XCTestCase {
             hist.append(d)
         }
         let b = Baselines.from(history: hist)
-        let good = Recovery.compute(hrv: 75, rhr: 50, resp: 14.4, skinTemp: 34.5, spo2: nil, sleepPerformance: 0.95, baselines: b)
-        let bad = Recovery.compute(hrv: 40, rhr: 60, resp: 16.5, skinTemp: 35.5, spo2: nil, sleepPerformance: 0.6, baselines: b)
+        let good = Recovery.compute(hrv: 75, rhr: 50, resp: 14.4, skinTemp: 34.5, spo2: nil, sleepSufficiency: 0.95, baselines: b)
+        let bad = Recovery.compute(hrv: 40, rhr: 60, resp: 16.5, skinTemp: 35.5, spo2: nil, sleepSufficiency: 0.6, baselines: b)
         XCTAssertGreaterThan(good.score!, 67)
         XCTAssertLessThan(bad.score!, 34)
-        let cold = Recovery.compute(hrv: 60, rhr: 52, resp: nil, skinTemp: nil, spo2: nil, sleepPerformance: 0.9, baselines: Baselines())
+        let cold = Recovery.compute(hrv: 60, rhr: 52, resp: nil, skinTemp: nil, spo2: nil, sleepSufficiency: 0.9, baselines: Baselines())
         XCTAssertTrue(cold.calibrating)
         XCTAssertNil(cold.score)
     }

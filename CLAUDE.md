@@ -242,3 +242,25 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
 - Inteligencia (`IntelligenceSummary.swift`): `IntelHeroCard` (un veredicto) + 3 áreas + Herramientas; cada una abre
   `IntelTodayView` / `IntelSectionView(title:)` / `IntelMoreView`, y sus métricas `MetricDetailView`.
 - CI: `[paginas:a,b,c]` en el commit captura solo esas pantallas (`SHOTS_ONLY`). Si GitHub no da Mac, `gh run rerun <id> --failed`.
+
+## Estado (2026-11-02, fórmulas contrastadas con lo publicado y con la exportación de Gus)
+
+- Referencia de cómo calcula cada métrica la pulsera original (patentes, API, white paper de Healthspan, estudios):
+  `docs/CALCULOS-REFERENCIA-2026-11-02.md`. Casi todas las constantes son privadas.
+- Contrastado con la exportación real de Gus (148 días) y 3 noches con la pulsera en Pulso (copia en Descargas, no en el
+  repo). Replay: `PULSO_REAL_DB=/ruta/copia.sqlite swift test --filter RealDataReplayTests` (líneas `NIGHT`).
+- Necesidad de sueño = base + `1,7/(1+e^((17−esfuerzo)/3,5))` h (patente; en la exportación peso 0,99, error 2 min) + deuda − siestas.
+- Deuda = 0,703·deuda anterior + 0,289·déficit (o 0,896·superávit) de la noche anterior, tope 180 min (ajustada; es el
+  «extra por deuda» de la necesidad, como en la exportación). La base sale del perfil (revisarla contra la exportación).
+- Recuperación = 100·σ(−2,166 + 0,504·zVFC − 0,049·zFCreposo + 4,096·suficiencia) (ajustada; 7,9 puntos de error fuera de
+  muestra vs ~11). Respiración, temperatura y SpO₂ fuera del %. Línea base 28 noches ponderada (vida media 14).
+- Calificación del sueño = −28,5 + 0,864·suficiencia + 0,357·constancia + 0,197·eficiencia (ajustada; 5,8 vs 9,2).
+- Constancia: últimas 24 h vs cada uno de los 4 días anteriores, escala SRI (error 7 puntos, r 0,92).
+- VFC: ventanas de 5 min cada 30 s, sin vigilia, más peso a profundo y final de noche (error ~2,5 ms en 3 noches vs ~9).
+- Fases: `SleepStager.wakeBias −2,5 / deepBias 0,75 / remBias 0,3` (ajustado a las 3 noches: error total 507 → 189 min).
+  Respiración: banda 0,2–0,5 Hz (error ≤ 0,6 rpm; antes ~4 rpm por debajo). Zonas: Z1 40–60 % FCR, FC reposo 14 días.
+- Un día de pulsera sin noche toma la noche importada para la deuda y las líneas base (`DayEngine.withImportedNight`).
+- Edad Pulso con el método del white paper (10·ln(HR), 6 meses, umbrales por edad/sexo, ajuste 0,85 → −1,6 años en los
+  miembros medianos). Comportamientos: 90 días, impacto ajustado por sueño y esfuerzo previo. Planificador 100/85/75 %.
+- Esfuerzo, estrés y calorías sin cambios (constantes no publicadas). `derivedVersion` 8.
+- Ojo: las 3 noches son pocas; recalibrar `wakeBias`/`deepBias`/`remBias` y la banda con más noches de las dos pulseras.

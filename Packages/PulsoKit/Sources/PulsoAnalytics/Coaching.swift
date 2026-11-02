@@ -282,14 +282,15 @@ public enum SleepPlanner {
         public var lastMeal: Date
     }
 
-    /// Tonight's need given today's strain so far, recent shortfalls and today's naps.
+    /// Tonight's need given today's strain so far, the debt left by last night and today's naps.
     public static func tonightNeed(profile: Profile, today: DaySummary?, recent: [DaySummary]) -> Double {
-        let shortfalls = recent.suffix(3).compactMap { d -> Double? in
-            guard let need = d.sleepNeedMinutes, let slept = d.sleepMinutes else { return nil }
-            return need - slept
+        var debt = 0.0
+        if let t = today, let need = t.sleepNeedMinutes, let slept = t.sleepMinutes {
+            let prev = t.sleepDebtMinutes ?? 0
+            debt = SleepCoach.debt(previousDebt: prev, previousShortfall: need - prev - slept)
         }
         return SleepCoach.need(baseHours: profile.sleepNeedHours, previousStrain: today?.strain,
-                               recentShortfalls: shortfalls, napMinutes: today?.napMinutes ?? 0)
+                               debtMinutes: debt, napMinutes: today?.napMinutes ?? 0)
     }
 
     /// Typical wake time (minutes after midnight) over the last two weeks.
@@ -299,9 +300,16 @@ public enum SleepPlanner {
         return Stats.circularMeanMinutes(wakes)
     }
 
-    public static func plan(wake: Date, needMinutes: Double, recent: [DaySummary], latencyMinutes: Double = 15) -> Plan {
+    /// Sleep goals as a share of the need (WHOOP's Sleep Planner: Peak 100 %, Perform 85 %, Get By 75 %).
+    public enum Goal: Double, CaseIterable, Sendable {
+        case peak = 1.0, perform = 0.85, getBy = 0.75
+    }
+
+    /// Bedtime = wake − goal × need / your usual efficiency − time to fall asleep.
+    public static func plan(wake: Date, needMinutes: Double, recent: [DaySummary], latencyMinutes: Double = 15,
+                            goal: Goal = .peak) -> Plan {
         let eff = Stats.median(recent.suffix(14).compactMap { $0.sleepEfficiency }.filter { $0 > 0.5 }) ?? 0.9
-        let inBed = needMinutes / max(0.75, min(0.98, eff)) + latencyMinutes
+        let inBed = needMinutes * goal.rawValue / max(0.75, min(0.98, eff)) + latencyMinutes
         let bed = wake.addingTimeInterval(-inBed * 60)
         return Plan(needMinutes: needMinutes, inBedMinutes: inBed, wake: wake, bedtime: bed,
                     caffeineCutoff: bed.addingTimeInterval(-8 * 3600), lastMeal: bed.addingTimeInterval(-3 * 3600))

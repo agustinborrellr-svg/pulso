@@ -9,7 +9,7 @@ import PulsoStore
 public final class DayEngine {
     /// Version of the derived numbers (days, sleeps, workouts). Bump it whenever an algorithm changes: the app
     /// then recomputes every day from the raw seconds it still has.
-    public static let derivedVersion = 7
+    public static let derivedVersion = 8
 
     /// Daytime sleeps shorter than this are naps unless the user says otherwise.
     public static let napLimit = 3 * 3600
@@ -74,6 +74,7 @@ public final class DayEngine {
 
         let profile = db.profile
         var past = try history(before: day)
+        let importedByDay = Dictionary(try db.importedDays().map { ($0.day, $0) }, uniquingKeysWith: { a, _ in a })
         var results: [DaySummary] = []
         let totalDays = max(1, daysBetween(day, today) + 1)
         var done = 0
@@ -81,7 +82,7 @@ public final class DayEngine {
         while day <= today {
             if let summary = try computeDay(day, profile: profile, past: past, now: now) {
                 try db.save(summary)
-                past.append(summary)
+                past.append(Self.withImportedNight(summary, importedByDay[day]))
                 results.append(summary)
             } else if day == today {
                 // Before tonight's sleep, today has no cycle of its own: drop one saved earlier.
@@ -105,15 +106,33 @@ public final class DayEngine {
 
     /// Computed days before `day`, with imported WHOOP days filling gaps (they seed the baselines).
     func history(before day: String) throws -> [DaySummary] {
-        let computed = try db.days(from: "0000-00-00", to: DayKey.shift(day, days: -1, calendar: calendar))
+        var computed = try db.days(from: "0000-00-00", to: DayKey.shift(day, days: -1, calendar: calendar))
         let have = Set(computed.map { $0.day })
-        let imported = try db.importedDays().filter { $0.day < day && !have.contains($0.day) }
+        let allImported = try db.importedDays().filter { $0.day < day }
+        let imported = allImported.filter { !have.contains($0.day) }
+        let importedByDay = Dictionary(allImported.map { ($0.day, $0) }, uniquingKeysWith: { a, _ in a })
+        for i in computed.indices { computed[i] = Self.withImportedNight(computed[i], importedByDay[computed[i].day]) }
         return (computed + imported).sorted { $0.day < $1.day }
     }
 
+    /// A strap day without its night (the strap arrived mid-day) takes the night from the import, so the next night's
+    /// debt and the baselines don't start from zero. Only for history: the saved day keeps what the strap measured.
+    static func withImportedNight(_ d: DaySummary, _ imported: DaySummary?) -> DaySummary {
+        guard d.sleepMinutes == nil, let im = imported, im.sleepMinutes != nil else { return d }
+        var d = d
+        d.sleepMinutes = im.sleepMinutes
+        d.sleepNeedMinutes = im.sleepNeedMinutes
+        d.sleepDebtMinutes = im.sleepDebtMinutes
+        d.hrv = d.hrv ?? im.hrv
+        d.rhr = d.rhr ?? im.rhr
+        d.respRate = d.respRate ?? im.respRate
+        return d
+    }
+
     func heartRateModel(profile: Profile, past: [DaySummary]) -> HeartRateModel {
-        let recent = Array(past.suffix(30))
-        let rhr = Baseline.from(recent.compactMap { $0.rhr }, floor: 1)?.center ?? 60
+        // Zones use a rolling 14-day resting HR (WHOOP).
+        let recent = Array(past.suffix(14))
+        let rhr = Stats.median(recent.compactMap { $0.rhr }) ?? 60
         let maxHR = HeartRateModel.maxHR(override: profile.maxHROverride, age: profile.age,
                                          dailyPeaks: past.suffix(180).compactMap { $0.maxHR })
         return HeartRateModel(restingHR: rhr, maxHR: maxHR)
@@ -253,6 +272,7 @@ public final class DayEngine {
         guard cycleEnd > cycleStart || main != nil else { return nil }
 
         var d = DaySummary(day: day)
+        var sufficiency: Double?
         d.cycleStart = cycleStart
         d.cycleEnd = max(cycleEnd, cycleStart)
 
@@ -329,38 +349,36 @@ public final class DayEngine {
             d.skinTemp = m.skinTemp
 
             let prevDay = past.last { $0.day == DayKey.shift(day, days: -1, calendar: calendar) }
-            let shortfalls = pastWithSleep.suffix(3).compactMap { p -> Double? in
-                guard let need = p.sleepNeedMinutes, let slept = p.sleepMinutes else { return nil }
-                return need - slept
+            // Debt carried into this night's need: last night's debt and last night's shortfall against its need
+            // without debt (WHOOP's "sleep debt" is this same top-up of the need).
+            var debt = 0.0
+            if let p = prevDay, let pn = p.sleepNeedMinutes, let ps = p.sleepMinutes {
+                let prevDebt = p.sleepDebtMinutes ?? 0
+                debt = SleepCoach.debt(previousDebt: prevDebt, previousShortfall: pn - prevDebt - ps)
             }
+            d.sleepDebtMinutes = debt.rounded()
             let need = SleepCoach.need(baseHours: profile.sleepNeedHours, previousStrain: prevDay?.strain,
-                                       recentShortfalls: shortfalls, napMinutes: prevDay?.napMinutes ?? 0)
+                                       debtMinutes: debt, napMinutes: prevDay?.napMinutes ?? 0)
             d.sleepNeedMinutes = need.rounded()
-            d.sleepPerformance = SleepCoach.performance(asleepMinutes: asleep, needMinutes: need)
+            sufficiency = SleepCoach.sufficiency(asleepMinutes: asleep, needMinutes: need)
             let prevTimes = pastWithSleep.suffix(4).compactMap { p -> (onset: Double, wake: Double)? in
                 guard let s = p.sleepStart, let e = p.sleepEnd else { return nil }
                 return (SleepCoach.minutesAfterMidnight(ts: s, calendar: calendar), SleepCoach.minutesAfterMidnight(ts: e, calendar: calendar))
             }
-            d.sleepConsistency = SleepCoach.consistency(
+            let recentSleeps = try db.sleeps(from: m.end - 6 * 86400, to: m.end).filter { $0.end <= m.end }
+            d.sleepConsistency = SleepCoach.consistency(sessions: recentSleeps, wake: m.end) ?? SleepCoach.consistency(
                 onsetMinutes: SleepCoach.minutesAfterMidnight(ts: m.start, calendar: calendar),
                 wakeMinutes: SleepCoach.minutesAfterMidnight(ts: m.end, calendar: calendar),
                 previous: prevTimes)
-            // Debt is a decaying carry-over (half of last night's debt is kept, plus tonight's shortfall;
-            // a surplus pays it back), not a plain 7-day sum, which grows without bound.
-            // The shortfall is measured against the need without its debt top-up: the debt already raised the
-            // need, so counting that extra again inflated the debt night after night.
-            let needWithoutDebt = SleepCoach.need(baseHours: profile.sleepNeedHours, previousStrain: prevDay?.strain,
-                                                  recentShortfalls: [], napMinutes: prevDay?.napMinutes ?? 0)
-            let prevDebt = prevDay?.sleepDebtMinutes ?? 0
-            d.sleepDebtMinutes = Stats.clamp(prevDebt * 0.5 + (needWithoutDebt - asleep), 0, 12 * 60).rounded()
+            d.sleepPerformance = SleepCoach.performance(sufficiency: sufficiency ?? 0, consistency: d.sleepConsistency,
+                                                        efficiency: d.sleepEfficiency)
         }
         d.napMinutes = naps.isEmpty ? nil : naps.reduce(0) { $0 + $1.asleepMinutes }
 
         // Recovery against personal baselines (only days before this one).
         let baselines = Baselines.from(history: past)
-        // SpO₂ stays out of recovery: its byte in the record isn't confirmed against any protocol reference.
         let rec = Recovery.compute(hrv: d.hrv, rhr: d.rhr, resp: d.respRate, skinTemp: d.skinTemp, spo2: nil,
-                                   sleepPerformance: d.sleepPerformance, baselines: baselines)
+                                   sleepSufficiency: sufficiency, baselines: baselines)
         d.recovery = main == nil ? nil : rec.score
         d.calibrating = rec.calibrating
         d.contributors = rec.contributors

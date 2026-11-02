@@ -64,6 +64,9 @@ public enum HRV {
         return 60000 / m
     }
 
+    /// Frequencies (Hz) searched for the breathing peak.
+    static let respBand = 0.2...0.5
+
     /// Respiratory rate from respiratory sinus arrhythmia: resample the tachogram at 4 Hz, remove the
     /// slow trend, and find the dominant frequency in 0.1–0.5 Hz (6–30 breaths/min).
     /// Returns breaths/min for one window of runs, or nil if there is not enough clean signal.
@@ -118,8 +121,8 @@ public enum HRV {
             }
             // Hann window + DFT scan.
             var bestF = 0.0, bestP = 0.0, totalP = 0.0
-            var f = 0.1
-            while f <= 0.5 + 1e-9 {
+            var f = respBand.lowerBound
+            while f <= respBand.upperBound + 1e-9 {
                 var re = 0.0, im = 0.0
                 for k in 0..<n {
                     let hann = 0.5 - 0.5 * cos(2 * Double.pi * Double(k) / Double(n - 1))
@@ -138,9 +141,8 @@ public enum HRV {
                 estimates.append((bestF * 60, peakiness * totalSec))
             }
         }
-        guard !estimates.isEmpty else { return nil }
-        let wsum = estimates.reduce(0) { $0 + $1.weight }
-        let rate = estimates.reduce(0) { $0 + $1.rate * $1.weight } / wsum
+        // WHOOP reports the median breathing rate during sleep: a weighted median of the segment estimates.
+        guard let rate = Stats.weightedMedian(estimates.map { ($0.rate, $0.weight) }) else { return nil }
         return (8...30).contains(rate) ? rate : nil
     }
 }

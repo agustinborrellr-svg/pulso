@@ -55,7 +55,7 @@ public enum SleepStager {
             }
         )
 
-        let (stages, emit) = decode(f, n: n)
+        let (stages, emit) = decode(f, n: n, deepBias: deepBias, remBias: remBias)
         let confidence = assess(stages: stages, emit: emit, epochs: epochs, rmssdPerMinute: rmssdPerMinute)
         return (stages, confidence)
     }
@@ -114,6 +114,12 @@ public enum SleepStager {
                                beatCoverage: beatCoverage, decisiveness: decisiveness)
     }
 
+    /// Calibration of the stage priors (log scale) against the original band's own staging on the same nights
+    /// (see `docs/CALCULOS-REFERENCIA-2026-11-02.md`): negative `wakeBias` scores fewer minutes awake.
+    static let wakeBias = -2.5
+    static let deepBias = 0.75
+    static let remBias = 0.3
+
     /// Emission log-scores per stage then Viterbi with sticky transitions.
     static func decode(_ f: Features, n: Int, deepBias: Double = 0, remBias: Double = 0) -> ([SleepStage], [[Double]]) {
         let states: [SleepStage] = [.awake, .light, .deep, .rem]
@@ -124,7 +130,7 @@ public enum SleepStager {
             // and is rare in the first ~60 minutes.
             let deepPrior = pos < 0.5 ? 0.5 : (pos < 0.75 ? -0.2 : -0.9)
             let remPrior = i < 60 ? -1.6 : (pos > 0.5 ? 0.4 : 0.0)
-            let wake = 1.3 * f.motion[i] + 0.4 * f.hr[i] + 1.4 * f.wakeVote[i] + log(0.10) - 0.6
+            let wake = 1.3 * f.motion[i] + 0.4 * f.hr[i] + 1.4 * f.wakeVote[i] + log(0.10) - 0.6 + wakeBias
             let light = log(0.47)
             let deep = -0.9 * f.hr[i] - 0.7 * f.hrVar[i] + 0.35 * f.rmssd[i] - 0.5 * f.motion[i]
                 + log(0.18) + deepPrior + deepBias - 0.8 * f.wakeVote[i]

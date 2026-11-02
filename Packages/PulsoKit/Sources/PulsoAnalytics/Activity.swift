@@ -32,16 +32,18 @@ public struct HeartRateModel: Equatable {
         (hr - restingHR) / (maxHR - restingHR)
     }
 
-    /// Zone 1…5 for 50–60 / 60–70 / 70–80 / 80–90 / 90–100 % HRR; 0 below 50 %.
+    /// Zone 1…5 for 40–60 / 60–70 / 70–80 / 80–90 / 90–100 % HRR (WHOOP's 2025 Healthspan white paper);
+    /// 0 below 40 %.
     public func zone(_ hr: Double) -> Int {
         let p = reserveFraction(hr)
-        if p < 0.5 { return 0 }
-        return min(5, Int((p - 0.5) * 10) + 1)
+        if p < 0.4 { return 0 }
+        if p < 0.6 { return 1 }
+        return min(5, Int((p - 0.6) * 10) + 2)
     }
 
     /// Lower HR bound of zone `z` (1…5).
     public func zoneFloor(_ z: Int) -> Double {
-        restingHR + (0.4 + 0.1 * Double(z)) * (maxHR - restingHR)
+        restingHR + (z <= 1 ? 0.4 : 0.4 + 0.1 * Double(z)) * (maxHR - restingHR)
     }
 }
 
