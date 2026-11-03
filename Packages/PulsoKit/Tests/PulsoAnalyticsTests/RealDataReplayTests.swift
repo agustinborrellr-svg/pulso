@@ -25,6 +25,7 @@ final class RealDataReplayTests: XCTestCase {
         }
         for s in try db.sleeps(from: bounds.first - 86400, to: bounds.last + 86400) {
             print("SLEEP \(t(s.start))–\(t(s.end)) nap=\(s.isNap) manual=\(s.manual) asleep=\(Int(s.asleepMinutes)) confirmed=\(s.kindConfirmed)")
+            print("STAGES \(s.start) \(s.stages.map { String($0.rawValue) }.joined())")
         }
         for w in try db.workouts(from: bounds.first, to: bounds.last + 60) {
             print("WORKOUT \(t(w.start))–\(t(w.end)) \(w.sport) \(w.source) strain \(w.strain ?? -1)")

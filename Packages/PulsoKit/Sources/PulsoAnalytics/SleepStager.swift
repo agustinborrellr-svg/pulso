@@ -55,9 +55,56 @@ public enum SleepStager {
             }
         )
 
-        let (stages, emit) = decode(f, n: n, deepBias: deepBias, remBias: remBias)
+        var (stages, emit) = decode(f, n: n, deepBias: deepBias, remBias: remBias)
+        if let onset = stages.firstIndex(where: { $0 != .awake }) {
+            let early = onset..<min(n, onset + deepLatency)
+            if stages[early].contains(.deep) {
+                (stages, emit) = decode(f, n: n, deepBias: deepBias, remBias: remBias, noDeep: early)
+            }
+        }
+        stages = absorbArousals(stages, epochs: epochs, stillThreshold: stillThreshold)
         let confidence = assess(stages: stages, emit: emit, epochs: epochs, rmssdPerMinute: rmssdPerMinute)
         return (stages, confidence)
+    }
+
+    /// Deep sleep is reached through light sleep: in healthy adults the first deep minutes come some 15-30 minutes
+    /// after falling asleep, so none is scored in the first `deepLatency` minutes of sleep.
+    static let deepLatency = 20
+
+    /// Waking up raises the pulse; a minute scored awake on a pulse no higher than the half hour around it, with the
+    /// wrist barely moving, is a micro-arousal or plain light sleep. Sleep scoring only calls an epoch wake when wake
+    /// fills most of it, and arousals of a few seconds leave the stage alone.
+    static let wakeHRRise = 5.0
+    static let wakeMotionFactor = 4.0
+
+    /// Scores as light every wake run inside the night with neither a pulse rise of `wakeHRRise` lpm over the local
+    /// 31-minute median nor movement above `wakeMotionFactor` × the still threshold, unless the strap itself says
+    /// awake. Wake at the edges of the night is left alone.
+    static func absorbArousals(_ stages: [SleepStage], epochs: [MinuteEpoch], stillThreshold: Double) -> [SleepStage] {
+        let n = stages.count
+        let hr = epochs.map { $0.worn ? $0.hr : nil }
+        let base: [Double?] = (0..<n).map { i in
+            let w = (max(0, i - 15)...min(n - 1, i + 15)).compactMap { hr[$0] }
+            return w.count >= 5 ? Stats.median(w) : nil
+        }
+        var out = stages
+        var i = 0
+        while i < n {
+            guard out[i] == .awake else { i += 1; continue }
+            var j = i
+            while j < n && out[j] == .awake { j += 1 }
+            let rise = (i..<j).compactMap { k -> Double? in
+                guard let h = hr[k], let b = base[k] else { return nil }
+                return h - b
+            }.max() ?? .infinity
+            let moved = epochs[i..<j].contains { ($0.motion ?? 0) > stillThreshold * wakeMotionFactor }
+            let strapWake = (Stats.mean(epochs[i..<j].map { $0.strapWakeFraction }) ?? 0) >= 0.5
+            if i > 0 && j < n && rise < wakeHRRise && !moved && !strapWake {
+                for k in i..<j { out[k] = .light }
+            }
+            i = j
+        }
+        return out
     }
 
     /// How far the split can be trusted: strap coverage, a clean beat stream, how clear each minute was and
@@ -121,7 +168,8 @@ public enum SleepStager {
     static let remBias = 0.3
 
     /// Emission log-scores per stage then Viterbi with sticky transitions.
-    static func decode(_ f: Features, n: Int, deepBias: Double = 0, remBias: Double = 0) -> ([SleepStage], [[Double]]) {
+    static func decode(_ f: Features, n: Int, deepBias: Double = 0, remBias: Double = 0,
+                       noDeep: Range<Int> = 0..<0) -> ([SleepStage], [[Double]]) {
         let states: [SleepStage] = [.awake, .light, .deep, .rem]
         var emit = [[Double]](repeating: [0, 0, 0, 0], count: n)
         for i in 0..<n {
@@ -133,7 +181,7 @@ public enum SleepStager {
             let wake = 1.3 * f.motion[i] + 0.4 * f.hr[i] + 1.4 * f.wakeVote[i] + log(0.10) - 0.6 + wakeBias
             let light = log(0.47)
             let deep = -0.9 * f.hr[i] - 0.7 * f.hrVar[i] + 0.35 * f.rmssd[i] - 0.5 * f.motion[i]
-                + log(0.18) + deepPrior + deepBias - 0.8 * f.wakeVote[i]
+                + log(0.18) + deepPrior + deepBias - 0.8 * f.wakeVote[i] - (noDeep.contains(i) ? 5 : 0)
             let rem = 0.55 * f.hr[i] + 0.75 * f.hrVar[i] - 0.3 * f.rmssd[i] - 0.6 * f.motion[i]
                 + log(0.22) + remPrior + remBias - 0.8 * f.wakeVote[i]
             emit[i] = [wake, light, deep, rem]
