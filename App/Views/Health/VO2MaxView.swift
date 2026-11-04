@@ -26,7 +26,7 @@ struct VO2MaxView: View {
             normsCard(age: age, sex: sex)
             ExplainerCard(title: "¿Qué es el VO₂ máx?", text: TrendMetric.vo2max.explainer.text)
             ExplainerCard(title: "¿Cómo se estima?",
-                          text: "Pulso usa la relación de Uth: VO₂ máx ≈ 15,3 × FC máxima / FC en reposo. Tu FC en reposo sale de tus noches y la máxima de la mayor que has alcanzado en los últimos 6 meses (o de la que pongas en tu perfil). Es una estimación: entrenar de verdad cerca de tu máximo y dormir con la pulsera la afinan. Las normas por edad son aproximadas, de registros de pruebas de esfuerzo en cinta.")
+                          text: "Pulso usa el modelo sin prueba de esfuerzo de Jurca y colaboradores (2005), contrastado con pruebas en cinta en unas 46.000 personas: tu sexo, tu edad, tu IMC (peso y altura del perfil), tu FC en reposo de las noches y cuánto ejercicio aeróbico haces (minutos a la semana en zonas 2-5 de las últimas 4 semanas). Si sales a correr con distancia, 3 o más carreras de 12 minutos en 90 días la sustituyen por la estimación de cada carrera. Es una estimación (±5 ml/kg/min), no una prueba de laboratorio; sube cuando entrenas más, bajas la FC en reposo o el peso.")
         }
     }
 

@@ -216,11 +216,46 @@ public enum WorkoutDetector {
 
 /// Energy / cardiovascular fitness estimates.
 public enum Fitness {
-    /// Uth et al. (2004): VO₂max ≈ 15.3 × HRmax / HRrest (ml/kg/min).
+    /// Uth et al. (2004): VO₂max ≈ 15.3 × HRmax / HRrest (ml/kg/min). Validated on trained men with an awake supine
+    /// resting HR; with the lower sleeping HR it runs ~15 ml/kg/min high (58 vs 43 from the original band on the
+    /// same wrist), so it is no longer used for the daily estimate.
     public static func vo2max(maxHR: Double, restingHR: Double) -> Double? {
         guard restingHR > 25 else { return nil }
         let v = 15.3 * maxHR / restingHR
         return (15...90).contains(v) ? v : nil
+    }
+
+    /// Jurca et al. (2005, Am J Prev Med 29:185–193), non-exercise model validated against treadmill tests in
+    /// ~46,000 adults (ACLS, NHANES III, ADNFS, AFS; SEE ≈ 1.5 MET): METs = 2.77·male − 0.10·age − 0.17·BMI −
+    /// 0.03·resting HR + activity points + 18.07, and VO₂max = 3.5 × METs. Like the original band's passive model, it
+    /// rests on sex, age, height, weight and what the strap measures. `male`: 1 man, 0 woman, 0.5 unknown.
+    public static func vo2maxNonExercise(male: Double, age: Int, bmi: Double, restingHR: Double, activity: Double) -> Double? {
+        guard restingHR > 25, bmi > 12 else { return nil }
+        let v = 3.5 * (2.77 * male - 0.10 * Double(age) - 0.17 * bmi - 0.03 * restingHR + activity + 18.07)
+        return (15...90).contains(v) ? v : nil
+    }
+
+    /// Jurca's activity points from the strap instead of the questionnaire: weekly minutes at 60 %+ of heart-rate
+    /// reserve (zones 2–5) count as aerobic exercise (20–60 min 1.06, 1–3 h 1.76, over 3 h 3.03); under 20, regular
+    /// light activity (50+ minutes a week in zone 1, or 5,000+ steps a day) earns 0.32, and nothing else 0.
+    public static func activityPoints(aerobicPerWeek: Double, lightPerWeek: Double, stepsPerDay: Double?) -> Double {
+        if aerobicPerWeek > 180 { return 3.03 }
+        if aerobicPerWeek >= 60 { return 1.76 }
+        if aerobicPerWeek >= 20 { return 1.06 }
+        return lightPerWeek >= 50 || (stepsPerDay ?? 0) >= 5000 ? 0.32 : 0
+    }
+
+    /// The daily estimate: Jurca's model with the resting HR given and the activity of `recent` days (the last four
+    /// weeks).
+    public static func passiveVO2(restingHR: Double, recent: [DaySummary], profile: Profile) -> Double? {
+        let weeks = max(1, Double(recent.count)) / 7
+        let aerobic = recent.reduce(0) { $0 + $1.zoneMinutes.dropFirst().reduce(0, +) } / weeks
+        let light = recent.reduce(0) { $0 + ($1.zoneMinutes.first ?? 0) } / weeks
+        let steps = Stats.mean(recent.compactMap(\.steps).map(Double.init))
+        let male = profile.sex == .male ? 1.0 : (profile.sex == .female ? 0 : 0.5)
+        let bmi = profile.weightKg / pow(profile.heightCm / 100, 2)
+        return vo2maxNonExercise(male: male, age: profile.age, bmi: bmi, restingHR: restingHR,
+                                 activity: activityPoints(aerobicPerWeek: aerobic, lightPerWeek: light, stepsPerDay: steps))
     }
 
     /// Sports whose distance and time give a running speed.

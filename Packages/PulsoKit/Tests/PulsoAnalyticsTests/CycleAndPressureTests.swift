@@ -153,6 +153,31 @@ final class FitnessFormulaTests: XCTestCase {
         XCTAssertNil(Fitness.vo2maxFromRuns(Array(runs.prefix(2)), through: 500))
     }
 
+    func testPassiveVO2MatchesTheOriginalBandNotUth() {
+        // The user: man, 25, 90 kg, 180 cm, sleeping RHR 50, light daily activity and ~15 min a week in zones 2+.
+        // The original band said 42–43 on the same wrist; Uth said 58.
+        var p = Profile()
+        p.sex = .male
+        p.birthYear = Calendar(identifier: .gregorian).component(.year, from: Date()) - 25
+        p.weightKg = 90
+        p.heightCm = 180
+        let light = (0..<28).map { i -> DaySummary in
+            var d = DaySummary(day: DayKey.shift("2026-11-04", days: -i))
+            d.zoneMinutes = [12, i % 7 == 0 ? 15 : 0, 0, 0, 0]
+            d.steps = 7000
+            return d
+        }
+        let v = try! XCTUnwrap(Fitness.passiveVO2(restingHR: 50, recent: light, profile: p))
+        XCTAssertEqual(v, 43.5, accuracy: 0.3)
+        XCTAssertGreaterThan(Fitness.vo2max(maxHR: 190, restingHR: 50)!, 55, "Uth with a sleeping RHR runs high")
+        // A lean runner training four hours a week comes out far higher.
+        p.weightKg = 70
+        let runner = light.map { d -> DaySummary in var d = d; d.zoneMinutes = [20, 35, 0, 0, 0]; return d }
+        XCTAssertGreaterThan(Fitness.passiveVO2(restingHR: 45, recent: runner, profile: p)!, 54)
+        XCTAssertEqual(Fitness.activityPoints(aerobicPerWeek: 0, lightPerWeek: 0, stepsPerDay: 2000), 0)
+        XCTAssertEqual(Fitness.activityPoints(aerobicPerWeek: 30, lightPerWeek: 0, stepsPerDay: nil), 1.06)
+    }
+
     func testRunningVO2ReplacesRestingEstimate() {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(identifier: "UTC")!

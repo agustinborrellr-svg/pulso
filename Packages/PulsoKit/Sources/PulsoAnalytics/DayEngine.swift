@@ -9,7 +9,7 @@ import PulsoStore
 public final class DayEngine {
     /// Version of the derived numbers (days, sleeps, workouts). Bump it whenever an algorithm changes: the app
     /// then recomputes every day from the raw seconds it still has.
-    public static let derivedVersion = 12
+    public static let derivedVersion = 13
 
     /// Daytime sleeps shorter than this are naps unless the user says otherwise.
     public static let napLimit = 3 * 3600
@@ -437,7 +437,7 @@ public final class DayEngine {
         // Fitness.
         let rhrForFitness = baselines.rhr?.center ?? d.rhr
         if let r = rhrForFitness {
-            d.vo2max = Fitness.vo2max(maxHR: model.maxHR, restingHR: r).map { ($0 * 10).rounded() / 10 }
+            d.vo2max = Fitness.passiveVO2(restingHR: r, recent: past.suffix(27) + [d], profile: profile).map { ($0 * 10).rounded() / 10 }
         }
         return d
     }

@@ -302,3 +302,7 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
 - Pendiente acordado: siesta inteligente y detección de dormirse con 4-7-8, primero en silencio (solo registrar) y contrastar.
 - CI: tests del núcleo en `-c release -Xswiftc -enable-testing --parallel` (en debug ya pasaban de 45 min y el job se cortaba
   a la hora). Capturas: `gh workflow run ios.yml --ref <rama> -f capturas=true -f pantallas="today live …"`. Releases solo desde main.
+- VO₂ máx (2026-11-05): Uth (15,3 × FCmáx / FC reposo) con la FC de sueño daba 54-58 frente a 42-43 de la pulsera original en
+  la misma muñeca. Ahora `Fitness.passiveVO2` = Jurca 2005 (sexo, edad, IMC, FC reposo, puntos de actividad desde minutos en
+  zonas 2-5 de 4 semanas / zona 1 / pasos): con los datos de Gus 42,1-43,5. Las carreras (3+ en 90 días) siguen mandando.
+  Estrés por minuto suavizado (mediana 5 min + media exponencial 0,25), gráfica de una línea con colores por nivel. `derivedVersion` 13.

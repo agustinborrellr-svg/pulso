@@ -351,7 +351,7 @@ enum TrendMetric: String, CaseIterable, Identifiable {
         case .zonesLight, .zonesHard:
             return ("¿En qué consiste el entrenamiento por zonas?", "Las zonas se calculan con tu reserva de frecuencia cardíaca (FC máx. − FC en reposo):\n• Zona 5 (90-100 %): intensidad máxima\n• Zona 4 (80-89 %): alta\n• Zona 3 (70-79 %): moderada\n• Zona 2 (60-69 %): ligera\n• Zona 1 (40-59 %): muy ligera\n\nLas zonas 1-3 construyen la base aeróbica; las 4-5, la potencia. Para la salud, lo más útil es acumular bastante tiempo en 2-3 y algo en 4-5 cada semana.")
         case .vo2max:
-            return ("¿Qué es el VO₂ máx?", "La cantidad máxima de oxígeno que tu cuerpo puede usar durante el ejercicio. Es la métrica que mejor refleja la salud cardiovascular a largo plazo. Pulso la estima con tu pulso en reposo, tu frecuencia máxima y tus entrenos; es una estimación, no una prueba de laboratorio.")
+            return ("¿Qué es el VO₂ máx?", "La cantidad máxima de oxígeno que tu cuerpo puede usar durante el ejercicio. Es la métrica que mejor refleja la salud cardiovascular a largo plazo. Pulso la estima con tu sexo, edad, IMC, pulso en reposo y minutos de ejercicio aeróbico (o con tus carreras, si tienes 3 o más); es una estimación, no una prueba de laboratorio.")
         case .stress, .stressHigh:
             return ("¿Qué es el estrés?", "El estrés de 0 a 3 compara tu pulso y tu VFC, cuando estás quieto y despierto, con cómo están normalmente en esos momentos (tus dos últimas semanas). No cuenta los entrenos ni la hora y media después, porque ahí el pulso alto es recuperación, no estrés. 0-1 es bajo, 1-2 medio y 2-3 alto. El estrés no es bueno ni malo: lo importante es que haya equilibrio con momentos de calma.")
         }

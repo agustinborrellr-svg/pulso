@@ -37,6 +37,7 @@ final class RealDataReplayTests: XCTestCase {
             print("WORKOUT \(t(w.start))–\(t(w.end)) \(w.sport) \(w.source) strain \(w.strain ?? -1)")
         }
         let merged = HistoryMerge.days(measured: days, imported: try db.importedDays(), profile: db.profile)
+        print("VO2 " + merged.suffix(10).map { "\($0.day.suffix(5)):\($0.vo2max.map { String(format: "%.1f", $0) } ?? "–")" }.joined(separator: " "))
         if let last = merged.last { print("MERGED \(last.day) recovery \(last.recovery ?? -1) nightImported \(last.nightImported) sleep \(last.sleepMinutes ?? -1)") }
         for (label, hour) in [("next 07:00", 7), ("next 10:00", 10)] {
             let morning = Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: now.addingTimeInterval(86400))!

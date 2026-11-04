@@ -39,12 +39,12 @@ public enum HistoryMerge {
         let have = Set(measured.map(\.day))
         let extra = imported.filter { !have.contains($0.day) }
         let all = measured + extra
-        let maxHR = HeartRateModel.maxHR(override: profile.maxHROverride, age: profile.age,
-                                         dailyPeaks: all.suffix(400).compactMap(\.maxHR))
+        let byDay = all.sorted { $0.day < $1.day }
         let filled = extra.map { d -> DaySummary in
             var d = d
             if d.vo2max == nil, let rhr = d.rhr {
-                d.vo2max = Fitness.vo2max(maxHR: maxHR, restingHR: rhr).map { ($0 * 10).rounded() / 10 }
+                let recent = byDay.filter { $0.day <= d.day }.suffix(28)
+                d.vo2max = Fitness.passiveVO2(restingHR: rhr, recent: Array(recent), profile: profile).map { ($0 * 10).rounded() / 10 }
             }
             return d
         }

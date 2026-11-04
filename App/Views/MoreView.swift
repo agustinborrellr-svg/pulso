@@ -520,7 +520,7 @@ struct MethodologyView: View {
             item("Calorías", "Metabolismo basal Mifflin-St Jeor en reposo y ecuación de Keytel (2005) cuando la FC indica actividad.")
             item("Estrés (0–3)", "Ventanas de 5 minutos en reposo y despierto, fuera de entrenos: FC y VFC frente a tu referencia de calma de las últimas 2 semanas.")
             item("Necesidad de sueño", "Tu base (8 h por defecto) + extra por el esfuerzo del día (1,7 / (1 + e^((17 − esfuerzo)/3,5)) horas: unos 12 min con 10, 51 con 17, 77 con 21) + parte de la deuda reciente − siestas.")
-            item("VO₂máx", "Estimación de Uth (15,3 × FC máx / FC reposo). Orientativa.")
+            item("VO₂máx", "Modelo de Jurca 2005: sexo, edad, IMC, FC en reposo y minutos de ejercicio aeróbico; con 3+ carreras, desde ellas. Orientativo.")
             item("Carga de entrenamiento", "Cada día se convierte el esfuerzo en carga cardiovascular. La carga aguda es la media ponderada de 7 días (fatiga) y la crónica la de 42 días (forma). Su cociente indica si subes carga a buen ritmo (0,8–1,3) o demasiado deprisa (más de 1,5).")
             item("Posible enfermedad", "Se avisa cuando varias constantes de la noche se salen a la vez de tu línea base: temperatura +0,5 °C o más, FC en reposo +4 lpm o más, respiración +0,8 rpm, VFC muy baja o SpO₂ 2 puntos por debajo. Suele adelantarse 1–2 días a los síntomas.")
             item("Alarma inteligente", "En la ventana elegida, Pulso descarga cada 2–3 minutos lo último de la pulsera y despierta cuando detecta sueño ligero: movimiento, la pulsera te marca despierto, el pulso sube sobre el mínimo de la noche o se vuelve irregular (REM).")
