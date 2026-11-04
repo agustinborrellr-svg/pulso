@@ -19,6 +19,11 @@ public struct Sport: Equatable, Identifiable, Sendable {
 
     /// Private activities stay on the phone: never sent to Strava or Apple Health.
     public var shareable: Bool { health != "private" }
+
+    public enum Kind: Sendable { case effort, recovery }
+
+    /// Recovery (sauna, cold, massage, breathing, stretching…) or effort (everything else), as the activity picker groups them.
+    public var kind: Kind { ["recovery", "mindAndBody", "flexibility"].contains(health) ? .recovery : .effort }
 }
 
 public enum SportCatalog {
@@ -102,6 +107,30 @@ public enum SportCatalog {
         Sport(name: "Moto", symbol: "motorcycle", strava: [], fitSport: 22, fitSubSport: 0, tcx: "Other", health: "other"),
         Sport(name: "Sauna", symbol: "flame", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
         Sport(name: "Baño de hielo", symbol: "snowflake", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Sauna de infrarrojos", symbol: "flame", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Baño turco", symbol: "humidity", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Baño caliente", symbol: "bathtub", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Ducha fría", symbol: "shower", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Terapia de contraste", symbol: "thermometer.medium", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Masaje", symbol: "hand.raised", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Masaje de percusión", symbol: "hand.point.up", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Rodillo de espuma", symbol: "cylinder", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Fisioterapia", symbol: "cross.case", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Quiropráctico", symbol: "figure.stand", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Compresión neumática", symbol: "figure.walk.motion", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Terapia de luz roja", symbol: "lightbulb", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Estimulación del nervio vago", symbol: "bolt.heart", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Descanso profundo sin dormir", symbol: "bed.double", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "recovery"),
+        Sport(name: "Respiración consciente", symbol: "lungs", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "mindAndBody"),
+        Sport(name: "Yoga restaurativo", symbol: "figure.yoga", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "mindAndBody"),
+        Sport(name: "Pasear al perro", symbol: "dog", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "walking"),
+        Sport(name: "Cocinar", symbol: "frying.pan", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "other"),
+        Sport(name: "Trabajo manual", symbol: "hammer", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "other"),
+        Sport(name: "Trabajo de alto estrés", symbol: "briefcase", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "other"),
+        Sport(name: "Hablar en público", symbol: "mic", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "other"),
+        Sport(name: "Viaje en avión", symbol: "airplane", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "other"),
+        Sport(name: "Ver deportes", symbol: "sportscourt", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "other"),
+        Sport(name: "Videojuegos", symbol: "gamecontroller", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "other"),
         Sport(name: "Intimidad", symbol: "heart", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "private"),
         Sport(name: "Actividad", symbol: "figure.mixed.cardio", strava: ["Workout"], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "other"),
     ]

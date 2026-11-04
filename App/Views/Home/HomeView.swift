@@ -11,6 +11,7 @@ struct HomeView: View {
     @State private var customizing = false
     @State private var showCoach = false
     @AppStorage(HomeLayout.key) private var homeRaw = ""
+    @State private var collapse: CGFloat = 0
 
     private var widgets: [HomeWidget] { HomeLayout.decode(homeRaw) }
 
@@ -18,12 +19,30 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    HomeTopBar()
-                    pillarTabs
+                    // Room for the header floating above; where this sits drives its collapse.
+                    Color.clear
+                        .frame(height: HomeDialHeader.expandedHeight - 14)
+                        .background(GeometryReader { g in
+                            Color.clear.preference(key: HomeScrollOffset.self, value: g.frame(in: .named("home")).minY)
+                        })
+                    if let day = model.selected {
+                        if day.recovery == nil && day.calibrating {
+                            Text("Calibrando tus líneas base: la recuperación aparece tras 4 noches.")
+                                .font(.caption).foregroundStyle(Theme.secondary)
+                        }
+                        if day.nightImported {
+                            Label("Sueño y recuperación de la noche importados: la pulsera no estaba conectada a Pulso esa noche.",
+                                  systemImage: "square.and.arrow.down")
+                                .font(.caption).foregroundStyle(Theme.secondary)
+                        }
+                    }
                     if !model.days.isEmpty {
                         // Each vital of last night against your range, then the stress level.
                         HomeHealthMonitorCard()
                         HomeStressStatusTile()
+                    }
+                    if let day = model.selected {
+                        TodayActivitiesCard(day: day)
                     }
                     if let q = model.pendingSleepQuestions.first {
                         SleepQuestionCard(session: q)
@@ -36,7 +55,7 @@ struct HomeView: View {
                         BedtimeCard()
                     }
                     if let day = model.selected {
-                        ForEach(Array(HomeLayout.lines(widgets).enumerated()), id: \.offset) { _, line in
+                        ForEach(Array(HomeLayout.lines(widgets.filter { $0.kind != .hero }).enumerated()), id: \.offset) { _, line in
                             HomeWidgetLine(items: line, day: day)
                         }
                         Button { customizing = true } label: {
@@ -60,6 +79,11 @@ struct HomeView: View {
                 .padding(.bottom, 90)
             }
             .scrollIndicators(.hidden)
+            .coordinateSpace(name: "home")
+            .onPreferenceChange(HomeScrollOffset.self) { y in
+                collapse = min(max(-y / HomeDialHeader.collapseDistance, 0), 1)
+            }
+            .overlay(alignment: .top) { HomeDialHeader(progress: collapse) }
             .background(PulsoBackground())
             .refreshable {
                 model.syncNow()
@@ -80,26 +104,6 @@ struct HomeView: View {
                 if let day = model.selected { CoachSheet(day: day) }
             }
         }
-    }
-
-    private var pillarTabs: some View {
-        let d = model.selected
-        return HStack {
-            NavigationLink { SleepDetailView() } label: {
-                PillarTab(label: "Sueño", progress: d?.sleepPerformance ?? 0, color: Theme.sleep)
-            }
-            Spacer()
-            NavigationLink { RecoveryDetailView() } label: {
-                PillarTab(label: "Recuperación", progress: (d?.recovery ?? 0) / 100, color: Theme.recoveryColor(d?.recovery))
-            }
-            Spacer()
-            NavigationLink { StrainDetailView() } label: {
-                PillarTab(label: "Esfuerzo", progress: (d?.strain ?? 0) / 21, color: Theme.strain)
-            }
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 4)
-        .padding(.vertical, 6)
     }
 
     private var firstRun: some View {
@@ -175,59 +179,6 @@ struct HomeTopBar: View {
         case .connecting, .scanning, .pairing: return Theme.yellow
         default: return Theme.red
         }
-    }
-}
-
-// MARK: - Hero
-
-/// The three dials, each opening its pillar.
-struct PillarHero: View {
-    @EnvironmentObject var model: AppModel
-    let day: DaySummary
-
-    var body: some View {
-        PCard(padding: 18) {
-            HStack(alignment: .top, spacing: 0) {
-                NavigationLink { SleepDetailView() } label: {
-                    dial(progress: day.sleepPerformance ?? 0, color: Theme.sleep,
-                         value: day.sleepPerformance.map { "\(Int(($0 * 100).rounded()))" } ?? "–", unit: "%", label: "Sueño")
-                }
-                NavigationLink { RecoveryDetailView() } label: {
-                    dial(progress: (day.recovery ?? 0) / 100, color: Theme.recoveryColor(day.recovery),
-                         value: day.recovery.map { "\(Int($0))" } ?? (day.calibrating ? "…" : "–"), unit: day.recovery == nil ? "" : "%",
-                         label: "Recuperación")
-                }
-                NavigationLink { StrainDetailView() } label: {
-                    dial(progress: (day.strain ?? 0) / 21, color: Theme.strain, value: Fmt.dec(day.strain), unit: "", label: "Esfuerzo")
-                }
-            }
-            .buttonStyle(.plain)
-            if day.recovery == nil && day.calibrating {
-                Text("Calibrando tus líneas base: la recuperación aparece tras 4 noches.")
-                    .font(.caption).foregroundStyle(Theme.secondary)
-            }
-            if day.nightImported {
-                Label("Sueño y recuperación de la noche importados: la pulsera no estaba conectada a Pulso esa noche.",
-                      systemImage: "square.and.arrow.down")
-                    .font(.caption).foregroundStyle(Theme.secondary)
-            }
-        }
-    }
-
-    private func dial(progress: Double, color: Color, value: String, unit: String, label: String) -> some View {
-        VStack(spacing: 10) {
-            ZStack {
-                Dial(progress: progress, color: color, lineWidth: 9)
-                HStack(alignment: .firstTextBaseline, spacing: 1) {
-                    Text(value).scaledFont(26, weight: .bold, relativeTo: .title1).monospacedDigit()
-                    if !unit.isEmpty { Text(unit).scaledFont(12, weight: .bold, relativeTo: .caption1) }
-                }
-                .foregroundStyle(.white)
-            }
-            .frame(width: 92, height: 92)
-            Caps(label, size: 11, color: color)
-        }
-        .frame(maxWidth: .infinity)
     }
 }
 
