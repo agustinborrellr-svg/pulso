@@ -99,12 +99,12 @@ struct DayActivityButtons: View {
     private func button(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                Image(systemName: icon).font(.headline)
-                Caps(title, size: 12).lineLimit(1).minimumScaleFactor(0.7)
+                Image(systemName: icon).font(.subheadline.weight(.semibold))
+                Caps(title, size: 11).lineLimit(1).minimumScaleFactor(0.7)
             }
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 18)
+            .padding(.vertical, 13)
             .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -116,32 +116,32 @@ struct DayActivityRow: View {
     let activity: DayActivity
 
     var body: some View {
-        HStack(spacing: 16) {
-            HStack(spacing: 10) {
-                Image(systemName: activity.icon).font(.title2)
-                Text(activity.badge).scaledFont(24, weight: .bold, relativeTo: .title2).monospacedDigit()
+        HStack(spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: activity.icon).font(.headline)
+                Text(activity.badge).scaledFont(19, weight: .bold, relativeTo: .title3).monospacedDigit()
                     .lineLimit(1).minimumScaleFactor(0.7)
             }
             .foregroundStyle(.white)
-            .frame(width: 124, height: 60)
-            .background(activity.color.opacity(0.9), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            Caps(activity.title, size: activity.title.count > 14 ? 11 : 14).lineLimit(3).minimumScaleFactor(0.7)
+            .frame(width: 100, height: 46)
+            .background(activity.color.opacity(0.9), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            Caps(activity.title, size: activity.title.count > 14 ? 10 : 12).lineLimit(3).minimumScaleFactor(0.7)
             Spacer(minLength: 6)
-            VStack(alignment: .trailing, spacing: 14) {
+            VStack(alignment: .trailing, spacing: 8) {
                 Text(Fmt.time(activity.start))
                 Text(Fmt.time(activity.end))
             }
-            .font(.subheadline.weight(.semibold)).monospacedDigit().foregroundStyle(Theme.secondary)
+            .font(.footnote.weight(.semibold)).monospacedDigit().foregroundStyle(Theme.secondary)
             VStack(spacing: 0) {
-                Circle().fill(.white).frame(width: 5, height: 5)
+                Circle().fill(.white).frame(width: 4, height: 4)
                 Capsule().fill(activity.color).frame(width: 3)
-                Circle().fill(.white).frame(width: 5, height: 5)
+                Circle().fill(.white).frame(width: 4, height: 4)
             }
-            .frame(height: 46)
+            .frame(height: 36)
         }
-        .padding(10)
+        .padding(8)
         .padding(.trailing, 4)
-        .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

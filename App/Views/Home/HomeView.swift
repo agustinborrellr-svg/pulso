@@ -322,15 +322,25 @@ struct StressLine: View {
         var id: Int { x }
     }
 
+    /// Minutes per drawn point: 1440 points crammed into a phone's width read as a smudge, so the line is drawn
+    /// from 3-minute means (the readings themselves stay per minute).
+    static let bucket = 3
+
     /// Points split into runs wherever more than 10 minutes go by without a reading.
     private var series: [Point] {
+        var sums: [Int: (Double, Int)] = [:]
+        for p in points {
+            let b = (p.ts - start) / 60 / Self.bucket
+            let s = sums[b] ?? (0, 0)
+            sums[b] = (s.0 + p.v, s.1 + 1)
+        }
         var run = 0
         var prev: Int?
-        return points.map { p in
-            let x = (p.ts - start) / 60
+        return sums.keys.sorted().map { b in
+            let x = b * Self.bucket + Self.bucket / 2
             if let q = prev, x - q > 10 { run += 1 }
             prev = x
-            return Point(x: x, v: p.v, run: run)
+            return Point(x: x, v: sums[b]!.0 / Double(sums[b]!.1), run: run)
         }
     }
 
@@ -378,7 +388,7 @@ struct StressLine: View {
                 LineMark(x: .value("Minuto", p.x), y: .value("Estrés", p.v), series: .value("Tramo", p.run))
                     .foregroundStyle(line)
                     .interpolationMethod(.monotone)
-                    .lineStyle(StrokeStyle(lineWidth: compact ? 1.5 : 2, lineCap: .round, lineJoin: .round))
+                    .lineStyle(StrokeStyle(lineWidth: compact ? 1.4 : 1.8, lineCap: .round, lineJoin: .round))
             }
             if let p = pts.last {
                 PointMark(x: .value("Minuto", p.x), y: .value("Estrés", p.v))

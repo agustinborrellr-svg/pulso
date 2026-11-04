@@ -14,7 +14,7 @@ struct HomeDialHeader: View {
     enum Pillar: CaseIterable, Hashable { case sleep, recovery, strain }
 
     static let barHeight: CGFloat = 52
-    static let bigRow: CGFloat = 142
+    static let bigRow: CGFloat = 120
     static let smallRow: CGFloat = 46
     static let gap: CGFloat = 10
     static var expandedHeight: CGFloat { barHeight + bigRow + gap }
@@ -22,9 +22,9 @@ struct HomeDialHeader: View {
     /// it until it is fully collapsed.
     static var collapseDistance: CGFloat { expandedHeight - smallRow }
 
-    private static let bigDial: CGFloat = 92
+    private static let bigDial: CGFloat = 76
     private static let smallDial: CGFloat = 22
-    private static let labelSize: CGFloat = 11.5
+    private static let labelSize: CGFloat = 11
 
     var body: some View {
         let p = min(max(progress, 0), 1)
@@ -77,11 +77,11 @@ struct HomeDialHeader: View {
     private func dial(_ pillar: Pillar, day: DaySummary?, p: CGFloat, width w: CGFloat, height h: CGFloat) -> some View {
         let i = CGFloat(Pillar.allCases.firstIndex(of: pillar) ?? 0)
         let d = Self.bigDial + (Self.smallDial - Self.bigDial) * p
-        let line = 9 + (3 - 9) * p
+        let line = 8 + (3 - 8) * p
         // Big: three equal columns, the name under the dial.
         let bigX = w * (2 * i + 1) / 6
-        let bigRingY = 12 + Self.bigDial / 2
-        let bigLabelY = 12 + Self.bigDial + 18
+        let bigRingY = 10 + Self.bigDial / 2
+        let bigLabelY = 10 + Self.bigDial + 17
         // Small: [dial name] [dial name] [dial name] spread across the row, the name beside the dial.
         let small = smallPositions(width: w)[Int(i)]
         let ringX = bigX + (small.ring - bigX) * p
@@ -93,8 +93,8 @@ struct HomeDialHeader: View {
             ZStack {
                 Dial(progress: v.progress, color: v.color, lineWidth: line)
                 HStack(alignment: .firstTextBaseline, spacing: 1) {
-                    Text(v.value).scaledFont(26, weight: .bold, relativeTo: .title1).monospacedDigit()
-                    if !v.unit.isEmpty { Text(v.unit).scaledFont(12, weight: .bold, relativeTo: .caption1) }
+                    Text(v.value).scaledFont(22, weight: .bold, relativeTo: .title1).monospacedDigit()
+                    if !v.unit.isEmpty { Text(v.unit).scaledFont(10, weight: .bold, relativeTo: .caption1) }
                 }
                 .foregroundStyle(.white)
                 .scaleEffect(d / Self.bigDial)

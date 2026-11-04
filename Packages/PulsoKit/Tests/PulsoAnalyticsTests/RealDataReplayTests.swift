@@ -25,6 +25,9 @@ final class RealDataReplayTests: XCTestCase {
             let sm = d.stressMinutes.compactMap { $0 }
             print("STRESSMIN \(d.day) minutes \(sm.count)/\(d.stressMinutes.count) mean \(f(Stats.mean(sm))) high \(sm.filter { $0 >= 2 }.count) "
                   + (0..<24).map { h in f(Stats.mean(d.stressMinutes.dropFirst(h * 60).prefix(60).compactMap { $0 })) }.joined(separator: " "))
+            let steps = zip(d.stressMinutes, d.stressMinutes.dropFirst()).compactMap { a, b in a.flatMap { x in b.map { abs($0 - x) } } }
+            print("STRESSJUMP \(d.day) meanStep \(String(format: "%.3f", Stats.mean(steps) ?? 0)) over0.5 \(steps.filter { $0 > 0.5 }.count)/\(steps.count)")
+            print("SMDUMP \(d.day) \(d.stressOrigin ?? 0) " + d.stressMinutes.map { $0.map { String(format: "%.2f", $0) } ?? "" }.joined(separator: ","))
         }
         for s in try db.sleeps(from: bounds.first - 86400, to: bounds.last + 86400) {
             print("SLEEP \(t(s.start))–\(t(s.end)) nap=\(s.isNap) manual=\(s.manual) asleep=\(Int(s.asleepMinutes)) confirmed=\(s.kindConfirmed)")

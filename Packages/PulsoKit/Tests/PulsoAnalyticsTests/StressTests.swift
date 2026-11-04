@@ -62,8 +62,17 @@ final class StressTests: XCTestCase {
     func testARacingPulseWhileSittingIsStress() {
         let d = minutes(60, hr: { (30..<40).contains($0) ? 82 : 62 }, jitter: 50)
         let w = Stress.everyMinute(samples: d.samples, epochs: d.epochs, calmHR: 62, calmHRV: 70, stillThreshold: 0.02, workouts: [])
-        XCTAssertGreaterThan(w[35].score, 2)
+        // Smoothed: it climbs over a few minutes, like the body, and clears 2 well inside the bout.
+        XCTAssertGreaterThan(w[30..<40].map(\.score).max() ?? 0, 2)
         XCTAssertLessThan(w[10].score, 1)
+    }
+
+    func testAOneMinuteSpikeDoesNotJumpTheLine() {
+        let d = minutes(60, hr: { $0 == 30 ? 90 : 62 }, jitter: 50)
+        let w = Stress.everyMinute(samples: d.samples, epochs: d.epochs, calmHR: 62, calmHRV: 70, stillThreshold: 0.02, workouts: [])
+        XCTAssertLessThan(w[30].score, 1.5)
+        let steps = zip(w, w.dropFirst()).map { abs($1.score - $0.score) }
+        XCTAssertLessThan(steps.max() ?? 0, 0.6)
     }
 
     func testSleepReadsLowAndAWorkoutReadsAsEffort() {

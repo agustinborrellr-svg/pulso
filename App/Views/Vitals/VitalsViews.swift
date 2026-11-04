@@ -250,7 +250,8 @@ struct HomeStressStatusTile: View {
                 .frame(height: 8)
             }
             .padding(14)
-            .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+            // Fills the row's height: side by side on Inicio, both tiles are always the size of the taller one.
+            .frame(maxWidth: .infinity, minHeight: 104, maxHeight: .infinity, alignment: .topLeading)
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)

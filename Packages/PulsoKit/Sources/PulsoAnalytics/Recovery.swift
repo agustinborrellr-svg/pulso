@@ -276,7 +276,7 @@ public enum Stress {
             if x.count >= 15, let m = Stats.median(x) { cost[k] = max(0, m) }
         }
         for k in 1...3 { cost[k] = max(cost[k], cost[k - 1]) }
-        var out: [Window] = []
+        var zs = [Double?](repeating: nil, count: n)
         for i in 0..<n {
             guard let h = hr[i] else { continue }
             var z = (h - calmHR - (inWorkout[i] ? 0 : cost[lvl[i]])) / 6
@@ -291,10 +291,27 @@ public enum Stress {
             } else if lvl[i] == 0 {
                 z *= 1.5
             }
-            out.append(Window(ts: epochs[i].ts, score: 3 * Stats.logistic(z - 1.2)))
+            zs[i] = z
+        }
+        // Stress doesn't swing from high to calm in a minute: a 5-minute median drops one-off spikes (a swallow, a
+        // missed beat, a level change) and an exponential average follows the body's few-minute lag. On real days
+        // this took minute-to-minute jumps over 0.5 from ~10 % to ~0.2 % with the same mean and the same high bouts.
+        var out: [Window] = []
+        var smoothed: Double?
+        var last = -1_000
+        for i in 0..<n {
+            guard zs[i] != nil else { continue }
+            let near = (max(0, i - 2)...min(n - 1, i + 2)).compactMap { zs[$0] }
+            let m = Stats.median(near) ?? zs[i]!
+            smoothed = smoothed.map { i - last <= 5 ? $0 + smoothing * (m - $0) : m } ?? m
+            last = i
+            out.append(Window(ts: epochs[i].ts, score: 3 * Stats.logistic(smoothed! - 1.2)))
         }
         return out
     }
+
+    /// Weight of each new minute in the per-minute stress average (~4-minute time constant).
+    static let smoothing = 0.25
 
     /// Typical pulse rise (lpm over calm) of light, moderate and vigorous movement, used until the day has 15 minutes
     /// of that level to learn its own.
