@@ -318,7 +318,6 @@ struct StressLine: View {
     private struct Point: Identifiable {
         var x: Int
         var v: Double
-        var run: Int
         var id: Int { x }
     }
 
@@ -326,7 +325,7 @@ struct StressLine: View {
     /// from 3-minute means (the readings themselves stay per minute).
     static let bucket = 3
 
-    /// Points split into runs wherever more than 10 minutes go by without a reading.
+    /// One joined line: a single series also keeps the level colours true, since a gradient spans its mark's bounds.
     private var series: [Point] {
         var sums: [Int: (Double, Int)] = [:]
         for p in points {
@@ -334,18 +333,14 @@ struct StressLine: View {
             let s = sums[b] ?? (0, 0)
             sums[b] = (s.0 + p.v, s.1 + 1)
         }
-        var run = 0
-        var prev: Int?
         return sums.keys.sorted().map { b in
-            let x = b * Self.bucket + Self.bucket / 2
-            if let q = prev, x - q > 10 { run += 1 }
-            prev = x
-            return Point(x: x, v: sums[b]!.0 / Double(sums[b]!.1), run: run)
+            Point(x: b * Self.bucket + Self.bucket / 2, v: sums[b]!.0 / Double(sums[b]!.1))
         }
     }
 
     /// Colour stops for a vertical gradient that spans `lo`…`hi` in stress units, so each height gets the colour
-    /// of its own level (a gradient on a mark spans the mark's own bounds, not the axis).
+    /// of its own level: blue under 1, green 1–2, yellow over 2, changing right at the line (a gradient on a mark
+    /// spans the mark's own bounds, not the axis).
     static func stops(_ lo: Double, _ hi: Double, opacity: (Double) -> Double = { _ in 1 }) -> [Gradient.Stop] {
         let span = max(hi - lo, 0.001)
         func loc(_ v: Double) -> CGFloat { CGFloat(min(max((v - lo) / span, 0), 1)) }
@@ -354,8 +349,8 @@ struct StressLine: View {
         }
         var out = [stop(lo, at: lo)]
         for t in [1.0, 2.0] where t > lo && t < hi {
-            out.append(stop(t - 0.01, at: max(lo, t - 0.15)))
-            out.append(stop(t, at: min(hi, t + 0.15)))
+            out.append(stop(t - 0.01, at: t))
+            out.append(stop(t, at: t))
         }
         out.append(stop(hi, at: hi))
         return out
@@ -381,11 +376,10 @@ struct StressLine: View {
                     }
             }
             ForEach(pts) { p in
-                AreaMark(x: .value("Minuto", p.x), yStart: .value("Base", 0), yEnd: .value("Estrés", p.v),
-                         series: .value("Tramo", p.run))
+                AreaMark(x: .value("Minuto", p.x), yStart: .value("Base", 0), yEnd: .value("Estrés", p.v))
                     .foregroundStyle(fill)
                     .interpolationMethod(.monotone)
-                LineMark(x: .value("Minuto", p.x), y: .value("Estrés", p.v), series: .value("Tramo", p.run))
+                LineMark(x: .value("Minuto", p.x), y: .value("Estrés", p.v))
                     .foregroundStyle(line)
                     .interpolationMethod(.monotone)
                     .lineStyle(StrokeStyle(lineWidth: compact ? 1.4 : 1.8, lineCap: .round, lineJoin: .round))
