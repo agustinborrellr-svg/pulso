@@ -9,7 +9,7 @@ import PulsoStore
 public final class DayEngine {
     /// Version of the derived numbers (days, sleeps, workouts). Bump it whenever an algorithm changes: the app
     /// then recomputes every day from the raw seconds it still has.
-    public static let derivedVersion = 8
+    public static let derivedVersion = 10
 
     /// Daytime sleeps shorter than this are naps unless the user says otherwise.
     public static let napLimit = 3 * 3600
@@ -417,6 +417,16 @@ public final class DayEngine {
                     hourly[h].append(w.score)
                 }
                 d.stressHourly = hourly.map { Stats.mean($0) }
+                let origin = cycleStart - cycleStart % 60
+                var minutes = [Double?](repeating: nil, count: max(0, (d.cycleEnd! - origin) / 60))
+                let windows = Stress.minuteWindows(samples: samples, epochs: cycleEpochs, from: cycleStart, to: d.cycleEnd!,
+                                                   excluding: excluding, stillThreshold: stillThr)
+                for w in Stress.score(windows, calmHR: refHR, calmHRV: Stats.median(calmHRVs)) {
+                    let i = (w.ts - origin) / 60
+                    if i >= 0 && i < minutes.count { minutes[i] = (w.score * 100).rounded() / 100 }
+                }
+                while let last = minutes.last, last == nil { minutes.removeLast() }
+                d.stressMinutes = minutes
             }
         }
 

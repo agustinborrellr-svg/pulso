@@ -1,4 +1,5 @@
 import XCTest
+import PulsoStore
 @testable import PulsoAnalytics
 
 final class StressTests: XCTestCase {
@@ -27,6 +28,20 @@ final class StressTests: XCTestCase {
         let scores = Stress.score(day, calmHR: ref.hr!, calmHRV: ref.hrv).map(\.score)
         XCTAssertGreaterThan(scores[32], 2)
         XCTAssertLessThan(scores[50], 1.5, "and it comes back down afterwards")
+    }
+
+    func testOneReadingPerMinuteStampedWithItsMiddleMinute() {
+        let from = 6000
+        let samples = (0..<1800).map { s in
+            Sample(ts: from + s, hr: 60, rr: [s % 2 == 0 ? 950 : 1050], dyn: 0.005)
+        }
+        let epochs = Epochs.minutes(samples, from: from, to: from + 1800)
+        let w = Stress.minuteWindows(samples: samples, epochs: epochs, from: from, to: from + 1800, excluding: [],
+                                     stillThreshold: 0.02)
+        XCTAssertEqual(w.count, 26, "a 5-minute window ending at each minute from the fifth to the thirtieth")
+        XCTAssertEqual(w.first?.ts, from + 120)
+        XCTAssertEqual(Set(zip(w, w.dropFirst()).map { $1.ts - $0.ts }), [60])
+        XCTAssertNotNil(w.first?.rmssd)
     }
 }
 

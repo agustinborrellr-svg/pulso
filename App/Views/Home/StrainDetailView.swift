@@ -147,16 +147,16 @@ struct StrainDetailView: View {
 struct StressMonitorView: View {
     @EnvironmentObject var model: AppModel
     @State private var showInfo = false
-    @State private var hour: Int?
+    @State private var minute: Int?
 
     var body: some View {
         DetailScreen(title: "Monitor de estrés", subtitle: model.cycleTitle(model.selectedDay)) {
             if let day = model.selected {
                 gauge(day)
                 PCard {
-                    StressLine(hourly: day.stressHourly, startHour: day.cycleStartHour, selected: $hour)
+                    StressLine(day: day, selected: $minute)
                         .frame(height: 220)
-                    Text("Desliza el dedo por la gráfica para ver cada hora.").font(.caption2).foregroundStyle(Theme.tertiary)
+                    Text("Desliza el dedo por la gráfica para ver cada momento.").font(.caption2).foregroundStyle(Theme.tertiary)
                 }
                 levels(day)
                 SectionHeading(text: "Tendencias")
@@ -167,12 +167,14 @@ struct StressMonitorView: View {
         }
     }
 
+    /// Reading under the finger (the nearest one, within 15 minutes), or the latest.
     private func current(_ d: DaySummary) -> Double? {
-        if let k = hour {
-            let h = (d.cycleStartHour + k) % 24
-            if h < d.stressHourly.count, let v = d.stressHourly[h] { return v }
+        let pts = d.stressPoints
+        if let k = minute {
+            guard let p = pts.min(by: { abs($0.x - k) < abs($1.x - k) }), abs(p.x - k) <= 15 else { return nil }
+            return p.v
         }
-        return d.stressHourly.last { $0 != nil } ?? nil
+        return pts.last?.v
     }
 
     private func gauge(_ d: DaySummary) -> some View {
@@ -198,9 +200,9 @@ struct StressMonitorView: View {
                         .contentTransition(.numericText(value: v))
                         .animation(.snappy, value: v)
                 }
-                Caps(v == nil ? "Calculando" : Theme.stressLevel(v), size: 15, color: v == nil ? .white : Theme.stressColor(v))
-                if let k = hour {
-                    Text(String(format: "%02d:00", (d.cycleStartHour + k) % 24)).font(.subheadline.monospacedDigit()).foregroundStyle(.white)
+                Caps(v == nil ? (minute == nil ? "Calculando" : "Sin lectura") : Theme.stressLevel(v), size: 15, color: v == nil ? .white : Theme.stressColor(v))
+                if let k = minute {
+                    Text(d.stressClock(k)).font(.subheadline.monospacedDigit()).foregroundStyle(.white)
                 }
             }
             .offset(y: -20)

@@ -224,12 +224,12 @@ public enum Stress {
 
     /// 5-minute windows where the wearer was awake, on-wrist and not moving, outside `excluding`.
     public static func stillWindows(samples: [Sample], epochs: [MinuteEpoch], from: Int, to: Int,
-                                    excluding: [ClosedRange<Int>], stillThreshold: Double) -> [StillWindow] {
+                                    excluding: [ClosedRange<Int>], stillThreshold: Double, step: Int = 300) -> [StillWindow] {
         var out: [StillWindow] = []
         guard let first = epochs.first else { return out }
-        var t = from - from % 300
+        var t = from - from % step
         while t + 300 <= to {
-            defer { t += 300 }
+            defer { t += step }
             if excluding.contains(where: { $0.overlaps(t...(t + 299)) }) { continue }
             let i0 = max(0, (t - first.ts) / 60), i1 = min(epochs.count, i0 + 5)
             guard i0 < i1 else { continue }
@@ -246,6 +246,14 @@ public enum Stress {
             out.append(StillWindow(ts: t, hr: hr, rmssd: HRV.rmssd(runs, minPairs: 40)))
         }
         return out
+    }
+
+    /// The same 5-minute windows slid one minute at a time, each stamped with its middle minute: one reading per
+    /// minute for the curve, with as many beats behind it as the 5-minute windows.
+    public static func minuteWindows(samples: [Sample], epochs: [MinuteEpoch], from: Int, to: Int,
+                                     excluding: [ClosedRange<Int>], stillThreshold: Double) -> [StillWindow] {
+        stillWindows(samples: samples, epochs: epochs, from: from, to: to, excluding: excluding,
+                     stillThreshold: stillThreshold, step: 60).map { StillWindow(ts: $0.ts + 120, hr: $0.hr, rmssd: $0.rmssd) }
     }
 
     /// Reference of one day: median HR and median RMSSD of its still windows. A typical still moment of

@@ -320,41 +320,48 @@ struct StressPreviewCard: View {
     let day: DaySummary
 
     var body: some View {
-        let hourly = day.stressHourly
-        let lastHour = (0..<24).map { (day.cycleStartHour + $0) % 24 }.last { $0 < hourly.count && hourly[$0] != nil }
-        let current = lastHour.flatMap { hourly[$0] }
+        let last = day.stressPoints.last
         PCard {
             CardHeader(title: "Monitor de estrés", chevron: true)
             HStack {
-                Text(lastHour.map { "Última actualización a las \($0):00" } ?? "Sin lecturas todavía")
+                Text(last.map { "Última actualización a las \(day.stressClock($0.x))" } ?? "Sin lecturas todavía")
                     .font(.subheadline).foregroundStyle(Color(white: 0.85))
                 Spacer()
-                if let current {
+                if let current = last?.v {
                     Caps(Theme.stressLevel(current), size: 12, color: Theme.stressColor(current))
                     Text(Fmt.dec(current)).scaledFont(20, weight: .bold, relativeTo: .body).monospacedDigit().foregroundStyle(.white)
                 }
             }
-            StressLine(hourly: hourly, compact: true, startHour: day.cycleStartHour)
+            StressLine(day: day, compact: true)
                 .frame(height: 150)
         }
     }
 }
 
-/// Hourly stress as one smooth, joined line over a soft fill, both coloured by level (green low, yellow medium,
-/// orange high). Runs from the hour the cycle started (waking up), so the hours after midnight come last instead
-/// of on the left. Hours without a reading are bridged, so the day reads as one curve.
+/// Stress minute by minute as a line over a soft fill, both coloured by level (green low, yellow medium, orange
+/// high). Runs from the hour the cycle started (waking up), so the hours after midnight come last instead of on the
+/// left. Stretches without a reading (moving, workouts, naps) leave a gap instead of a made-up line.
 struct StressLine: View {
-    let hourly: [Double?]
+    let day: DaySummary
     var compact = false
-    var startHour = 0
-    /// Hour offset (0 = cycle start) under the finger.
+    /// Minutes since the hour the cycle started, under the finger.
     var selected: Binding<Int?> = .constant(nil)
 
-    private var points: [(x: Int, v: Double)] {
-        (0..<24).compactMap { k in
-            let h = (startHour + k) % 24
-            guard h < hourly.count, let v = hourly[h] else { return nil }
-            return (k, v)
+    private struct Point: Identifiable {
+        var x: Int
+        var v: Double
+        var run: Int
+        var id: Int { x }
+    }
+
+    /// Points split into runs wherever more than 10 minutes go by without a reading.
+    private var points: [Point] {
+        var run = 0
+        var prev: Int?
+        return day.stressPoints.map { p in
+            if let q = prev, p.x - q > 10 { run += 1 }
+            prev = p.x
+            return Point(x: p.x, v: p.v, run: run)
         }
     }
 
@@ -381,38 +388,36 @@ struct StressLine: View {
         let line = LinearGradient(stops: Self.stops(lo, hi), startPoint: .bottom, endPoint: .top)
         let fill = LinearGradient(stops: Self.stops(0, max(hi, 0.01), opacity: { 0.04 + 0.30 * $0 / max(hi, 0.01) }),
                                   startPoint: .bottom, endPoint: .top)
+        // A tick every 5 minutes while scrubbing, not one per minute.
+        let scrub = Binding<Int?>(get: { selected.wrappedValue }, set: { selected.wrappedValue = $0.map { $0 / 5 * 5 } })
         Chart {
-            ForEach(pts, id: \.x) { p in
-                AreaMark(x: .value("Hora", p.x), yStart: .value("Base", 0), yEnd: .value("Estrés", p.v))
+            ForEach(pts) { p in
+                AreaMark(x: .value("Minuto", p.x), yStart: .value("Base", 0), yEnd: .value("Estrés", p.v),
+                         series: .value("Tramo", p.run))
                     .foregroundStyle(fill)
                     .interpolationMethod(.monotone)
-                LineMark(x: .value("Hora", p.x), y: .value("Estrés", p.v), series: .value("s", "estrés"))
+                LineMark(x: .value("Minuto", p.x), y: .value("Estrés", p.v), series: .value("Tramo", p.run))
                     .foregroundStyle(line)
                     .interpolationMethod(.monotone)
-                    .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                    .lineStyle(StrokeStyle(lineWidth: compact ? 1.5 : 2, lineCap: .round, lineJoin: .round))
             }
-            if pts.count == 1, let p = pts.first {
-                PointMark(x: .value("Hora", p.x), y: .value("Estrés", p.v))
-                    .foregroundStyle(Theme.stressColor(p.v))
-                    .symbolSize(30)
-            }
-            if let p = pts.last, pts.count > 1 {
-                PointMark(x: .value("Hora", p.x), y: .value("Estrés", p.v))
-                    .foregroundStyle(.white)
-                    .symbolSize(28)
+            if let p = pts.last {
+                PointMark(x: .value("Minuto", p.x), y: .value("Estrés", p.v))
+                    .foregroundStyle(pts.count == 1 ? Theme.stressColor(p.v) : .white)
+                    .symbolSize(pts.count == 1 ? 30 : 28)
             }
             if let k = selected.wrappedValue, let p = pts.min(by: { abs($0.x - k) < abs($1.x - k) }) {
-                RuleMark(x: .value("Hora", p.x))
+                RuleMark(x: .value("Minuto", p.x))
                     .foregroundStyle(.white.opacity(0.7))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                PointMark(x: .value("Hora", p.x), y: .value("Estrés", p.v))
+                PointMark(x: .value("Minuto", p.x), y: .value("Estrés", p.v))
                     .foregroundStyle(Theme.stressColor(p.v))
                     .symbolSize(110)
             }
         }
-        .chartScrub(selected)
+        .chartScrub(scrub)
         .chartYScale(domain: 0...3)
-        .chartXScale(domain: 0...23)
+        .chartXScale(domain: 0...max(1439, pts.last?.x ?? 0))
         .chartYAxis {
             AxisMarks(position: .leading, values: [0, 1, 2, 3]) { v in
                 AxisGridLine().foregroundStyle(Theme.hairline)
@@ -420,9 +425,9 @@ struct StressLine: View {
             }
         }
         .chartXAxis {
-            AxisMarks(values: compact ? [0, 8, 16, 23] : [0, 4, 8, 12, 16, 20, 23]) { v in
+            AxisMarks(values: compact ? [0, 480, 960, 1380] : [0, 240, 480, 720, 960, 1200, 1380]) { v in
                 AxisValueLabel {
-                    Text(String(format: "%02d:00", ((v.as(Int.self) ?? 0) + startHour) % 24))
+                    Text(String(format: "%02d:00", ((v.as(Int.self) ?? 0) / 60 + day.cycleStartHour) % 24))
                         .scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary)
                 }
             }
@@ -434,6 +439,25 @@ extension DaySummary {
     /// Local hour the cycle started (waking up); 0 when unknown.
     var cycleStartHour: Int {
         cycleStart.map { Calendar.current.component(.hour, from: Date(timeIntervalSince1970: TimeInterval($0))) } ?? 0
+    }
+
+    /// Stress readings as minutes since the hour the cycle started. Days analysed before stress was kept per minute
+    /// only have hourly means, drawn at the half hour.
+    var stressPoints: [(x: Int, v: Double)] {
+        if !stressMinutes.isEmpty, let start = cycleStart {
+            let offset = Calendar.current.component(.minute, from: Date(timeIntervalSince1970: TimeInterval(start)))
+            return stressMinutes.enumerated().compactMap { i, v in v.map { (offset + i, $0) } }
+        }
+        return (0..<24).compactMap { k in
+            let h = (cycleStartHour + k) % 24
+            guard h < stressHourly.count, let v = stressHourly[h] else { return nil }
+            return (k * 60 + 30, v)
+        }
+    }
+
+    /// Clock time ("14:05") of a stress point.
+    func stressClock(_ x: Int) -> String {
+        String(format: "%02d:%02d", (cycleStartHour + x / 60) % 24, x % 60)
     }
 }
 

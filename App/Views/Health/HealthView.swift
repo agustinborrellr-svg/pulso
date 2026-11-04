@@ -111,7 +111,7 @@ struct HealthView: View {
                     BigValue(value: Fmt.hmm(d.stressHighMinutes ?? 0), unit: "hrs", size: 30)
                 }
                 Spacer()
-                StressLine(hourly: d.stressHourly, compact: true, startHour: d.cycleStartHour)
+                StressLine(day: d, compact: true)
                     .chartYAxis(.hidden)
                     .chartXAxis(.hidden)
                     .frame(width: 170, height: 70)
