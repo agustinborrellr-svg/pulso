@@ -24,7 +24,7 @@ concurrency:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -58,7 +58,8 @@ jobs:
         working-directory: Packages/PulsoKit
         run: |
           set -o pipefail
-          swift test 2>&1 | tee ../../swift-test.log | tail -30
+          # Optimised build: in debug the sleep simulations alone take ~45 min on the runner.
+          swift test -c release -Xswiftc -enable-testing --parallel 2>&1 | tee ../../swift-test.log | tail -30
 
       - name: Compilar la app (sin firmar)
         id: build
