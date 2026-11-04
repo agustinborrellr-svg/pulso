@@ -41,9 +41,9 @@ public enum SleepStager {
         let hrVar: [Double?] = epochs.map { $0.hrSD }
         let motion: [Double?] = epochs.map { e in e.motion.map { log(max($0, 0.002)) } }
         let f = Features(
-            hr: zscores(hrSmooth),
+            hr: zscores(detrended(hrSmooth)),
             hrVar: zscores(hrVar),
-            rmssd: zscores(rmssdPerMinute.map { $0.map { log(max($0, 1)) } }),
+            rmssd: zscores(detrended(rmssdPerMinute.map { $0.map { log(max($0, 1)) } })),
             motion: zscores(motion),
             wakeVote: epochs.map { e in
                 var v = 0.0
@@ -65,6 +65,20 @@ public enum SleepStager {
         stages = absorbArousals(stages, epochs: epochs, stillThreshold: stillThreshold)
         let confidence = assess(stages: stages, emit: emit, epochs: epochs, rmssdPerMinute: rmssdPerMinute)
         return (stages, confidence)
+    }
+
+    /// Pulse and HRV drift through the night (high after a late meal or a drink, lowest toward morning). Each minute is
+    /// read against the hour around it, not against the whole night, or a slow drift reads as hours of deep sleep
+    /// (4-nov: 158 min of deep against 98 on the reference band).
+    static let detrendMinutes = 30
+
+    static func detrended(_ x: [Double?]) -> [Double?] {
+        let n = x.count
+        return (0..<n).map { i in
+            guard let v = x[i] else { return nil }
+            let w = (max(0, i - detrendMinutes)...min(n - 1, i + detrendMinutes)).compactMap { x[$0] }
+            return Stats.median(w).map { v - $0 }
+        }
     }
 
     /// Deep sleep is reached through light sleep: in healthy adults the first deep minutes come some 15-30 minutes
@@ -162,9 +176,10 @@ public enum SleepStager {
     }
 
     /// Calibration of the stage priors (log scale) against the original band's own staging on the same nights
-    /// (see `docs/CALCULOS-REFERENCIA-2026-11-02.md`): negative `wakeBias` scores fewer minutes awake.
+    /// (see `docs/CALCULOS-REFERENCIA-2026-11-02.md`): negative `wakeBias` scores fewer minutes awake. `deepBias` was
+    /// refitted with the per-hour detrending on 5 nights (leaving each night out picks 0.55 every time).
     static let wakeBias = -2.5
-    static let deepBias = 0.75
+    static let deepBias = 0.55
     static let remBias = 0.3
 
     /// Emission log-scores per stage then Viterbi with sticky transitions.

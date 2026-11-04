@@ -265,20 +265,21 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
 - Esfuerzo, estrés y calorías sin cambios (constantes no publicadas). `derivedVersion` 8.
 - Ojo: las 3 noches son pocas; recalibrar `wakeBias`/`deepBias`/`remBias` y la banda con más noches de las dos pulseras.
 
-## Estado (2026-11-03, despertares y latencia de profundo)
+## Estado (2026-11-04, fases de sueño contrastadas con 5 noches)
 
-- Pulso contaba de más el tiempo despierto (3-nov: 60 min vs 16 de la pulsera original). Dos reglas en `SleepStager`,
-  contrastadas con 4 noches con las dos pulseras en la misma muñeca (error total en fases 283 → 235 min; sin las dos
-  reglas, 363):
+- Pulso contaba de más despierto (3-nov: 60 min vs 16) y profundo (4-nov: 158 vs 98). Contrastado con 5 noches con las dos
+  pulseras en la misma muñeca (31-oct a 4-nov; error total en las 4 fases 425 → 353 min):
   - `absorbArousals`: un tramo despierto dentro de la noche pasa a ligero si el pulso no sube `wakeHRRise` 5 lpm sobre la
     mediana de los 31 min de alrededor, la muñeca no pasa de `wakeMotionFactor` 4 × umbral de quietud y la pulsera no lo
     marca despierto. Los bordes de la noche no se tocan.
-  - `deepLatency` 20: nada de profundo en los primeros 20 min de sueño (se llega a N3 pasando por ligero, 15-30 min).
-- Retocar `wakeBias`/`deepBias`/`remBias` con estas 4 noches sobreajusta (validación dejando una noche fuera: 375 vs
-  283), así que se quedan. Simulación rápida: volcar por minuto las variables del `SleepStager` y repetir el decode en
-  Python (reproduce Swift minuto a minuto).
+  - `deepLatency` 20: nada de profundo en los primeros 20 min de sueño (se llega a N3 pasando por ligero).
+  - `detrendMinutes` 30: pulso y ln RMSSD se leen contra la mediana de su hora (±30 min) antes del z-score; con la media de
+    toda la noche, un pulso alto al acostarse convertía el resto en horas de profundo. `deepBias` 0,75 → 0,55 (dejando una
+    noche fuera sale 0,55 las 5 veces; meseta 0,5-0,6 con 25-40 min).
+  - Por noche (error antes → ahora): 31-oct 29 → 87, 1-nov 118 → 60, 2-nov 40 → 44, 3-nov 48 → 66, 4-nov 190 → 96.
+- Simulación rápida: volcar por minuto las variables del `SleepStager` y repetir el decode en Python (reproduce Swift
+  minuto a minuto). Los CSV de segundos de la app se convierten a SQLite para el replay (rr = uint16 LE).
 - El bit «off» de la pulsera marca a menudo contacto flojo (piel a 34 °C, con pulso y R-R), no pulsera quitada. Tratarlo
-  como puesta arregla la hora de dormirse automática (2-nov 01:24 vs 01:26) pero empeora profundo y VFC: pendiente,
-  solo para la detección.
-- Pendiente: la noche con alcohol (1-nov) sigue con profundo de más (127 vs 98) y despierto de más (49 vs 16).
-  `derivedVersion` 9.
+  como puesta arregla la hora de dormirse automática (2-nov 01:24 vs 01:26; 4-nov empieza 01:06 vs 00:50) pero empeora
+  profundo y VFC: pendiente, solo para la detección.
+- Recalibrar con más noches (Gus manda copia + exportación cada semana). `derivedVersion` 9.
