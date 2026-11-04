@@ -35,6 +35,8 @@ struct VitalReading: Identifiable {
     let format: (Double) -> String
     /// Nights of the 30 days up to this one, oldest first.
     let history: [(day: String, value: Double)]
+    /// Range from your own last 30 nights; false for fixed clinical ranges (SpO₂).
+    var personal = true
 
     static func color(_ l: Level) -> Color {
         switch l {
@@ -97,7 +99,7 @@ extension AppModel {
         var out: [VitalReading] = []
         func add(_ id: String, _ icon: String, _ title: String, _ short: String, _ metric: TrendMetric, _ key: KeyPath<DaySummary, Double?>,
                  unit: String, bad: Int, fmt: @escaping (Double) -> String, base: (Baselines) -> Baseline?, log: Bool = false,
-                 phrase: String, explanation: String) {
+                 phrase: String, explanation: String, clinical: (green: Double, orange: Double)? = nil) {
             guard let (v, d) = latestDay(with: key) else { return }
             let b = Baselines.from(history: days.filter { $0.day < d.day && $0.day >= DayKey.shift(d.day, days: -30) })
             let toUser: (Double) -> Double = log ? { exp($0) } : { $0 }
@@ -121,12 +123,25 @@ extension AppModel {
                 default: limits = [(.green, "Verde = \(fmt(lo)) a \(fmt(hi)) \(unit)"), (.orange, "Naranja = fuera, hasta \(fmt(lo2)) / \(fmt(hi2)) \(unit)"), (.red, "Rojo = más allá")]
                 }
             }
+            if let c = clinical {
+                // Oxygen is judged against fixed limits, not against your own nights: 95 % and up is normal.
+                level = v >= c.green ? .green : (v >= c.orange ? .orange : .red)
+                range = c.green...100
+                outer = c.orange...100
+                chip = level == .green ? "en tu rango" : (level == .red ? "muy baja" : "baja")
+                detail = "Tu \(phrase) de \(fmt(v)) \(unit) \(level == .green ? "está dentro del" : "está por debajo del") rango típico de \(fmt(c.green)) \(unit) a 100 \(unit)."
+                limits = [(.green, "Verde = \(fmt(c.green)) \(unit) y superior"), (.orange, "Naranja = \(fmt(c.orange)) \(unit) a \(fmt(c.green - 1)) \(unit)"),
+                          (.red, "Rojo = \(fmt(c.orange - 1)) \(unit) e inferior")]
+            }
+            if id == "temp", level == .orange || level == .red, let r = range, v > r.upperBound {
+                detail += "\n\nUna temperatura cutánea elevada puede deberse, entre otras cosas, a:\n- Una manga o una fuente de calor durante el sueño\n- Que tu cuerpo esté luchando contra una enfermedad\n- Exceso de calor\n- Un cambio en la posición de la pulsera en la muñeca"
+            }
             let when = d.day == currentDayKey ? "Anoche" : Fmt.dayTitle(d.day)
             let from = DayKey.shift(d.day, days: -29)
             let history: [(day: String, value: Double)] = days.filter { $0.day >= from && $0.day <= d.day }.compactMap { day in day[keyPath: key].map { (day.day, $0) } }
             out.append(VitalReading(id: id, icon: icon, title: title, short: short, metric: metric, raw: v, value: fmt(v), unit: unit,
                                     level: level, chip: chip, when: when, explanation: explanation, detail: detail, limits: limits,
-                                    range: range, outer: outer, bad: bad, format: fmt, history: history))
+                                    range: range, outer: outer, bad: bad, format: fmt, history: history, personal: clinical == nil))
         }
         add("hrv", "waveform.path.ecg", "VFC", "VFC", .hrv, \.hrv, unit: "ms", bad: -1, fmt: { Fmt.int($0) }, base: { $0.lnHRV }, log: true,
             phrase: "VFC",
@@ -142,7 +157,8 @@ extension AppModel {
             explanation: "La temperatura de la piel durante la noche. Cambia con el ambiente y la ropa de cama; una subida varias noches seguidas puede anunciar fiebre o, en mujeres, la fase lútea.")
         add("spo2", "drop", "Oxígeno en sangre (SpO₂)", "SpO₂", .spo2, \.spo2, unit: "%", bad: -1, fmt: { Fmt.int($0) }, base: { $0.spo2 },
             phrase: "SpO₂",
-            explanation: "Cuánto oxígeno llevan los glóbulos rojos. Lectura experimental de la pulsera: úsala solo como tendencia.")
+            explanation: "Cuánto oxígeno llevan los glóbulos rojos: indica qué tal funcionan los pulmones, el corazón y la circulación. Lectura experimental de la pulsera: úsala solo como tendencia.",
+            clinical: (green: 95, orange: 90))
         return out
     }
 }
@@ -193,43 +209,9 @@ struct VitalRangeBar: View {
     }
 }
 
-// MARK: - Inicio: verdict only
+// MARK: - Inicio: stress
 
-/// Inicio's compact tile: are your vitals fine, so-so or off. Opens the vitals page.
-struct HomeVitalsStatusTile: View {
-    @EnvironmentObject var model: AppModel
-
-    var body: some View {
-        let s = model.vitalsSummary
-        NavigationLink { VitalsView() } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Caps("Constantes", size: 10.5, weight: .semibold)
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.caption2.weight(.bold)).foregroundStyle(Theme.tertiary)
-                }
-                HStack(spacing: 8) {
-                    Image(systemName: s.icon).font(.title3).foregroundStyle(s.color)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Caps(s.word, size: 15, color: s.color)
-                        if !s.count.isEmpty {
-                            Text(s.count).scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary).lineLimit(1)
-                        }
-                    }
-                }
-                HStack(spacing: 4) {
-                    ForEach(s.readings) { r in Capsule().fill(r.color).frame(height: 4) }
-                }
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-/// Inicio's stress tile next to the vitals one: the latest level.
+/// Inicio's stress tile under the health monitor: the latest level.
 struct HomeStressStatusTile: View {
     @EnvironmentObject var model: AppModel
 
@@ -356,6 +338,7 @@ struct VitalsView: View {
             ForEach(s.readings) { r in
                 NavigationLink { VitalDetailView(id: r.id) } label: { VitalRow(reading: r) }.buttonStyle(.plain)
             }
+            HealthReportButton()
             Text("Cada constante se compara solo contigo: tu rango son tus 30 noches anteriores. Pulso no es un dispositivo médico.")
                 .font(.caption2).foregroundStyle(Theme.tertiary)
         }

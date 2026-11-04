@@ -50,7 +50,7 @@ struct HomeWidgetView: View {
                 }
             }
         case .vitals:
-            NavigationLink { RecoveryDetailView() } label: { HomeVitalsCard(day: day, period: widget.period) }.buttonStyle(.plain)
+            HomeHealthMonitorCard()
         case .activity:
             NavigationLink { StrainDetailView() } label: { HomeActivityCard(day: day, widget: widget) }.buttonStyle(.plain)
         case .pulsoAge:
@@ -212,45 +212,6 @@ struct HomeSleepCard: View {
 }
 
 // MARK: - Vitals, activity, Edad Pulso, mini charts
-
-/// HRV, resting HR, breathing and skin temperature as a 2×2 group.
-struct HomeVitalsCard: View {
-    @EnvironmentObject var model: AppModel
-    let day: DaySummary
-    let period: Int
-
-    var body: some View {
-        PCard {
-            CardHeader(title: "Constantes", subtitle: "Esta noche vs. tus \(period) días anteriores", chevron: true)
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
-                ForEach([TrendMetric.hrv, .rhr, .respRate, .skinTemp]) { m in
-                    let c = HomeComparison(m, day: day, period: period, model: model)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Caps(short(m), size: 9.5, color: Theme.secondary, weight: .semibold)
-                        HStack(spacing: 4) {
-                            Text(c.value).scaledFont(20, weight: .bold, relativeTo: .body).monospacedDigit().foregroundStyle(.white)
-                            Text(m.unit).font(.caption2).foregroundStyle(Theme.secondary)
-                            if let d = c.delta { DeltaMark(delta: d) }
-                        }
-                        Text(c.caption ?? " ").scaledFont(11, relativeTo: .caption1).monospacedDigit().foregroundStyle(Theme.tertiary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-                    .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 8))
-                }
-            }
-        }
-    }
-
-    private func short(_ m: TrendMetric) -> String {
-        switch m {
-        case .hrv: return "VFC"
-        case .rhr: return "FC reposo"
-        case .respRate: return "Respiración"
-        default: return "Temp. piel"
-        }
-    }
-}
 
 /// Steps and calories; while the cycle runs it says so instead of judging a half day.
 struct HomeActivityCard: View {

@@ -21,12 +21,9 @@ struct HomeView: View {
                     HomeTopBar()
                     pillarTabs
                     if !model.days.isEmpty {
-                        // Like a health monitor: just whether your vitals are fine, so-so or off, and the stress level.
-                        HStack(alignment: .top, spacing: 10) {
-                            HomeVitalsStatusTile()
-                            HomeStressStatusTile()
-                        }
-                        .fixedSize(horizontal: false, vertical: true)
+                        // Each vital of last night against your range, then the stress level.
+                        HomeHealthMonitorCard()
+                        HomeStressStatusTile()
                     }
                     if let q = model.pendingSleepQuestions.first {
                         SleepQuestionCard(session: q)
