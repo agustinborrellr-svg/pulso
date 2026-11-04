@@ -28,6 +28,9 @@ struct HomeView: View {
                         }
                         .fixedSize(horizontal: false, vertical: true)
                     }
+                    if let day = model.selected {
+                        TodayActivitiesCard(day: day)
+                    }
                     if let q = model.pendingSleepQuestions.first {
                         SleepQuestionCard(session: q)
                     }
