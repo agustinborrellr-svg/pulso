@@ -95,17 +95,18 @@ struct HealthMonitorView: View {
         let all = model.vitalReadings()
         let readings = Self.order.compactMap { id in all.first { $0.id == id } }
         DetailScreen(title: "Monitor de salud") {
-            LiveHeroMonitor()
-            if let when = readings.first?.when {
-                Text("\(when) · comparado con tus 30 noches anteriores").font(.caption).foregroundStyle(Theme.secondary)
-            }
+            LiveHeroMonitor(fullBleed: true)
+                .padding(.top, -8)
             if readings.isEmpty {
                 EmptyState(icon: "waveform.path.ecg", title: "Sin datos", message: "Aparecen tras tu primera noche con la pulsera.")
             } else {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
                     ForEach(readings) { r in
                         Button { show(r) } label: { VitalMonitorTile(reading: r) }.buttonStyle(.plain)
                     }
+                }
+                if let when = readings.first?.when {
+                    Text("\(when) · comparado con tus 30 noches anteriores").font(.caption).foregroundStyle(Theme.secondary)
                 }
             }
             HealthReportButton()
@@ -137,22 +138,22 @@ struct VitalMonitorTile: View {
     let reading: VitalReading
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: reading.icon).font(.footnote).foregroundStyle(Theme.secondary).frame(width: 18)
-                Caps(reading.monitorTitle, size: 10, color: Theme.secondary, weight: .semibold)
+                Caps(reading.monitorTitle, size: 9.5, color: Theme.secondary, weight: .semibold)
                     .lineLimit(2).fixedSize(horizontal: false, vertical: true)
             }
             HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(reading.monitorValue).scaledFont(30, weight: .bold, relativeTo: .title1).monospacedDigit().foregroundStyle(.white)
+                Text(reading.monitorValue).scaledFont(28, weight: .bold, relativeTo: .title1).monospacedDigit().foregroundStyle(.white)
                     .lineLimit(1).minimumScaleFactor(0.6)
-                Text(reading.unit).font(.subheadline).foregroundStyle(.white.opacity(0.85))
+                Text(reading.unit).font(.footnote).foregroundStyle(.white.opacity(0.85))
             }
             Spacer(minLength: 0)
             VitalMonitorChip(reading: reading)
         }
         .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
         .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
@@ -163,10 +164,10 @@ struct VitalMonitorChip: View {
     var body: some View {
         HStack(spacing: 5) {
             Image(systemName: reading.monitorIcon).font(.caption2.bold())
-            Text(reading.monitorChip).font(.caption.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.75)
+            Text(reading.monitorChip).font(.caption2.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.75)
         }
         .foregroundStyle(reading.color)
-        .padding(.horizontal, 8).padding(.vertical, 5)
+        .padding(.horizontal, 7).padding(.vertical, 4)
         .background(reading.color.opacity(0.14), in: RoundedRectangle(cornerRadius: 6))
     }
 }

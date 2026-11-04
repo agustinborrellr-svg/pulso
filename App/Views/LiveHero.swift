@@ -9,25 +9,32 @@ import PulsoAnalytics
 /// not every second) on a monitor grid, ending in a glowing dot.
 struct LiveHeroMonitor: View {
     @EnvironmentObject var model: AppModel
+    /// Edge to edge with no card: the grid runs the screen's width and fades into the page (health monitor).
+    var fullBleed = false
     static let window: TimeInterval = 90
 
     var body: some View {
         let hr = model.liveToolBlocker == nil ? model.liveHR : nil
         let zone = hr.map { model.heartRateModel.zone(Double($0)) } ?? 0
-        ZStack(alignment: .topLeading) {
-            MonitorGrid()
+        let monitor = ZStack(alignment: .topLeading) {
+            if fullBleed {
+                MonitorGrid(plain: true)
+                    .mask(LinearGradient(colors: [.white, .white, .white.opacity(0)], startPoint: .top, endPoint: .bottom))
+            } else {
+                MonitorGrid()
+            }
             TimelineView(.animation(minimumInterval: 1 / 60, paused: hr == nil)) { ctx in
                 Canvas { g, size in
                     draw(&g, size: size, now: ctx.date, color: Theme.zoneColor(max(zone, 1)))
                 }
             }
-            .padding(.leading, 120)
-            VStack(alignment: .leading, spacing: 6) {
+            .padding(.leading, fullBleed ? 100 : 120)
+            VStack(alignment: .leading, spacing: fullBleed ? 4 : 6) {
                 Caps("Frecuencia cardíaca", size: 12, color: .white)
                 BeatingHeart(bpm: hr, color: hr == nil ? Theme.secondary : Theme.red)
-                    .frame(width: 28, height: 28)
+                    .frame(width: fullBleed ? 22 : 28, height: fullBleed ? 22 : 28)
                 Text(hr.map(String.init) ?? "--")
-                    .scaledFont(56, weight: .bold, design: .rounded)
+                    .scaledFont(fullBleed ? 44 : 56, weight: .bold, design: .rounded)
                     .monospacedDigit()
                     .foregroundStyle(.white)
                     .contentTransition(.numericText(value: Double(hr ?? 0)))
@@ -43,9 +50,14 @@ struct LiveHeroMonitor: View {
             }
             .padding(16)
         }
-        .frame(height: 250)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.hairline))
+        if fullBleed {
+            monitor.frame(height: 220).padding(.horizontal, -16)
+        } else {
+            monitor
+                .frame(height: 250)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.hairline))
+        }
     }
 
     private var statusText: String {
@@ -98,6 +110,9 @@ struct LiveHeroMonitor: View {
 
 /// Faint monitor grid behind the live line.
 struct MonitorGrid: View {
+    /// No card behind the lines.
+    var plain = false
+
     var body: some View {
         Canvas { g, size in
             let step: CGFloat = 22
@@ -108,7 +123,7 @@ struct MonitorGrid: View {
             while y <= size.height { path.move(to: CGPoint(x: 0, y: y)); path.addLine(to: CGPoint(x: size.width, y: y)); y += step }
             g.stroke(path, with: .color(Color.white.opacity(0.05)), lineWidth: 1)
         }
-        .background(LinearGradient(colors: [Theme.card, Theme.card.opacity(0.6)], startPoint: .top, endPoint: .bottom))
+        .background(LinearGradient(colors: [Theme.card, Theme.card.opacity(0.6)], startPoint: .top, endPoint: .bottom).opacity(plain ? 0 : 1))
     }
 }
 
