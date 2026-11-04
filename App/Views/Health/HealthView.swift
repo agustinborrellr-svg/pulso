@@ -111,7 +111,8 @@ struct HealthView: View {
                     BigValue(value: Fmt.hmm(d.stressHighMinutes ?? 0), unit: "hrs", size: 30)
                 }
                 Spacer()
-                StressLine(day: d, compact: true)
+                let window = model.stressWindow(for: d)
+                StressLine(points: window.points, start: window.start, compact: true)
                     .chartYAxis(.hidden)
                     .chartXAxis(.hidden)
                     .frame(width: 170, height: 70)

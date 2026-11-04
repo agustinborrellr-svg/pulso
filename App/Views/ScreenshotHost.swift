@@ -14,7 +14,7 @@ enum ShotScreen: String, Identifiable {
     case scan, coherence, poincare, orthostatic, explorer, calendar, monthly, storage, monitor
     case behaviors, cycle, pressure, doubleTap, trendHRV6M, trendsList
     case liveIdle, vitals, vitalDetail, startActivity, intelToday, intelLoad, intelSleep, intelHabits, intelMore
-    case todayScrolled, panelHRV, panelTemp, panelSpO2, activityPicker, dayActivities, report1, report2, report3, report4
+    case todayScrolled, healthMonitor, panelHRV, panelTemp, panelSpO2, activityPicker, dayActivities, report1, report2, report3, report4
 
     var id: String { rawValue }
 
@@ -118,7 +118,7 @@ struct ShotVitalPanel: View {
 
     var body: some View {
         ZStack {
-            ScrollView { HomeHealthMonitorCard().padding(16) }.background(PulsoBackground())
+            HealthMonitorView()
             if let r = model.vitalReadings().first(where: { $0.id == id }) {
                 VitalPanel(reading: r, close: {}, trends: {})
             }
@@ -212,6 +212,7 @@ struct ShotDestination: View {
                 case .vitals: VitalsView()
                 case .vitalDetail: VitalDetailView(id: "hrv")
                 case .startActivity: StartActivityPreview()
+                case .healthMonitor: HealthMonitorView()
                 case .panelHRV: ShotVitalPanel(id: "hrv")
                 case .panelTemp: ShotVitalPanel(id: "temp")
                 case .panelSpO2: ShotVitalPanel(id: "spo2")

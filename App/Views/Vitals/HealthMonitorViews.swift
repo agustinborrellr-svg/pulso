@@ -40,35 +40,68 @@ extension VitalReading {
     var monitorIcon: String { level == .green || level == .none ? "checkmark" : "exclamationmark" }
 }
 
-/// Inicio's health monitor: one tile per vital of last night with its value and where it sits in your range. A tap
-/// opens the vital's panel, and from there its trends.
-struct HomeHealthMonitorCard: View {
+/// Inicio's half-width health monitor: a check or a warning for each vital of last night. Opens the monitor page.
+struct HomeHealthMonitorTile: View {
+    @EnvironmentObject var model: AppModel
+
+    var body: some View {
+        let all = model.vitalReadings()
+        let readings = HealthMonitorView.order.compactMap { id in all.first { $0.id == id } }
+        let off = readings.filter { $0.level == .orange || $0.level == .red }
+        NavigationLink { HealthMonitorView() } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Caps("Monitor de salud", size: 10.5, weight: .semibold)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption2.weight(.bold)).foregroundStyle(Theme.tertiary)
+                }
+                HStack(spacing: 0) {
+                    ForEach(readings) { r in
+                        VStack(spacing: 6) {
+                            Image(systemName: r.icon).font(.caption).foregroundStyle(Theme.secondary)
+                            Image(systemName: r.monitorIcon).font(.system(size: 9, weight: .heavy)).foregroundStyle(r.color)
+                                .frame(width: 18, height: 18)
+                                .background(r.color.opacity(0.2), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                Text(readings.isEmpty ? "Tras tu primera noche con la pulsera"
+                     : (off.isEmpty ? "Todo en tu rango" : off.map { "\($0.short) \($0.raw > ($0.range?.upperBound ?? .infinity) ? "alta" : "baja")" }.joined(separator: " · ")))
+                    .scaledFont(11, weight: .medium, relativeTo: .caption1)
+                    .foregroundStyle(off.isEmpty ? Theme.secondary : (off.map(\.level).max() == .red ? Theme.red : Theme.worse))
+                    .lineLimit(2)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// "MONITOR DE SALUD": your pulse live, a tile per vital of last night and the printable report. A tile opens its
+/// panel, and the panel its trends.
+struct HealthMonitorView: View {
     @EnvironmentObject var model: AppModel
     @State private var open: VitalReading?
     @State private var pendingTrend: TrendMetric?
     @State private var trend: TrendMetric?
 
-    private static let order = ["resp", "spo2", "rhr", "hrv", "temp"]
+    static let order = ["resp", "spo2", "rhr", "hrv", "temp"]
 
     var body: some View {
         let all = model.vitalReadings()
         let readings = Self.order.compactMap { id in all.first { $0.id == id } }
-        PCard {
-            CardHeader(title: "Monitor de salud",
-                       subtitle: readings.first.map { "\($0.when) · comparado con tus 30 noches anteriores" })
-            if let hr = model.liveHR {
-                HStack(spacing: 8) {
-                    Image(systemName: "heart.fill").foregroundStyle(Theme.link)
-                    Caps("Frecuencia cardíaca", size: 11, color: Theme.secondary, weight: .semibold)
-                    Spacer()
-                    Text("\(hr)").scaledFont(22, weight: .bold, relativeTo: .title3).monospacedDigit().foregroundStyle(.white)
-                    Caps("lpm", size: 10, color: Theme.secondary)
-                }
+        DetailScreen(title: "Monitor de salud") {
+            LiveHeroMonitor()
+            if let when = readings.first?.when {
+                Text("\(when) · comparado con tus 30 noches anteriores").font(.caption).foregroundStyle(Theme.secondary)
             }
             if readings.isEmpty {
-                Text("Aparecen tras tu primera noche con la pulsera.").font(.caption).foregroundStyle(Theme.secondary)
+                EmptyState(icon: "waveform.path.ecg", title: "Sin datos", message: "Aparecen tras tu primera noche con la pulsera.")
             } else {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
                     ForEach(readings) { r in
                         Button { show(r) } label: { VitalMonitorTile(reading: r) }.buttonStyle(.plain)
                     }

@@ -38,9 +38,12 @@ struct HomeView: View {
                         }
                     }
                     if !model.days.isEmpty {
-                        // Each vital of last night against your range, then the stress level.
-                        HomeHealthMonitorCard()
-                        HomeStressStatusTile()
+                        // Half and half: your vitals of last night and your stress now.
+                        HStack(alignment: .top, spacing: 10) {
+                            HomeHealthMonitorTile()
+                            HomeStressStatusTile()
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                     if let day = model.selected {
                         TodayActivitiesCard(day: day).id("homeActivities")
@@ -274,14 +277,16 @@ struct StrainRecoveryWeekCard: View {
 // MARK: - Stress preview
 
 struct StressPreviewCard: View {
+    @EnvironmentObject var model: AppModel
     let day: DaySummary
 
     var body: some View {
-        let last = day.stressPoints.last
+        let window = model.stressWindow(for: day)
+        let last = window.points.last
         PCard {
             CardHeader(title: "Monitor de estrés", chevron: true)
             HStack {
-                Text(last.map { "Última actualización a las \(day.stressClock($0.x))" } ?? "Sin lecturas todavía")
+                Text(last.map { "Última actualización a las \(Fmt.time($0.ts))" } ?? "Sin lecturas todavía")
                     .font(.subheadline).foregroundStyle(Color(white: 0.85))
                 Spacer()
                 if let current = last?.v {
@@ -289,22 +294,26 @@ struct StressPreviewCard: View {
                     Text(Fmt.dec(current)).scaledFont(20, weight: .bold, relativeTo: .body).monospacedDigit().foregroundStyle(.white)
                 }
             }
-            StressLine(day: day, compact: true)
-                .frame(height: 150)
+            StressLine(points: window.points, start: window.start, compact: true)
+                .frame(height: 120)
         }
     }
 }
 
-/// Stress minute by minute as a line over a soft fill, both coloured by level (green low, yellow medium, orange
-/// high). Runs from the hour the cycle started (waking up), so the hours after midnight come last instead of on the
-/// left. Workouts are shaded (there the curve is physical effort); a stretch with the strap off leaves a gap.
+/// Stress minute by minute over the last 24 hours, as a line over a soft fill, both coloured by level (green low,
+/// yellow medium, orange high). Workouts are shaded (there the curve is physical effort); a stretch with the strap
+/// off leaves a gap.
 struct StressLine: View {
-    let day: DaySummary
+    let points: [(ts: Int, v: Double)]
+    /// Start of the 24 hours shown.
+    let start: Int
     var compact = false
-    /// Workouts of the day (timestamps), shaded behind the curve.
+    /// Workouts in the window (timestamps), shaded behind the curve.
     var workouts: [ClosedRange<Int>] = []
-    /// Minutes since the hour the cycle started, under the finger.
+    /// Minutes since `start` under the finger.
     var selected: Binding<Int?> = .constant(nil)
+
+    static let span = 1440
 
     private struct Point: Identifiable {
         var x: Int
@@ -314,13 +323,14 @@ struct StressLine: View {
     }
 
     /// Points split into runs wherever more than 10 minutes go by without a reading.
-    private var points: [Point] {
+    private var series: [Point] {
         var run = 0
         var prev: Int?
-        return day.stressPoints.map { p in
-            if let q = prev, p.x - q > 10 { run += 1 }
-            prev = p.x
-            return Point(x: p.x, v: p.v, run: run)
+        return points.map { p in
+            let x = (p.ts - start) / 60
+            if let q = prev, x - q > 10 { run += 1 }
+            prev = x
+            return Point(x: x, v: p.v, run: run)
         }
     }
 
@@ -342,14 +352,15 @@ struct StressLine: View {
     }
 
     var body: some View {
-        let pts = points
+        let pts = series
         let lo = pts.map(\.v).min() ?? 0, hi = pts.map(\.v).max() ?? 0
         let line = LinearGradient(stops: Self.stops(lo, hi), startPoint: .bottom, endPoint: .top)
         let fill = LinearGradient(stops: Self.stops(0, max(hi, 0.01), opacity: { 0.04 + 0.30 * $0 / max(hi, 0.01) }),
                                   startPoint: .bottom, endPoint: .top)
         // A tick every 5 minutes while scrubbing, not one per minute.
         let scrub = Binding<Int?>(get: { selected.wrappedValue }, set: { selected.wrappedValue = $0.map { $0 / 5 * 5 } })
-        let bands = workouts.compactMap { w in day.stressX(w.lowerBound).flatMap { a in day.stressX(w.upperBound).map { a...$0 } } }
+        let bands = workouts.map { max(0, ($0.lowerBound - start) / 60)...max(0, min(Self.span, ($0.upperBound - start) / 60)) }
+            .filter { $0.upperBound > $0.lowerBound }
         Chart {
             ForEach(Array(bands.enumerated()), id: \.offset) { _, b in
                 RectangleMark(xStart: .value("Inicio", b.lowerBound), xEnd: .value("Fin", b.upperBound),
@@ -385,7 +396,7 @@ struct StressLine: View {
         }
         .chartScrub(scrub)
         .chartYScale(domain: 0...3)
-        .chartXScale(domain: 0...max(1439, pts.last?.x ?? 0))
+        .chartXScale(domain: 0...Self.span)
         .chartYAxis {
             AxisMarks(position: .leading, values: [0, 1, 2, 3]) { v in
                 AxisGridLine().foregroundStyle(Theme.hairline)
@@ -393,13 +404,56 @@ struct StressLine: View {
             }
         }
         .chartXAxis {
-            AxisMarks(values: compact ? [0, 480, 960, 1380] : [0, 240, 480, 720, 960, 1200, 1380]) { v in
+            AxisMarks(values: compact ? [0, 720, 1440] : [0, 360, 720, 1080, 1440]) { v in
                 AxisValueLabel {
-                    Text(String(format: "%02d:00", ((v.as(Int.self) ?? 0) / 60 + day.cycleStartHour) % 24))
+                    Text(Fmt.time(start + (v.as(Int.self) ?? 0) * 60))
                         .scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary)
                 }
             }
         }
+    }
+}
+
+extension AppModel {
+    /// The 24 hours of stress shown for a day: up to now for today, up to its last reading for a past day.
+    func stressWindow(for day: DaySummary) -> (start: Int, points: [(ts: Int, v: Double)]) {
+        let now = Int(Date().timeIntervalSince1970)
+        var end = day.day == currentDayKey ? now : (day.cycleEnd ?? now)
+        if day.day != currentDayKey, let last = stressReadings(from: end - 86_400, to: end).last { end = last.ts }
+        let start = end - 86_400
+        return (start, stressReadings(from: start, to: end))
+    }
+
+    /// Stress readings between two times, across the cycles they span. Days analysed before stress was kept per minute
+    /// only have hourly means, placed at the half hour.
+    func stressReadings(from start: Int, to end: Int) -> [(ts: Int, v: Double)] {
+        var out: [(ts: Int, v: Double)] = []
+        for d in days {
+            guard let cs = d.cycleStart, cs <= end, (d.cycleEnd ?? Int.max) >= start else { continue }
+            if !d.stressMinutes.isEmpty {
+                let origin = cs - cs % 60
+                for (i, v) in d.stressMinutes.enumerated() {
+                    let ts = origin + i * 60
+                    if let v, ts >= start, ts <= end { out.append((ts, v)) }
+                }
+            } else {
+                let hourStart = cs - cs % 3600
+                for k in 0..<24 {
+                    let ts = hourStart + k * 3600 + 1800
+                    let h = Calendar.current.component(.hour, from: Date(timeIntervalSince1970: TimeInterval(ts)))
+                    if h < d.stressHourly.count, let v = d.stressHourly[h], ts >= start, ts <= end, ts <= (d.cycleEnd ?? ts) {
+                        out.append((ts, v))
+                    }
+                }
+            }
+        }
+        return out.sorted { $0.ts < $1.ts }
+    }
+
+    /// Workouts in the 24 hours shown for a day (this cycle and the one before).
+    func stressWorkouts(for day: DaySummary) -> [ClosedRange<Int>] {
+        let previous = self.day(DayKey.shift(day.day, days: -1))
+        return ([previous].compactMap { $0 }.flatMap { workouts(for: $0) } + workouts(for: day)).map { $0.start...$0.end }
     }
 }
 
@@ -409,8 +463,8 @@ extension DaySummary {
         cycleStart.map { Calendar.current.component(.hour, from: Date(timeIntervalSince1970: TimeInterval($0))) } ?? 0
     }
 
-    /// Stress readings as minutes since the hour the cycle started. Days analysed before stress was kept per minute
-    /// only have hourly means, drawn at the half hour.
+    /// Stress readings of this cycle as minutes since the hour it started (hourly means at the half hour on days
+    /// analysed before stress was kept per minute).
     var stressPoints: [(x: Int, v: Double)] {
         if !stressMinutes.isEmpty, let start = cycleStart {
             let offset = Calendar.current.component(.minute, from: Date(timeIntervalSince1970: TimeInterval(start)))
@@ -421,13 +475,6 @@ extension DaySummary {
             guard h < stressHourly.count, let v = stressHourly[h] else { return nil }
             return (k * 60 + 30, v)
         }
-    }
-
-    /// Chart position (minutes since the hour the cycle started) of a timestamp.
-    func stressX(_ ts: Int) -> Int? {
-        guard let start = cycleStart else { return nil }
-        let offset = Calendar.current.component(.minute, from: Date(timeIntervalSince1970: TimeInterval(start)))
-        return offset + (ts - (start - start % 60)) / 60
     }
 
     /// Clock time ("14:05") of a stress point.

@@ -51,7 +51,7 @@ struct HomeWidgetView: View {
                 }
             }
         case .vitals:
-            HomeHealthMonitorCard()
+            HomeHealthMonitorTile()
         case .activity:
             NavigationLink { StrainDetailView() } label: { HomeActivityCard(day: day, widget: widget) }.buttonStyle(.plain)
         case .pulsoAge:

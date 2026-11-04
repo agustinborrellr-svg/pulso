@@ -152,10 +152,12 @@ struct StressMonitorView: View {
     var body: some View {
         DetailScreen(title: "Monitor de estrés", subtitle: model.cycleTitle(model.selectedDay)) {
             if let day = model.selected {
-                gauge(day)
+                let window = model.stressWindow(for: day)
+                gauge(window)
                 PCard {
-                    StressLine(day: day, workouts: model.workouts(for: day).map { $0.start...$0.end }, selected: $minute)
-                        .frame(height: 220)
+                    Caps("Últimas 24 horas", size: 10, color: Theme.secondary, weight: .semibold)
+                    StressLine(points: window.points, start: window.start, workouts: model.stressWorkouts(for: day), selected: $minute)
+                        .frame(height: 170)
                     Text("Un valor por minuto, también andando o durmiendo: cuenta el pulso que el movimiento no explica. En las franjas de entreno la curva es esfuerzo físico. Desliza el dedo para ver cada momento.").font(.caption2).foregroundStyle(Theme.tertiary)
                 }
                 levels(day)
@@ -168,17 +170,17 @@ struct StressMonitorView: View {
     }
 
     /// Reading under the finger (the nearest one, within 15 minutes), or the latest.
-    private func current(_ d: DaySummary) -> Double? {
-        let pts = d.stressPoints
+    private func current(_ w: (start: Int, points: [(ts: Int, v: Double)])) -> Double? {
         if let k = minute {
-            guard let p = pts.min(by: { abs($0.x - k) < abs($1.x - k) }), abs(p.x - k) <= 15 else { return nil }
+            let t = w.start + k * 60
+            guard let p = w.points.min(by: { abs($0.ts - t) < abs($1.ts - t) }), abs(p.ts - t) <= 15 * 60 else { return nil }
             return p.v
         }
-        return pts.last?.v
+        return w.points.last?.v
     }
 
-    private func gauge(_ d: DaySummary) -> some View {
-        let v = current(d)
+    private func gauge(_ w: (start: Int, points: [(ts: Int, v: Double)])) -> some View {
+        let v = current(w)
         return ZStack {
             // Top half, low (blue) on the left to high (orange) on the right.
             Circle()
@@ -202,7 +204,7 @@ struct StressMonitorView: View {
                 }
                 Caps(v == nil ? (minute == nil ? "Calculando" : "Sin lectura") : Theme.stressLevel(v), size: 15, color: v == nil ? .white : Theme.stressColor(v))
                 if let k = minute {
-                    Text(d.stressClock(k)).font(.subheadline.monospacedDigit()).foregroundStyle(.white)
+                    Text(Fmt.time(w.start + k * 60)).font(.subheadline.monospacedDigit()).foregroundStyle(.white)
                 }
             }
             .offset(y: -20)
