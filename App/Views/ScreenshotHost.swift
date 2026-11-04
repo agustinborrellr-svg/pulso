@@ -118,8 +118,15 @@ extension AppModel {
     static func demoBreathwork() -> Breathwork.Summary {
         let end = Int(Date().timeIntervalSince1970) - 7200
         let start = end - 288
-        let hr = (0..<58).map { i in 62 + 12 * sin(Double(i) / 4) * (i % 19 < 12 ? 1 : 0.3) }
-        let stress = (0..<17).map { i in 0.4 + 0.03 * Double(i) - (i > 14 ? 0.1 : 0) }
+        var hr: [Double] = []
+        for i in 0..<58 {
+            let swing: Double = i % 19 < 12 ? 12 : 3.6
+            hr.append(62 + swing * sin(Double(i) / 4))
+        }
+        var stress: [Double] = []
+        for i in 0..<17 {
+            stress.append(0.4 + 0.03 * Double(i) - (i > 14 ? 0.1 : 0))
+        }
         return Breathwork.Summary(kind: .alert, start: start, end: end, inhaleSeconds: 144, exhaleSeconds: 101, holdSeconds: 42,
                                   retentions: [21, 38, 52], hrMin: 54, hrAvg: 61, hrMax: 79, stressBefore: 0.4, stressAfter: 0.6,
                                   rmssdBefore: 58, rmssdAfter: 49, hrSeries: hr, stressSeries: stress)

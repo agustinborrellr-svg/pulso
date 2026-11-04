@@ -126,6 +126,27 @@ public enum Breathwork {
         public var hrSeries: [Double]
         public var stressSeries: [Double]
 
+        public init(kind: Kind, start: Int, end: Int, inhaleSeconds: Double, exhaleSeconds: Double, holdSeconds: Double,
+                    retentions: [Double], hrMin: Double?, hrAvg: Double?, hrMax: Double?, stressBefore: Double?, stressAfter: Double?,
+                    rmssdBefore: Double?, rmssdAfter: Double?, hrSeries: [Double], stressSeries: [Double]) {
+            self.kind = kind
+            self.start = start
+            self.end = end
+            self.inhaleSeconds = inhaleSeconds
+            self.exhaleSeconds = exhaleSeconds
+            self.holdSeconds = holdSeconds
+            self.retentions = retentions
+            self.hrMin = hrMin
+            self.hrAvg = hrAvg
+            self.hrMax = hrMax
+            self.stressBefore = stressBefore
+            self.stressAfter = stressAfter
+            self.rmssdBefore = rmssdBefore
+            self.rmssdAfter = rmssdAfter
+            self.hrSeries = hrSeries
+            self.stressSeries = stressSeries
+        }
+
         public var duration: Int { end - start }
         public var stressChange: Double? { stressAfter.flatMap { a in stressBefore.map { a - $0 } } }
     }
