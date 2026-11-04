@@ -59,7 +59,12 @@ extension AppModel {
             }
         }
         charging = false
-        if breathworkRecords.isEmpty { saveBreathwork(Self.demoBreathwork()) }
+        if breathworkRecords.isEmpty {
+            // Stored directly: `saveBreathwork` starts an analysis, and the demo below won't load while one runs.
+            let demo = Self.demoBreathwork()
+            try? db.set([BreathworkRecord(summary: demo)], for: Self.breathworkKey)
+            _ = try? db.save(Workout(start: demo.start, end: demo.end, sport: Breathwork.activityName(demo.kind), source: .manual))
+        }
         let finish = {
             try? Data("ok".utf8).write(to: AppMode.readyFlagURL)
             if let extra = ProcessInfo.processInfo.environment["PULSO_READY_PATH"] {
@@ -117,17 +122,17 @@ extension AppModel {
     /// A plausible alertness session two hours ago, for the screenshots.
     static func demoBreathwork() -> Breathwork.Summary {
         let end = Int(Date().timeIntervalSince1970) - 7200
-        let start = end - 288
+        let start = end - 432
         var hr: [Double] = []
-        for i in 0..<58 {
-            let swing: Double = i % 19 < 12 ? 12 : 3.6
+        for i in 0..<86 {
+            let swing: Double = i % 29 < 19 ? 12 : 3.6
             hr.append(62 + swing * sin(Double(i) / 4))
         }
         var stress: [Double] = []
-        for i in 0..<17 {
-            stress.append(0.4 + 0.03 * Double(i) - (i > 14 ? 0.1 : 0))
+        for i in 0..<26 {
+            stress.append(0.4 + 0.02 * Double(i) - (i > 22 ? 0.1 : 0))
         }
-        return Breathwork.Summary(kind: .alert, start: start, end: end, inhaleSeconds: 144, exhaleSeconds: 101, holdSeconds: 42,
+        return Breathwork.Summary(kind: .alert, start: start, end: end, inhaleSeconds: 144, exhaleSeconds: 120, holdSeconds: 168,
                                   retentions: [21, 38, 52], hrMin: 54, hrAvg: 61, hrMax: 79, stressBefore: 0.4, stressAfter: 0.6,
                                   rmssdBefore: 58, rmssdAfter: 49, hrSeries: hr, stressSeries: stress)
     }

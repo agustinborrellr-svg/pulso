@@ -181,7 +181,8 @@ struct ActivityPickerView: View {
                 .padding(.vertical, 6)
                 if !recent.isEmpty {
                     Caps("Más recientes", size: 9.5, color: Theme.secondary, weight: .semibold).padding(.top, 6)
-                    ForEach(recent, id: \.self) { row($0) }
+                    // Own ids: the same name shows again in the A–Z list, and a lazy stack drops repeated ids.
+                    ForEach(recent.map { "recent:" + $0 }, id: \.self) { row(String($0.dropFirst(7))) }
                     Caps("Todo de la A a la Z", size: 9.5, color: Theme.secondary, weight: .semibold).padding(.top, 10)
                 }
                 ForEach(list, id: \.self) { row($0) }
