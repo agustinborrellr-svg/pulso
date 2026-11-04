@@ -283,3 +283,22 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
   como puesta arregla la hora de dormirse automática (2-nov 01:24 vs 01:26; 4-nov empieza 01:06 vs 00:50) pero empeora
   profundo y VFC: pendiente, solo para la detección.
 - Recalibrar con más noches (Gus manda copia + exportación cada semana). `derivedVersion` 9.
+
+## Estado (2026-11-04, rama release-2026-11-04: Inicio, monitor de salud, Live)
+
+- Inicio: diales grandes arriba que al desplazar se encogen en la fila fija (`HomeDialHeader`, preferencia `HomeScrollOffset`
+  con `+=`), debajo `HomeHealthMonitorTile` | `HomeStressStatusTile` a medias y `TodayActivitiesCard` (sueño, siestas, entrenos,
+  respiración; Agregar/Iniciar actividad). Agregar actividad rehecha (`AddActivitySheet` + `ActivityPickerView` con buscador y
+  pestañas Todo/Esfuerzo/Recuperación/Sueño; ubicación de la pulsera en las notas).
+- Monitor de salud (`HealthMonitorViews.swift`): página con pulso en vivo + baldosas por constante → `VitalPanel` → tendencias.
+  SpO₂ con rangos clínicos (≥95 / 90–94 / <90). Informe de salud PDF 30/180 días (`HealthReport` en PulsoAnalytics, 4 páginas A4).
+- Estrés por minuto también andando, dormido o entrenando: pulso «adicional» que el movimiento no explica (Myrtek 2004,
+  Verkuil 2016) en `Stress.everyMinute`, `DaySummary.stressMinutes`, `derivedVersion` 10. Gráfica de las últimas 24 h.
+  `StressSummary.split`: minutos de estrés alto en entreno (o 90 min después), sueño (60 min tras despertar / siestas) u otros.
+- Live (antes «En vivo»): respiración guiada (`Breathwork`: alerta, suspiro fisiológico, coherencia, caja, 4-7-8) con la pulsera
+  vibrando en cada fase, resultado con estrés/FC y registro como actividad (kv `breathwork.sessions`); alerta de estrés
+  (`StressAlert`: 5 min quieto con estrés ≥ 2, 1 h de silencio, nunca en tu horario de sueño, CoreMotion para saber si andas);
+  resumen a las 21:00 de dónde vino el estrés alto. Tests, sauna/baño de hielo y monitor en la misma pestaña.
+- Pendiente acordado: siesta inteligente y detección de dormirse con 4-7-8, primero en silencio (solo registrar) y contrastar.
+- CI: tests del núcleo en `-c release -Xswiftc -enable-testing --parallel` (en debug ya pasaban de 45 min y el job se cortaba
+  a la hora). Capturas: `gh workflow run ios.yml --ref <rama> -f capturas=true -f pantallas="today live …"`. Releases solo desde main.
