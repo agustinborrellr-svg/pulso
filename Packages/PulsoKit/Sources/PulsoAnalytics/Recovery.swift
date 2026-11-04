@@ -248,6 +248,58 @@ public enum Stress {
         return out
     }
 
+    /// Stress of every worn minute, still or not: heart rate above what the movement of that minute explains
+    /// ("additional" or non-metabolic heart rate; Myrtek 2004, Verkuil et al. 2016). How much each level of movement
+    /// raises your pulse is learnt from the day itself (median of its minutes at that level), so an ordinary walk reads
+    /// as calm and a pulse racing while you sit reads as stress. Asleep the pulse is low and HRV high: low stress.
+    /// Logged workouts are not discounted: there the curve is the physical effort.
+    public static func everyMinute(samples: [Sample], epochs: [MinuteEpoch], calmHR: Double, calmHRV: Double?,
+                                   stillThreshold: Double, workouts: [ClosedRange<Int>]) -> [Window] {
+        let n = epochs.count
+        func level(_ e: MinuteEpoch) -> Int {
+            let m = e.motion ?? 0
+            if m < stillThreshold * 1.4 && e.stepsDelta < 15 { return 0 }
+            if m < stillThreshold * 4 { return 1 }
+            return m < stillThreshold * 10 ? 2 : 3
+        }
+        let raw = epochs.map(level)
+        // The pulse takes a couple of minutes to come down after moving.
+        let lvl = (0..<n).map { i in raw[max(0, i - 2)...i].max() ?? 0 }
+        let inWorkout = epochs.map { e in workouts.contains { $0.contains(e.ts) } }
+        let hr: [Double?] = (0..<n).map { i in
+            guard epochs[i].worn else { return nil }
+            return Stats.mean((max(0, i - 1)...min(n - 1, i + 1)).compactMap { epochs[$0].worn ? epochs[$0].hr : nil })
+        }
+        var cost = activityCost
+        for k in 1...3 {
+            let x = (0..<n).filter { lvl[$0] == k && !inWorkout[$0] }.compactMap { hr[$0].map { $0 - calmHR } }
+            if x.count >= 15, let m = Stats.median(x) { cost[k] = max(0, m) }
+        }
+        for k in 1...3 { cost[k] = max(cost[k], cost[k - 1]) }
+        var out: [Window] = []
+        for i in 0..<n {
+            guard let h = hr[i] else { continue }
+            var z = (h - calmHR - (inWorkout[i] ? 0 : cost[lvl[i]])) / 6
+            // Beat-to-beat intervals are only clean enough with the wrist nearly still.
+            var rmssd: Double?
+            if lvl[i] <= 1 {
+                let t = epochs[i].ts - 120
+                rmssd = HRV.rmssd(HRV.clean(Epochs.rrRuns(Epochs.slice(samples, from: t, to: t + 300), from: t, to: t + 300)), minPairs: 40)
+            }
+            if let r = rmssd, let ref = calmHRV, ref > 0 {
+                z += (log(ref) - log(max(r, 3))) / 0.35
+            } else if lvl[i] == 0 {
+                z *= 1.5
+            }
+            out.append(Window(ts: epochs[i].ts, score: 3 * Stats.logistic(z - 1.2)))
+        }
+        return out
+    }
+
+    /// Typical pulse rise (lpm over calm) of light, moderate and vigorous movement, used until the day has 15 minutes
+    /// of that level to learn its own.
+    public static let activityCost: [Double] = [0, 8, 18, 30]
+
     /// Reference of one day: median HR and median RMSSD of its still windows. A typical still moment of
     /// yours scores low; against the calmest quartile (the old reference) almost every window read as stress.
     public static func calmReference(_ w: [StillWindow]) -> (hr: Double?, hrv: Double?) {
