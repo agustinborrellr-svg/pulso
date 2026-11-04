@@ -12,6 +12,7 @@ struct HomeView: View {
     @State private var showCoach = false
     @AppStorage(HomeLayout.key) private var homeRaw = ""
     @State private var collapse: CGFloat = 0
+    @State private var scrolledTo: String?
 
     private var widgets: [HomeWidget] { HomeLayout.decode(homeRaw) }
 
@@ -42,7 +43,7 @@ struct HomeView: View {
                         HomeStressStatusTile()
                     }
                     if let day = model.selected {
-                        TodayActivitiesCard(day: day)
+                        TodayActivitiesCard(day: day).id("homeActivities")
                     }
                     if let q = model.pendingSleepQuestions.first {
                         SleepQuestionCard(session: q)
@@ -75,10 +76,18 @@ struct HomeView: View {
                                    message: "No hay datos de la pulsera para esta fecha.")
                     }
                 }
+                .scrollTargetLayout()
                 .padding(.horizontal, 16)
                 .padding(.bottom, 90)
             }
             .scrollIndicators(.hidden)
+            .scrollPosition(id: $scrolledTo, anchor: .top)
+            .task {
+                // Screenshot run: show the dials collapsed into the pinned row.
+                guard AppMode.screenshots, AppMode.screen == "todayScrolled" else { return }
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                scrolledTo = "homeActivities"
+            }
             .coordinateSpace(name: "home")
             .onPreferenceChange(HomeScrollOffset.self) { y in
                 collapse = min(max(-y / HomeDialHeader.collapseDistance, 0), 1)

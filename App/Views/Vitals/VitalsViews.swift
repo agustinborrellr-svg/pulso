@@ -217,10 +217,8 @@ struct HomeStressStatusTile: View {
 
     var body: some View {
         let day = model.selected ?? model.today
-        let hourly = day?.stressHourly ?? []
-        let start = day?.cycleStartHour ?? 0
-        let lastHour = (0..<24).map { (start + $0) % 24 }.last { $0 < hourly.count && hourly[$0] != nil }
-        let current = lastHour.flatMap { hourly[$0] }
+        let last = day?.stressPoints.last
+        let current = last?.v
         NavigationLink { StressMonitorView() } label: {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -236,7 +234,7 @@ struct HomeStressStatusTile: View {
                         .background(Theme.stressColor(current).opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
                     VStack(alignment: .leading, spacing: 1) {
                         Caps(current == nil ? "Sin lecturas" : Theme.stressLevel(current), size: 15, color: Theme.stressColor(current))
-                        Text(lastHour.map { String(format: "a las %02d:00", $0) } ?? "se mide quieto y despierto")
+                        Text(last.flatMap { p in day.map { "a las \($0.stressClock(p.x))" } } ?? "aún sin lecturas hoy")
                             .scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary).lineLimit(1)
                     }
                 }

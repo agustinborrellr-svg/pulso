@@ -14,12 +14,13 @@ enum ShotScreen: String, Identifiable {
     case scan, coherence, poincare, orthostatic, explorer, calendar, monthly, storage, monitor
     case behaviors, cycle, pressure, doubleTap, trendHRV6M, trendsList
     case liveIdle, vitals, vitalDetail, startActivity, intelToday, intelLoad, intelSleep, intelHabits, intelMore
+    case todayScrolled, panelHRV, panelTemp, panelSpO2, activityPicker, dayActivities, report1, report2, report3, report4
 
     var id: String { rawValue }
 
     var tab: Int? {
         switch self {
-        case .today: return 0
+        case .today, .todayScrolled: return 0
         case .health: return 1
         case .trends: return 2
         case .live, .liveIdle: return 3
@@ -110,6 +111,40 @@ extension AppModel {
     }
 }
 
+/// A vital's panel over the health monitor, as after tapping its tile.
+struct ShotVitalPanel: View {
+    @EnvironmentObject var model: AppModel
+    let id: String
+
+    var body: some View {
+        ZStack {
+            ScrollView { HomeHealthMonitorCard().padding(16) }.background(PulsoBackground())
+            if let r = model.vitalReadings().first(where: { $0.id == id }) {
+                VitalPanel(reading: r, close: {}, trends: {})
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+    }
+}
+
+/// One page of the health report PDF, fitted to the screen width.
+struct ShotReportPage: View {
+    @EnvironmentObject var model: AppModel
+    let screen: ShotScreen
+
+    var body: some View {
+        let kinds: [ShotScreen: HealthReportPage.Kind] = [.report1: .summary, .report2: .recent, .report3: .months, .report4: .monthsMore]
+        GeometryReader { g in
+            HealthReportPage(report: model.healthReport(), profile: model.profile, kind: kinds[screen] ?? .summary)
+                .frame(width: HealthReportPDF.page.width, height: HealthReportPDF.page.height)
+                .scaleEffect(g.size.width / HealthReportPDF.page.width, anchor: .topLeading)
+                .environment(\.colorScheme, .light)
+        }
+        .background(Color.white)
+        .toolbar(.hidden, for: .navigationBar)
+    }
+}
+
 /// Sub-screens opened full-screen in screenshot mode.
 struct ShotDestination: View {
     @EnvironmentObject var model: AppModel
@@ -177,6 +212,13 @@ struct ShotDestination: View {
                 case .vitals: VitalsView()
                 case .vitalDetail: VitalDetailView(id: "hrv")
                 case .startActivity: StartActivityPreview()
+                case .panelHRV: ShotVitalPanel(id: "hrv")
+                case .panelTemp: ShotVitalPanel(id: "temp")
+                case .panelSpO2: ShotVitalPanel(id: "spo2")
+                case .activityPicker: ActivityPickerView(selection: .constant(nil))
+                case .dayActivities:
+                    if let d = model.today { DayActivitiesView(day: d) } else { Text("Sin datos") }
+                case .report1, .report2, .report3, .report4: ShotReportPage(screen: screen)
                 case .intelToday: IntelTodayView()
                 case .intelLoad: IntelSectionView(title: "Respuesta a la carga")
                 case .intelSleep: IntelSectionView(title: "Sueño y ritmo")
