@@ -78,7 +78,7 @@ struct RootView: View {
                 .tabItem { Label("Análisis", systemImage: "brain.head.profile") }
                 .tag(2)
             LiveView()
-                .tabItem { Label("En vivo", systemImage: "heart.text.square") }
+                .tabItem { Label("Live", systemImage: "heart.text.square") }
                 .tag(3)
             MoreView()
                 .tabItem { Label("Más", systemImage: "line.3.horizontal") }

@@ -14,6 +14,7 @@ enum ShotScreen: String, Identifiable {
     case scan, coherence, poincare, orthostatic, explorer, calendar, monthly, storage, monitor
     case behaviors, cycle, pressure, doubleTap, trendHRV6M, trendsList
     case liveIdle, vitals, vitalDetail, startActivity, intelToday, intelLoad, intelSleep, intelHabits, intelMore
+    case breathDetail, breathPrep, breathSession, breathResult
     case todayScrolled, healthMonitor, panelHRV, panelTemp, panelSpO2, activityPicker, dayActivities, report1, report2, report3, report4
 
     var id: String { rawValue }
@@ -58,6 +59,7 @@ extension AppModel {
             }
         }
         charging = false
+        if breathworkRecords.isEmpty { saveBreathwork(Self.demoBreathwork()) }
         let finish = {
             try? Data("ok".utf8).write(to: AppMode.readyFlagURL)
             if let extra = ProcessInfo.processInfo.environment["PULSO_READY_PATH"] {
@@ -108,6 +110,19 @@ extension AppModel {
                 self.handleLive(heartRate: hr, rr: beats, at: Date())
             }
         }
+    }
+}
+
+extension AppModel {
+    /// A plausible alertness session two hours ago, for the screenshots.
+    static func demoBreathwork() -> Breathwork.Summary {
+        let end = Int(Date().timeIntervalSince1970) - 7200
+        let start = end - 288
+        let hr = (0..<58).map { i in 62 + 12 * sin(Double(i) / 4) * (i % 19 < 12 ? 1 : 0.3) }
+        let stress = (0..<17).map { i in 0.4 + 0.03 * Double(i) - (i > 14 ? 0.1 : 0) }
+        return Breathwork.Summary(kind: .alert, start: start, end: end, inhaleSeconds: 144, exhaleSeconds: 101, holdSeconds: 42,
+                                  retentions: [21, 38, 52], hrMin: 54, hrAvg: 61, hrMax: 79, stressBefore: 0.4, stressAfter: 0.6,
+                                  rmssdBefore: 58, rmssdAfter: 49, hrSeries: hr, stressSeries: stress)
     }
 }
 
@@ -213,6 +228,10 @@ struct ShotDestination: View {
                 case .vitalDetail: VitalDetailView(id: "hrv")
                 case .startActivity: StartActivityPreview()
                 case .healthMonitor: HealthMonitorView()
+                case .breathDetail: BreathworkDetailView(kind: .alert)
+                case .breathPrep: BreathworkPrepView(kind: .alert, settings: .init(breaths: 30, rounds: 3))
+                case .breathSession: BreathworkSessionView(kind: .alert, settings: .init(breaths: 30, rounds: 3), completed: .constant(false))
+                case .breathResult: BreathworkResultView(record: model.breathworkRecords.last ?? BreathworkRecord(summary: AppModel.demoBreathwork()))
                 case .panelHRV: ShotVitalPanel(id: "hrv")
                 case .panelTemp: ShotVitalPanel(id: "temp")
                 case .panelSpO2: ShotVitalPanel(id: "spo2")

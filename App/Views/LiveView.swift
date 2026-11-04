@@ -15,6 +15,7 @@ struct LiveView: View {
     static var sports: [String] { SportCatalog.names }
 
     @State private var startingWorkout = false
+    @AppStorage(AppModel.stressAlertKey) private var stressAlertOn = true
 
     var body: some View {
         NavigationStack {
@@ -27,35 +28,24 @@ struct LiveView: View {
                         liveStats
                         workoutCard
                     } else {
-                        StartActivityCard { startingWorkout = true }
+                        // Your state now, then what to do with it.
+                        LiveHeroMonitor()
+                        liveStats
+                        suggestion
+                        group("Actívate", "Sube el pulso y la energía", [.alert])
+                        group("Cálmate", "Baja el pulso y el estrés en minutos", [.sigh, .coherence, .box])
+                        group("Duerme", "Suelta el día antes de dormir", [.sleep])
+                        recover
+                        measure
+                        alertToggle
                     }
-                    VitalsCard()
                     LiveHRHistoryCard()
-                    SectionHeading(text: "Herramientas")
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            ToolChip(icon: "dot.radiowaves.left.and.right", title: "Escanear", color: .white) { ScanView() }
-                            ToolChip(icon: "wind", title: "Respirar", color: Theme.hrv) { BreathingView() }
-                            ToolChip(icon: "circle.grid.cross", title: "Poincaré", color: Theme.sleep) { PoincareView() }
-                            ToolChip(icon: "figure.stand", title: "Ortostático", color: Theme.yellow) { OrthostaticTestView() }
-                            ToolChip(icon: "arrow.down.heart", title: "Recup. FC", color: Theme.green) { RecoveryTestView() }
-                            ToolChip(icon: "bolt.heart", title: "FC máx", color: Theme.red) { MaxHRTestView() }
-                            ToolChip(icon: "waveform.path.ecg.rectangle", title: "Monitor", color: Theme.link) { MonitorView() }
-                        }
-                    }
-                    Button {
-                        model.buzz()
-                    } label: {
-                        Label("Hacer vibrar la pulsera", systemImage: "iphone.radiowaves.left.and.right").font(.footnote)
-                    }
-                    .foregroundStyle(Theme.secondary)
-                    .disabled(!model.strapState.isConnected)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
             .background(PulsoBackground())
-            .pulsoTitle("En vivo")
+            .pulsoTitle("Live")
             .onAppear { model.setLive(true) }
             .onDisappear { if model.liveWorkout == nil { model.setLive(false) } }
             .onChange(of: model.liveHR) { _, _ in refreshSlow() }
@@ -77,6 +67,126 @@ struct LiveView: View {
         }
         .padding(.vertical, 12)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    /// One suggestion from how you are right now and the time of day.
+    private var suggestion: some View {
+        let hour = Calendar.current.component(.hour, from: Date())
+        let (kind, why): (Breathwork.Kind, String) = {
+            if let s = stress, s >= 1.8 { return (.sigh, "Estás activado (estrés \(Fmt.dec(s))). Dos minutos de suspiro fisiológico te bajan el pulso.") }
+            if hour >= 21 || hour < 4 { return (.sleep, "Es hora de ir bajando revoluciones: 4-7-8 en la cama, guiado por la pulsera.") }
+            if hour < 12 { return (.alert, "Empieza el día despierto: tres rondas y llegas con energía.") }
+            return (.coherence, "Un rato de coherencia para recargar a media jornada.")
+        }()
+        let info = BreathworkInfo.of(kind)
+        return NavigationLink { BreathworkDetailView(kind: kind) } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles").font(.title3).foregroundStyle(info.color)
+                VStack(alignment: .leading, spacing: 3) {
+                    Caps("Para ti ahora · \(info.title)", size: 10.5, color: info.color)
+                    Text(why).font(.subheadline).foregroundStyle(.white).multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.caption.bold()).foregroundStyle(Theme.tertiary)
+            }
+            .padding(14)
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(info.color.opacity(0.6), lineWidth: 1.2))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func group(_ title: String, _ subtitle: String, _ kinds: [Breathwork.Kind]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Caps(title, size: 13)
+                Text(subtitle).font(.caption).foregroundStyle(Theme.secondary)
+            }
+            .padding(.top, 8)
+            ForEach(kinds, id: \.self) { BreathworkCard(kind: $0) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Sauna and cold, timed live: pulse, peak and how fast it comes back; saved as recovery activities.
+    private var recover: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Caps("Recupera", size: 13)
+                Text("Sauna y frío con tu pulso en directo").font(.caption).foregroundStyle(Theme.secondary)
+            }
+            .padding(.top, 8)
+            HStack(spacing: 10) {
+                recoverButton("Sauna", "flame.fill", Theme.stressHigh)
+                recoverButton("Baño de hielo", "snowflake", Theme.link)
+            }
+            if !model.strapState.isConnected {
+                Text("Conecta la pulsera para medirlo en directo.").font(.caption).foregroundStyle(Theme.yellow)
+            }
+        }
+    }
+
+    private func recoverButton(_ sport: String, _ icon: String, _ color: Color) -> some View {
+        Button { model.startWorkout(sport: sport, plan: nil) } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: icon).font(.title2).foregroundStyle(color)
+                Caps(sport, size: 12)
+                Text("Temporizador, pulso pico y vuelta a la calma").font(.caption2).foregroundStyle(Theme.secondary)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
+            .background(LinearGradient(colors: [color.opacity(0.16), Theme.card], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(!model.strapState.isConnected)
+    }
+
+    /// The tests, as a grid.
+    private var measure: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Caps("Mídete", size: 13)
+                Text("Pruebas de un minuto a unos pocos, con su historial").font(.caption).foregroundStyle(Theme.secondary)
+            }
+            .padding(.top, 8)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
+                test("Chequeo de 60 s", "dot.radiowaves.left.and.right", .white, "VFC, respiración y estrés") { ScanView() }
+                test("Ortostático", "figure.stand", Theme.yellow, "Tumbado y de pie") { OrthostaticTestView() }
+                test("Recuperación FC", "arrow.down.heart", Theme.green, "Cuánto baja en 1 min") { RecoveryTestView() }
+                test("FC máxima", "bolt.heart", Theme.red, "Tu techo real") { MaxHRTestView() }
+                test("Poincaré", "circle.grid.cross", Theme.sleep, "Tu VFC dibujada") { PoincareView() }
+                test("Monitor", "waveform.path.ecg.rectangle", Theme.link, "Todo en directo") { MonitorView() }
+            }
+        }
+    }
+
+    private func test<D: View>(_ title: String, _ icon: String, _ color: Color, _ sub: String, @ViewBuilder destination: @escaping () -> D) -> some View {
+        NavigationLink { destination() } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: icon).font(.title3).foregroundStyle(color)
+                Caps(title, size: 11)
+                Text(sub).font(.caption2).foregroundStyle(Theme.secondary).lineLimit(2)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var alertToggle: some View {
+        PCard {
+            Toggle(isOn: $stressAlertOn) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Caps("Alerta de estrés", size: 12)
+                    Text("Si llevas 5 minutos quieto con el estrés alto, la pulsera vibra y te propone dos minutos de respiración. Como mucho una vez por hora.")
+                        .font(.caption).foregroundStyle(Theme.secondary)
+                }
+            }
+            .tint(Theme.green)
+        }
+        .padding(.top, 8)
     }
 
     /// Breathing rate and stress need ~1 minute of beats and a spectrum: every 10 s is plenty.

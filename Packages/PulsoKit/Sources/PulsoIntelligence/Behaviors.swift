@@ -113,9 +113,13 @@ public enum Behaviors {
 
         // Training early (starts before 12:00) / late (starts from 19:00), against every other day.
         let measured = Set(sorted.filter { $0.recovery != nil || $0.strain != nil }.map(\.day))
-        var early: [String: Bool] = [:], late: [String: Bool] = [:]
-        for day in measured { early[day] = false; late[day] = false }
-        for w in workouts where w.source != .auto || w.strain >= 4 {
+        var early: [String: Bool] = [:], late: [String: Bool] = [:], breathing: [String: Bool] = [:]
+        for day in measured { early[day] = false; late[day] = false; breathing[day] = false }
+        for w in workouts where Breathwork.activityNames.contains(w.sport) {
+            let day = DayKey.string(ts: w.start, calendar: calendar)
+            if measured.contains(day) { breathing[day] = true }
+        }
+        for w in workouts where (w.source != .auto || w.strain >= 4) && !Breathwork.activityNames.contains(w.sport) {
             let day = DayKey.string(ts: w.start, calendar: calendar)
             guard measured.contains(day) else { continue }
             let h = calendar.component(.hour, from: Date(timeIntervalSince1970: TimeInterval(w.start)))
@@ -124,6 +128,8 @@ public enum Behaviors {
         }
         items.append(item("auto.earlyWorkout", "Entrenamiento temprano", automatic: true, lag: 1, flags: early))
         items.append(item("auto.lateWorkout", "Entrenamiento tardío", automatic: true, lag: 1, flags: late))
+        // A guided breathing session in Live, against the days without one.
+        items.append(item("auto.breathwork", "Respiración guiada", automatic: true, lag: 1, flags: breathing))
 
         // Share of the worn day in high stress at or above your usual.
         let stressPct: [(String, Double)] = sorted.compactMap { d in

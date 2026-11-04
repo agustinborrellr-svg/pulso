@@ -70,6 +70,7 @@ final class AppModel: ObservableObject {
     @Published var trainingLoad: [TrainingLoad.Point] = []
 
     // Live
+    let stressAlertState = StressAlertState()
     @Published var liveHR: Int?
     @Published var liveRMSSD: Double?
     @Published var livePoints: [LivePoint] = []
@@ -813,6 +814,7 @@ extension AppModel: StrapManagerDelegate {
             updateWorkoutActivity()
         }
         lastLiveAt = date
+        checkStressAlert(at: date)
         // Live notifications arrive ~1 Hz and keep the app running in the background: drive timers from them.
         tick()
     }

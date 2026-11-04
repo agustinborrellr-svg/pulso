@@ -131,6 +131,11 @@ public enum SportCatalog {
         Sport(name: "Viaje en avión", symbol: "airplane", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "other"),
         Sport(name: "Ver deportes", symbol: "sportscourt", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "other"),
         Sport(name: "Videojuegos", symbol: "gamecontroller", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "other"),
+        Sport(name: "Aumentar el estado de alerta", symbol: "gauge.with.dots.needle.67percent", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "mindAndBody"),
+        Sport(name: "Suspiro fisiológico", symbol: "wind", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "mindAndBody"),
+        Sport(name: "Coherencia cardíaca", symbol: "waveform.path.ecg", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "mindAndBody"),
+        Sport(name: "Respiración en caja", symbol: "square", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "mindAndBody"),
+        Sport(name: "Respiración para dormir", symbol: "moon.stars", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "mindAndBody"),
         Sport(name: "Intimidad", symbol: "heart", strava: [], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "private"),
         Sport(name: "Actividad", symbol: "figure.mixed.cardio", strava: ["Workout"], fitSport: 0, fitSubSport: 0, tcx: "Other", health: "other"),
     ]

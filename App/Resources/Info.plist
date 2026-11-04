@@ -26,6 +26,8 @@
 	<false/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Pulso se conecta por Bluetooth a tu pulsera para descargar tus datos de frecuencia cardiaca, sueño y actividad.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Pulso mira si estás quieto o caminando para no confundir un paseo con estrés antes de avisarte.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Pulso lee los entrenos de otras apps (Garmin, Strava, Nike…) y los ECG del Apple Watch para sumarlos a tu historial.</string>
 	<key>NSHealthUpdateUsageDescription</key>

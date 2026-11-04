@@ -39,9 +39,12 @@ extension AppModel {
                                    icon: "moon.zzz.fill", minutes: asleep, badge: Fmt.hmm(asleep), color: Theme.sleep))
         }
         for w in workouts(for: day) {
+            // A breathing session shows how long it lasted, like the sleeps; everything else its strain.
+            let breathing = Breathwork.activityNames.contains(w.sport)
+            let minutes = Double(w.end - w.start) / 60
             out.append(DayActivity(id: "workout-\(w.start)", kind: .workout(w), start: w.start, end: w.end, title: w.sport,
-                                   icon: SportCatalog.named(w.sport).symbol, minutes: Double(w.end - w.start) / 60,
-                                   badge: Fmt.dec(w.strain), color: Theme.strain))
+                                   icon: SportCatalog.named(w.sport).symbol, minutes: minutes,
+                                   badge: breathing ? Fmt.hmm(minutes) : Fmt.dec(w.strain), color: breathing ? Theme.link : Theme.strain))
         }
         return out.sorted { $0.start < $1.start }
     }
@@ -143,12 +146,18 @@ struct DayActivityRow: View {
 }
 
 struct DayActivityDestination: View {
+    @EnvironmentObject var model: AppModel
     let activity: DayActivity
 
     var body: some View {
         switch activity.kind {
         case .sleep, .nap: SleepDetailView()
-        case .workout(let w): WorkoutDetailView(workout: w)
+        case .workout(let w):
+            if let r = model.breathworkRecord(for: w) {
+                BreathworkResultView(record: r)
+            } else {
+                WorkoutDetailView(workout: w)
+            }
         }
     }
 }
