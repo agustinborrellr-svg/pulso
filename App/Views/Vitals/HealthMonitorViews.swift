@@ -15,7 +15,7 @@ extension VitalReading {
         (v >= 0.05 ? "+" : (v <= -0.05 ? "−" : "")) + format(abs(v))
     }
 
-    var monitorTitle: String { asDeviation ? "Temp. cutánea (dif. con tu media)" : title }
+    var monitorTitle: String { asDeviation ? "Temp. cutánea (dif.)" : title }
 
     var monitorValue: String {
         guard asDeviation, let c = centre else { return value }
@@ -143,14 +143,19 @@ struct VitalPanel: View {
     let close: () -> Void
     let trends: () -> Void
     @State private var shown = false
+    @State private var cardHeight: CGFloat = 0
 
     var body: some View {
         ZStack {
             Color.black.opacity(shown ? 0.6 : 0).ignoresSafeArea().onTapGesture(perform: close)
-            ViewThatFits(in: .vertical) {
-                card
-                ScrollView { card }.scrollIndicators(.hidden)
+            // As tall as its text, scrolling only when that is more than the screen.
+            ScrollView {
+                card.background(GeometryReader { g in Color.clear.preference(key: PanelHeight.self, value: g.size.height) })
             }
+            .scrollIndicators(.hidden)
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(maxHeight: cardHeight > 0 ? cardHeight : .infinity)
+            .onPreferenceChange(PanelHeight.self) { cardHeight = $0 }
             .background(LinearGradient(colors: [Theme.cardHighlight, Theme.card], startPoint: .top, endPoint: .bottom),
                         in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .padding(.horizontal, 22)
@@ -196,7 +201,7 @@ struct VitalPanel: View {
                     }
                 }
             }
-            Text("El monitor de \(reading.short.lowercased()) de Pulso no es un dispositivo médico. Consulta a un profesional de la salud antes de tomar decisiones de tipo médico.")
+            Text("El monitor de \(["hrv", "spo2"].contains(reading.id) ? reading.short : reading.short.lowercased()) de Pulso no es un dispositivo médico. Consulta a un profesional de la salud antes de tomar decisiones de tipo médico.")
                 .font(.caption).foregroundStyle(Theme.secondary)
             Button(action: trends) {
                 Caps("Abrir vista de tendencias", size: 13)
@@ -208,6 +213,11 @@ struct VitalPanel: View {
         }
         .padding(24)
     }
+}
+
+private struct PanelHeight: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 // MARK: - Informe de salud

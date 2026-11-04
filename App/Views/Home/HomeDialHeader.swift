@@ -163,5 +163,6 @@ private struct LabelWidths: PreferenceKey {
 /// Where the top of Inicio's content is, to drive the header.
 struct HomeScrollOffset: PreferenceKey {
     static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+    // Only one view reports it; the others add their 0 instead of overwriting it.
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value += nextValue() }
 }

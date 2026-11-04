@@ -169,7 +169,7 @@ struct DayActivitiesView: View {
                 HStack(alignment: .top) {
                     total("Dormido", Fmt.hmm(slept.isEmpty ? nil : slept.reduce(0) { $0 + $1.minutes }))
                     total("Actividades", "\(active.count)")
-                    total("En movimiento", Fmt.hmm(active.isEmpty ? nil : active.reduce(0) { $0 + $1.minutes }))
+                    total("Activo", Fmt.hmm(active.isEmpty ? nil : active.reduce(0) { $0 + $1.minutes }))
                     total("Esfuerzo", Fmt.dec(day.strain))
                 }
             }
