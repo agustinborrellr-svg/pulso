@@ -287,6 +287,7 @@ final class AppModel: ObservableObject {
             if rawSampleCount == 0, (try? db.hasSamples()) == true { rawSampleCount = 1 }
             refreshSampleCount()
             updateWidget()
+            scheduleStressSummary()
         } catch {
             errorMessage = "No se pudieron leer los datos: \(error)"
         }

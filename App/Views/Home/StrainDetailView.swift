@@ -160,12 +160,42 @@ struct StressMonitorView: View {
                         .frame(height: 170)
                     Text("Un valor por minuto, también andando o durmiendo: cuenta el pulso que el movimiento no explica. En las franjas de entreno la curva es esfuerzo físico. Desliza el dedo para ver cada momento.").font(.caption2).foregroundStyle(Theme.tertiary)
                 }
+                if let split = model.stressSplit(for: day), split.total > 0 {
+                    PCard {
+                        Caps("De dónde vino el estrés alto", size: 11)
+                        Text(AppModel.stressSummaryText(split)).font(.subheadline).foregroundStyle(.white)
+                        GeometryReader { g in
+                            HStack(spacing: 3) {
+                                ForEach(Array([(split.activity, Theme.strain), (split.sleep, Theme.sleep), (split.other, Theme.stressHigh)].enumerated()),
+                                        id: \.offset) { _, part in
+                                    if part.0 > 0 {
+                                        Capsule().fill(part.1)
+                                            .frame(width: max(6, (g.size.width - 6) * CGFloat(part.0) / CGFloat(split.total)))
+                                    }
+                                }
+                            }
+                        }
+                        .frame(height: 8)
+                        HStack(spacing: 12) {
+                            legend("Actividad", Theme.strain)
+                            legend("Sueño", Theme.sleep)
+                            legend("Sin relación", Theme.stressHigh)
+                        }
+                    }
+                }
                 levels(day)
                 SectionHeading(text: "Tendencias")
                 WeeklyTrendCard(metric: .stress)
                 WeeklyTrendCard(metric: .stressHigh)
                 ExplainerCard(title: TrendMetric.stress.explainer.title, text: TrendMetric.stress.explainer.text)
             }
+        }
+    }
+
+    private func legend(_ t: String, _ c: Color) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(c).frame(width: 7, height: 7)
+            Text(t).font(.caption2).foregroundStyle(Theme.secondary)
         }
     }
 

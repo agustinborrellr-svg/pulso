@@ -62,7 +62,7 @@ extension AppModel {
     /// Called with every live beat: every 30 s, reads your stress from the last minute of beats; still and high for
     /// five minutes, the strap taps you and a notification offers a short breathing session.
     func checkStressAlert(at date: Date) {
-        guard stressAlertEnabled, liveWorkout == nil else { return }
+        guard stressAlertEnabled, liveWorkout == nil, !likelyAsleep(date) else { return }
         let s = stressAlertState
         let now = date.timeIntervalSince1970
         startMotionIfNeeded()
@@ -80,6 +80,46 @@ extension AppModel {
         content.body = "¿2 minutos de suspiro fisiológico? Abre Live y la pulsera te marca el ritmo."
         content.sound = .default
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "stress-alert-\(Int(now))", content: content, trigger: nil))
+    }
+
+    /// Inside your usual sleep window (from your recent nights, 23:00–07:30 until there are three), never tap you.
+    func likelyAsleep(_ date: Date) -> Bool {
+        let recent = days.suffix(14)
+        let window = StressSummary.sleepWindow(starts: recent.compactMap(\.sleepStart), ends: recent.compactMap(\.sleepEnd))
+            ?? (23 * 60, 7 * 60 + 30)
+        let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+        return StressSummary.contains(window, clock: (c.hour ?? 0) * 60 + (c.minute ?? 0))
+    }
+
+    /// The day's high-stress minutes split by what was going on.
+    func stressSplit(for day: DaySummary) -> StressSummary.Split? {
+        guard let cs = day.cycleStart, !day.stressMinutes.isEmpty else { return nil }
+        return StressSummary.split(minutes: day.stressMinutes, origin: cs - cs % 60,
+                                   workouts: workouts(for: day).filter { !Breathwork.activityNames.contains($0.sport) }.map { $0.start...$0.end },
+                                   naps: daytimeSleeps(on: day.day).map { $0.start...$0.end })
+    }
+
+    static func stressSummaryText(_ s: StressSummary.Split) -> String {
+        guard s.total > 0 else { return "Hoy no has tenido ratos de estrés alto." }
+        var parts: [String] = []
+        if s.activity > 0 { parts.append("\(Fmt.hm(Double(s.activity))) en entrenos o justo después") }
+        if s.sleep > 0 { parts.append("\(Fmt.hm(Double(s.sleep))) al despertar o alrededor de una siesta") }
+        if s.other > 0 { parts.append("\(Fmt.hm(Double(s.other))) sin relación con tu actividad ni tu sueño") }
+        let list = parts.count > 1 ? parts.dropLast().joined(separator: ", ") + " y " + parts.last! : parts[0]
+        return "Hoy estuviste \(Fmt.hm(Double(s.total))) en estrés alto: \(list)."
+    }
+
+    /// The evening summary at 21:00, refreshed with every analysis so it carries the day's latest numbers.
+    func scheduleStressSummary() {
+        guard stressAlertEnabled, let today = day(currentDayKey), let s = stressSplit(for: today) else { return }
+        var at = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        at.hour = 21
+        guard let fire = Calendar.current.date(from: at), fire > Date() else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "Tu estrés de hoy"
+        content.body = Self.stressSummaryText(s)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: at, repeats: false)
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "stress-summary-\(currentDayKey)", content: content, trigger: trigger))
     }
 
     private func startMotionIfNeeded() {
