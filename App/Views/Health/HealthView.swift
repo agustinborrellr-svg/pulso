@@ -164,7 +164,7 @@ struct HealthView: View {
             .buttonStyle(.plain)
             HStack(alignment: .center, spacing: 12) {
                 HabitRangeBar(item: item, text: format(item, item.longTerm))
-                    .frame(height: 62)
+                    .frame(height: 68)
                 VStack(alignment: .trailing, spacing: 0) {
                     Text(item.counted ? (item.years.map { ($0 > 0 ? "+" : "") + Fmt.dec($0) } ?? "–") : "–")
                         .scaledFont(20, weight: .bold, relativeTo: .body)
@@ -391,7 +391,7 @@ struct HabitRangeBar: View {
                 .scaledFont(12, weight: .bold, relativeTo: .caption1)
                 .monospacedDigit()
                 .padding(.horizontal, 4)
-                .offset(y: 36)
+                .offset(y: 50) // under the last-month marker, so they never overlap
             }
         }
     }

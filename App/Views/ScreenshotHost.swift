@@ -278,7 +278,7 @@ struct ShotAgeBars: View {
                 ForEach(result.items) { item in
                     VStack(alignment: .leading, spacing: 12) {
                         Caps(item.label, size: 12)
-                        HabitRangeBar(item: item, text: item.longTerm.map { Fmt.dec($0) } ?? "–").frame(height: 62)
+                        HabitRangeBar(item: item, text: item.longTerm.map { Fmt.dec($0) } ?? "–").frame(height: 68)
                     }
                     .padding(16)
                     Divider().overlay(Theme.hairline)
