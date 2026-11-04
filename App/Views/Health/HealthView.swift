@@ -164,7 +164,7 @@ struct HealthView: View {
             .buttonStyle(.plain)
             HStack(alignment: .center, spacing: 12) {
                 HabitRangeBar(item: item, text: format(item, item.longTerm))
-                    .frame(height: 54)
+                    .frame(height: 62)
                 VStack(alignment: .trailing, spacing: 0) {
                     Text(item.counted ? (item.years.map { ($0 > 0 ? "+" : "") + Fmt.dec($0) } ?? "–") : "–")
                         .scaledFont(20, weight: .bold, relativeTo: .body)
@@ -382,7 +382,28 @@ struct HabitRangeBar: View {
                     Image(systemName: "arrowtriangle.up").scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary)
                         .position(x: p * w, y: 40)
                 }
+                // What each end of the scale means: the value that adds years (orange) and the one that takes them off (green).
+                HStack {
+                    Text(Self.scale(item, item.poor)).foregroundStyle(color(0))
+                    Spacer()
+                    Text(Self.scale(item, item.optimal)).foregroundStyle(color(1))
+                }
+                .scaledFont(12, weight: .bold, relativeTo: .caption1)
+                .monospacedDigit()
+                .padding(.horizontal, 4)
+                .offset(y: 36)
             }
+        }
+    }
+
+    /// Short label for an end of the scale ("5h", "40 %", "16K", "70").
+    static func scale(_ item: PulsoAge.Item, _ v: Double) -> String {
+        switch item.unit {
+        case "h": return v.truncatingRemainder(dividingBy: 60) == 0 ? "\(Int(v / 60))h" : "\(Fmt.hmm(v))h" // minutes
+        case "%": return "\(Int(v.rounded())) %"
+        case "pasos": return v >= 1000 ? "\(Int((v / 1000).rounded()))K" : "\(Int(v.rounded()))"
+        case "lpm": return "\(Int(v.rounded())) lpm"
+        default: return Fmt.dec(v)
         }
     }
 

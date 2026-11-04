@@ -15,7 +15,7 @@ enum ShotScreen: String, Identifiable {
     case behaviors, cycle, pressure, doubleTap, trendHRV6M, trendsList
     case liveIdle, vitals, vitalDetail, startActivity, intelToday, intelLoad, intelSleep, intelHabits, intelMore
     case breathDetail, breathPrep, breathSession, breathResult
-    case todayScrolled, healthMonitor, panelHRV, panelTemp, panelSpO2, activityPicker, dayActivities, report1, report2, report3, report4
+    case ageBars, todayScrolled, healthMonitor, panelHRV, panelTemp, panelSpO2, activityPicker, dayActivities, report1, report2, report3, report4
 
     var id: String { rawValue }
 
@@ -212,6 +212,7 @@ struct ShotDestination: View {
                 case .device, .deviceAdvanced: DeviceView()
                 case .pairing: PairingFlowView()
                 case .vo2: VO2MaxView()
+                case .ageBars: ShotAgeBars()
                 case .plan: WeeklyPlanView()
                 case .addActivity: AddActivitySheet()
                 case .sleepQuestion:
@@ -263,5 +264,28 @@ struct ShotDestination: View {
             }
         }
         .preferredColorScheme(.dark)
+    }
+}
+
+/// The Pulso Age bars with the ends of each scale, without scrolling down Salud.
+struct ShotAgeBars: View {
+    @EnvironmentObject var model: AppModel
+
+    var body: some View {
+        let result = model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: AppModel.weekStart(model.currentDayKey), workouts: [])
+        ScrollView {
+            PCard(padding: 0, spacing: 0) {
+                ForEach(result.items) { item in
+                    VStack(alignment: .leading, spacing: 12) {
+                        Caps(item.label, size: 12)
+                        HabitRangeBar(item: item, text: item.longTerm.map { Fmt.dec($0) } ?? "–").frame(height: 62)
+                    }
+                    .padding(16)
+                    Divider().overlay(Theme.hairline)
+                }
+            }
+            .padding(16)
+        }
+        .background(PulsoBackground())
     }
 }
