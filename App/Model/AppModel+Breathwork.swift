@@ -94,7 +94,7 @@ extension AppModel {
     /// The day's high-stress minutes split by what was going on.
     func stressSplit(for day: DaySummary) -> StressSummary.Split? {
         guard let cs = day.cycleStart, !day.stressMinutes.isEmpty else { return nil }
-        return StressSummary.split(minutes: day.stressMinutes, origin: cs - cs % 60,
+        return StressSummary.split(minutes: day.stressMinutes, origin: day.stressOrigin ?? cs - cs % 60, wake: cs,
                                    workouts: workouts(for: day).filter { !Breathwork.activityNames.contains($0.sport) }.map { $0.start...$0.end },
                                    naps: daytimeSleeps(on: day.day).map { $0.start...$0.end })
     }

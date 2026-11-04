@@ -14,8 +14,9 @@ public enum StressSummary {
         public var other = 0
     }
 
-    /// `minutes`: stress of each minute from `origin` (the cycle's first minute, at waking up).
-    public static func split(minutes: [Double?], origin: Int, workouts: [ClosedRange<Int>], naps: [ClosedRange<Int>],
+    /// `minutes`: stress of each minute from `origin`.
+    /// `wake`: when you got up (`origin` when nil); minutes before it, the night, count as sleep.
+    public static func split(minutes: [Double?], origin: Int, wake: Int? = nil, workouts: [ClosedRange<Int>], naps: [ClosedRange<Int>],
                              threshold: Double = StressAlert.threshold) -> Split {
         var out = Split()
         for (i, v) in minutes.enumerated() {
@@ -24,7 +25,7 @@ public enum StressSummary {
             out.total += 1
             if workouts.contains(where: { ts >= $0.lowerBound && ts <= $0.upperBound + afterActivity }) {
                 out.activity += 1
-            } else if ts - origin < afterWaking || naps.contains(where: { ts >= $0.lowerBound - aroundNap && ts <= $0.upperBound + aroundNap }) {
+            } else if ts - (wake ?? origin) < afterWaking || naps.contains(where: { ts >= $0.lowerBound - aroundNap && ts <= $0.upperBound + aroundNap }) {
                 out.sleep += 1
             } else {
                 out.other += 1

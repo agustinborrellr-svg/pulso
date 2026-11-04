@@ -431,7 +431,7 @@ extension AppModel {
         for d in days {
             guard let cs = d.cycleStart, cs <= end, (d.cycleEnd ?? Int.max) >= start else { continue }
             if !d.stressMinutes.isEmpty {
-                let origin = cs - cs % 60
+                let origin = d.stressOrigin ?? cs - cs % 60
                 for (i, v) in d.stressMinutes.enumerated() {
                     let ts = origin + i * 60
                     if let v, ts >= start, ts <= end { out.append((ts, v)) }
@@ -467,8 +467,11 @@ extension DaySummary {
     /// analysed before stress was kept per minute).
     var stressPoints: [(x: Int, v: Double)] {
         if !stressMinutes.isEmpty, let start = cycleStart {
-            let offset = Calendar.current.component(.minute, from: Date(timeIntervalSince1970: TimeInterval(start)))
-            return stressMinutes.enumerated().compactMap { i, v in v.map { (offset + i, $0) } }
+            let offset = ((stressOrigin ?? start - start % 60) - (start - start % 3600)) / 60
+            return stressMinutes.enumerated().compactMap { i, v in
+                guard let v, offset + i >= 0 else { return nil }
+                return (offset + i, v)
+            }
         }
         return (0..<24).compactMap { k in
             let h = (cycleStartHour + k) % 24

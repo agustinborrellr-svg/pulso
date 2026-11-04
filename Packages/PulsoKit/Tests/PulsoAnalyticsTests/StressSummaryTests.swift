@@ -17,6 +17,15 @@ final class StressSummaryTests: XCTestCase {
         XCTAssertEqual(s.other, 12)
     }
 
+    func testNightBeforeWakingCountsAsSleep() {
+        var m = [Double?](repeating: 0.5, count: 900)
+        for i in 100..<110 { m[i] = 2.3 }    // asleep (bed at 0, up at 480)
+        for i in 700..<705 { m[i] = 2.3 }    // afternoon, nothing going on
+        let s = StressSummary.split(minutes: m, origin: 0, wake: 480 * 60, workouts: [], naps: [])
+        XCTAssertEqual(s.sleep, 10)
+        XCTAssertEqual(s.other, 5)
+    }
+
     func testUsualSleepWindowAcrossMidnight() {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(identifier: "UTC")!

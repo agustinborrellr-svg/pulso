@@ -360,8 +360,11 @@ public struct DaySummary: Codable, Equatable, Identifiable, Sendable {
     public var stressAvg: Double?
     public var stressHighMinutes: Double?
     public var stressHourly: [Double?] = []
-    /// Stress of each minute from the minute the cycle started (nil while moving, asleep or not scored).
+    /// Stress of each minute from `stressOrigin` (nil where the strap was off).
     public var stressMinutes: [Double?] = []
+    /// Minute `stressMinutes` starts at: going to bed the night before, so the night between two cycles has its
+    /// stress too. Nil on days analysed before: the minute the cycle started.
+    public var stressOrigin: Int?
     /// Calm daytime reference of this day (used to build the stress baseline).
     public var calmHR: Double?
     public var calmHRV: Double?

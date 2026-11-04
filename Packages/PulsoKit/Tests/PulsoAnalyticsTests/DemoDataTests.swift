@@ -29,6 +29,16 @@ final class DemoDataTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(a.level, .watch, "signals: \(a.signals.map { $0.key })")
         }
         XCTAssertFalse(try db.allJournal().isEmpty)
+        // Stress runs through the night before the cycle (from going to bed), and asleep it reads low.
+        if let d = days.last(where: { $0.sleepStart != nil && !$0.stressMinutes.isEmpty }), let bed = d.sleepStart, let up = d.cycleStart,
+           let origin = d.stressOrigin {
+            XCTAssertEqual(origin, bed - bed % 60)
+            let night = d.stressMinutes.prefix((up - origin) / 60).compactMap { $0 }
+            XCTAssertGreaterThan(night.count, (up - origin) / 60 / 2)
+            XCTAssertLessThan(Stats.mean(night) ?? 3, 1)
+        } else {
+            XCTFail("no day with a night and stress minutes")
+        }
         // Old raw seconds are pruned, recent ones kept.
         let bounds = try db.sampleBounds()!
         XCTAssertGreaterThanOrEqual(bounds.first, Int(now.timeIntervalSince1970) - 4 * 86400)

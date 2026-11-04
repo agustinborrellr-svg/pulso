@@ -125,7 +125,7 @@ struct DayActivityRow: View {
             .foregroundStyle(.white)
             .frame(width: 124, height: 60)
             .background(activity.color.opacity(0.9), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            Caps(activity.title, size: 14).lineLimit(2).minimumScaleFactor(0.8)
+            Caps(activity.title, size: activity.title.count > 14 ? 11 : 14).lineLimit(3).minimumScaleFactor(0.7)
             Spacer(minLength: 6)
             VStack(alignment: .trailing, spacing: 14) {
                 Text(Fmt.time(activity.start))
