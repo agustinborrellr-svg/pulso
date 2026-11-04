@@ -29,7 +29,8 @@ struct HomeWidgetView: View {
     var body: some View {
         switch widget.kind {
         case .hero:
-            PillarHero(day: day)
+            // The dials live in the header at the top of Inicio.
+            EmptyView()
         case .sleep:
             NavigationLink { SleepDetailView() } label: { HomeSleepCard(day: day) }.buttonStyle(.plain)
         case .strainRecovery:
