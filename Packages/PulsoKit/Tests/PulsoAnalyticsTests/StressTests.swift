@@ -30,18 +30,48 @@ final class StressTests: XCTestCase {
         XCTAssertLessThan(scores[50], 1.5, "and it comes back down afterwards")
     }
 
-    func testOneReadingPerMinuteStampedWithItsMiddleMinute() {
-        let from = 6000
-        let samples = (0..<1800).map { s in
-            Sample(ts: from + s, hr: 60, rr: [s % 2 == 0 ? 950 : 1050], dyn: 0.005)
+    /// A day minute by minute: `hr(i)`, `motion(i)` and `steps(i)` per minute, beats at that pulse with `rr` jitter.
+    private func minutes(_ count: Int, hr: (Int) -> Double, motion: (Int) -> Double = { _ in 0.005 },
+                         steps: (Int) -> Int = { _ in 0 }, jitter: Int = 50) -> (samples: [Sample], epochs: [MinuteEpoch]) {
+        var samples: [Sample] = []
+        var counter = 0
+        for m in 0..<count {
+            let beat = Int(60000 / hr(m))
+            counter += steps(m)
+            for s in 0..<60 {
+                samples.append(Sample(ts: m * 60 + s, hr: Int(hr(m).rounded()), rr: [beat + (s % 2 == 0 ? jitter : -jitter)],
+                                      dyn: motion(m), steps: counter))
+            }
         }
-        let epochs = Epochs.minutes(samples, from: from, to: from + 1800)
-        let w = Stress.minuteWindows(samples: samples, epochs: epochs, from: from, to: from + 1800, excluding: [],
-                                     stillThreshold: 0.02)
-        XCTAssertEqual(w.count, 26, "a 5-minute window ending at each minute from the fifth to the thirtieth")
-        XCTAssertEqual(w.first?.ts, from + 120)
-        XCTAssertEqual(Set(zip(w, w.dropFirst()).map { $1.ts - $0.ts }), [60])
-        XCTAssertNotNil(w.first?.rmssd)
+        return (samples, Epochs.minutes(samples, from: 0, to: count * 60))
+    }
+
+    func testEveryWornMinuteGetsAReading() {
+        let d = minutes(60, hr: { _ in 62 }, motion: { $0 % 10 < 5 ? 0.005 : 0.15 }, steps: { $0 % 10 < 5 ? 0 : 90 })
+        let w = Stress.everyMinute(samples: d.samples, epochs: d.epochs, calmHR: 62, calmHRV: 70, stillThreshold: 0.02, workouts: [])
+        XCTAssertEqual(w.count, 60, "moving or not")
+    }
+
+    func testAnOrdinaryWalkIsNotStress() {
+        // Still at 62, walking at 88 every afternoon minute: the walk explains the pulse.
+        let d = minutes(120, hr: { $0 < 60 ? 62 : 88 }, motion: { $0 < 60 ? 0.005 : 0.15 }, steps: { $0 < 60 ? 0 : 100 })
+        let w = Stress.everyMinute(samples: d.samples, epochs: d.epochs, calmHR: 62, calmHRV: 70, stillThreshold: 0.02, workouts: [])
+        XCTAssertLessThan(w[90].score, 1)
+    }
+
+    func testARacingPulseWhileSittingIsStress() {
+        let d = minutes(60, hr: { (30..<40).contains($0) ? 82 : 62 }, jitter: 50)
+        let w = Stress.everyMinute(samples: d.samples, epochs: d.epochs, calmHR: 62, calmHRV: 70, stillThreshold: 0.02, workouts: [])
+        XCTAssertGreaterThan(w[35].score, 2)
+        XCTAssertLessThan(w[10].score, 1)
+    }
+
+    func testSleepReadsLowAndAWorkoutReadsAsEffort() {
+        let d = minutes(120, hr: { $0 < 60 ? 50 : 140 }, motion: { $0 < 60 ? 0.003 : 0.3 }, jitter: 60)
+        let w = Stress.everyMinute(samples: d.samples, epochs: d.epochs, calmHR: 62, calmHRV: 70, stillThreshold: 0.02,
+                                   workouts: [3600...7200])
+        XCTAssertLessThan(w[30].score, 0.5, "asleep: pulse under calm, HRV high")
+        XCTAssertGreaterThan(w[90].score, 2.5, "a logged workout is not discounted")
     }
 }
 

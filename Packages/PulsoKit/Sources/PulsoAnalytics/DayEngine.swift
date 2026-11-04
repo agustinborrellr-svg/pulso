@@ -419,9 +419,8 @@ public final class DayEngine {
                 d.stressHourly = hourly.map { Stats.mean($0) }
                 let origin = cycleStart - cycleStart % 60
                 var minutes = [Double?](repeating: nil, count: max(0, (d.cycleEnd! - origin) / 60))
-                let windows = Stress.minuteWindows(samples: samples, epochs: cycleEpochs, from: cycleStart, to: d.cycleEnd!,
-                                                   excluding: excluding, stillThreshold: stillThr)
-                for w in Stress.score(windows, calmHR: refHR, calmHRV: Stats.median(calmHRVs)) {
+                for w in Stress.everyMinute(samples: samples, epochs: cycleEpochs, calmHR: refHR, calmHRV: Stats.median(calmHRVs),
+                                            stillThreshold: stillThr, workouts: workouts.map { $0.start...$0.end }) {
                     let i = (w.ts - origin) / 60
                     if i >= 0 && i < minutes.count { minutes[i] = (w.score * 100).rounded() / 100 }
                 }

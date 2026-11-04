@@ -22,6 +22,9 @@ final class RealDataReplayTests: XCTestCase {
                   + "need \(f(d.sleepNeedMinutes)) debt \(f(d.sleepDebtMinutes)) perf \(f(d.sleepPerformance.map { $0 * 100 })) "
                   + "consistency \(f(d.sleepConsistency)) eff \(f(d.sleepEfficiency.map { $0 * 100 }))")
             print("STRESS \(d.stressHourly.enumerated().compactMap { i, v in v.map { "\(i)h:\(String(format: "%.2f", $0))" } }.joined(separator: " "))")
+            let sm = d.stressMinutes.compactMap { $0 }
+            print("STRESSMIN \(d.day) minutes \(sm.count)/\(d.stressMinutes.count) mean \(f(Stats.mean(sm))) high \(sm.filter { $0 >= 2 }.count) "
+                  + (0..<24).map { h in f(Stats.mean(d.stressMinutes.dropFirst(h * 60).prefix(60).compactMap { $0 })) }.joined(separator: " "))
         }
         for s in try db.sleeps(from: bounds.first - 86400, to: bounds.last + 86400) {
             print("SLEEP \(t(s.start))–\(t(s.end)) nap=\(s.isNap) manual=\(s.manual) asleep=\(Int(s.asleepMinutes)) confirmed=\(s.kindConfirmed)")

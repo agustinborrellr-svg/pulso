@@ -340,10 +340,12 @@ struct StressPreviewCard: View {
 
 /// Stress minute by minute as a line over a soft fill, both coloured by level (green low, yellow medium, orange
 /// high). Runs from the hour the cycle started (waking up), so the hours after midnight come last instead of on the
-/// left. Stretches without a reading (moving, workouts, naps) leave a gap instead of a made-up line.
+/// left. Workouts are shaded (there the curve is physical effort); a stretch with the strap off leaves a gap.
 struct StressLine: View {
     let day: DaySummary
     var compact = false
+    /// Workouts of the day (timestamps), shaded behind the curve.
+    var workouts: [ClosedRange<Int>] = []
     /// Minutes since the hour the cycle started, under the finger.
     var selected: Binding<Int?> = .constant(nil)
 
@@ -390,7 +392,16 @@ struct StressLine: View {
                                   startPoint: .bottom, endPoint: .top)
         // A tick every 5 minutes while scrubbing, not one per minute.
         let scrub = Binding<Int?>(get: { selected.wrappedValue }, set: { selected.wrappedValue = $0.map { $0 / 5 * 5 } })
+        let bands = workouts.compactMap { w in day.stressX(w.lowerBound).flatMap { a in day.stressX(w.upperBound).map { a...$0 } } }
         Chart {
+            ForEach(Array(bands.enumerated()), id: \.offset) { _, b in
+                RectangleMark(xStart: .value("Inicio", b.lowerBound), xEnd: .value("Fin", b.upperBound),
+                              yStart: .value("Base", 0.0), yEnd: .value("Tope", 3.0))
+                    .foregroundStyle(Color.white.opacity(0.08))
+                    .annotation(position: .overlay, alignment: .top) {
+                        if !compact { Caps("Entreno", size: 9, color: Theme.secondary, weight: .semibold) }
+                    }
+            }
             ForEach(pts) { p in
                 AreaMark(x: .value("Minuto", p.x), yStart: .value("Base", 0), yEnd: .value("Estrés", p.v),
                          series: .value("Tramo", p.run))
@@ -453,6 +464,13 @@ extension DaySummary {
             guard h < stressHourly.count, let v = stressHourly[h] else { return nil }
             return (k * 60 + 30, v)
         }
+    }
+
+    /// Chart position (minutes since the hour the cycle started) of a timestamp.
+    func stressX(_ ts: Int) -> Int? {
+        guard let start = cycleStart else { return nil }
+        let offset = Calendar.current.component(.minute, from: Date(timeIntervalSince1970: TimeInterval(start)))
+        return offset + (ts - (start - start % 60)) / 60
     }
 
     /// Clock time ("14:05") of a stress point.

@@ -154,9 +154,9 @@ struct StressMonitorView: View {
             if let day = model.selected {
                 gauge(day)
                 PCard {
-                    StressLine(day: day, selected: $minute)
+                    StressLine(day: day, workouts: model.workouts(for: day).map { $0.start...$0.end }, selected: $minute)
                         .frame(height: 220)
-                    Text("Desliza el dedo por la gráfica para ver cada momento.").font(.caption2).foregroundStyle(Theme.tertiary)
+                    Text("Un valor por minuto, también andando o durmiendo: cuenta el pulso que el movimiento no explica. En las franjas de entreno la curva es esfuerzo físico. Desliza el dedo para ver cada momento.").font(.caption2).foregroundStyle(Theme.tertiary)
                 }
                 levels(day)
                 SectionHeading(text: "Tendencias")
