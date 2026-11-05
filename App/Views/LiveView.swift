@@ -23,9 +23,8 @@ struct LiveView: View {
                 VStack(spacing: 16) {
                     LiveRunBanner()
                     if model.liveWorkout != nil {
-                        // Only while an activity runs: the live line, the minis and the workout itself.
+                        // Only while an activity runs: the live line and the workout itself.
                         LiveHeroMonitor(fullBleed: true)
-                        liveStats
                         workoutCard
                     } else {
                         // Your state now, then what to do with it.
@@ -214,24 +213,25 @@ struct LiveView: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// The activity in progress, kept plain: the clock, four numbers, the session's pulse as one line, and the controls.
+    /// Colour only where it means something (the target band and the stop button).
     private var workoutCard: some View {
-        Card {
+        PCard(spacing: 16) {
             if let w = model.liveWorkout {
-                HStack {
-                    SectionTitle(title: w.sport)
-                    Spacer()
-                    TimelineView(.periodic(from: w.start, by: 1)) { ctx in
-                        Text(Self.duration(ctx.date.timeIntervalSince(w.start)))
-                            .font(.title3.monospacedDigit().bold())
-                            .foregroundStyle(.white)
-                    }
+                Caps(w.sport, size: 12, color: Theme.secondary)
+                TimelineView(.periodic(from: w.start, by: 1)) { ctx in
+                    Text(Self.duration(ctx.date.timeIntervalSince(w.start)))
+                        .scaledFont(48, weight: .bold, design: .rounded, relativeTo: .largeTitle).monospacedDigit()
+                        .foregroundStyle(.white)
+                        .contentTransition(.numericText())
                 }
                 if let st = model.intervalStatus {
                     VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(st.step).font(.headline).foregroundStyle(Theme.yellow)
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(st.step).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
                             Spacer()
-                            Text(Self.duration(TimeInterval(st.remaining))).font(.title2.bold().monospacedDigit()).foregroundStyle(.white)
+                            Text(Self.duration(TimeInterval(st.remaining))).font(.title3.bold().monospacedDigit()).foregroundStyle(.white)
+                                .contentTransition(.numericText())
                         }
                         if let next = st.next {
                             Text("Después: \(next)").font(.caption).foregroundStyle(Theme.secondary)
@@ -240,15 +240,16 @@ struct LiveView: View {
                     .padding(12)
                     .background(Theme.cardHighlight, in: RoundedRectangle(cornerRadius: 12))
                 }
-                HStack {
-                    liveStat("Esfuerzo", Fmt.one(Strain.score(load: w.load)), Theme.strain)
-                    liveStat("kcal", Fmt.int(w.kcal), Theme.stress)
-                    liveStat("FC media", w.hrCount > 0 ? "\(Int(w.hrSum / Double(w.hrCount)))" : "–", Theme.red)
-                    liveStat("FC máx", w.maxHR > 0 ? "\(w.maxHR)" : "–", Theme.red)
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], alignment: .leading, spacing: 14) {
+                    liveStat("Esfuerzo", Fmt.one(Strain.score(load: w.load)))
+                    liveStat("Calorías", Fmt.int(w.kcal), "kcal")
+                    liveStat("FC media", w.hrCount > 0 ? "\(Int(w.hrSum / Double(w.hrCount)))" : "–", "lpm")
+                    liveStat("FC máxima", w.maxHR > 0 ? "\(w.maxHR)" : "–", "lpm")
                 }
                 let m = model.heartRateModel
-                ZoneBandsChart(model: m, points: model.livePoints.filter { $0.date >= w.start.addingTimeInterval(-5) }, target: w.targetZone)
-                    .frame(height: 150)
+                SessionPulseChart(points: model.livePoints.filter { $0.date >= w.start.addingTimeInterval(-5) },
+                                  target: w.targetZone.map { z in m.zoneFloor(z)...(z >= 5 ? m.maxHR : m.zoneFloor(z + 1)) })
+                    .frame(height: 130)
                 Picker("Zona objetivo", selection: Binding(get: { w.targetZone ?? 0 }, set: { model.setTargetZone($0 == 0 ? nil : $0) })) {
                     Text("Sin zona objetivo").tag(0)
                     ForEach(1...5, id: \.self) { z in
@@ -262,33 +263,34 @@ struct LiveView: View {
                         .font(.caption).foregroundStyle(Theme.secondary)
                 }
                 if !w.lapStats.isEmpty {
-                    VStack(spacing: 6) {
+                    VStack(spacing: 8) {
                         ForEach(Array(w.lapStats.enumerated()), id: \.offset) { i, lap in
                             HStack {
                                 Text("Vuelta \(i + 1)").font(.subheadline.weight(.semibold)).foregroundStyle(.white)
                                 Spacer()
-                                Text(Self.duration(lap.duration)).font(.subheadline.monospacedDigit()).foregroundStyle(Theme.secondary)
-                                Text("media \(Fmt.int(lap.avgHR))").font(.subheadline.monospacedDigit()).foregroundStyle(Theme.red)
-                                Text("máx \(Fmt.int(lap.maxHR))").font(.caption.monospacedDigit()).foregroundStyle(Theme.secondary)
+                                Text(Self.duration(lap.duration)).font(.subheadline.monospacedDigit()).foregroundStyle(.white)
+                                Text("\(Fmt.int(lap.avgHR)) lpm").font(.subheadline.monospacedDigit()).foregroundStyle(Theme.secondary)
+                                    .frame(width: 70, alignment: .trailing)
                             }
                         }
                     }
-                    .padding(10)
-                    .background(Theme.cardHighlight, in: RoundedRectangle(cornerRadius: 10))
                 }
-                Button {
-                    model.markLap()
-                } label: {
-                    Label("Vuelta", systemImage: "flag.checkered").frame(maxWidth: .infinity)
+                HStack(spacing: 10) {
+                    Button {
+                        model.markLap()
+                    } label: {
+                        Label("Vuelta", systemImage: "flag.checkered").frame(maxWidth: .infinity).padding(.vertical, 6)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.white)
+                    Button(role: .destructive) {
+                        confirmStop = true
+                    } label: {
+                        Label("Terminar", systemImage: "stop.fill").frame(maxWidth: .infinity).padding(.vertical, 6)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Theme.red)
                 }
-                .buttonStyle(.bordered)
-                Button(role: .destructive) {
-                    confirmStop = true
-                } label: {
-                    Label("Terminar", systemImage: "stop.fill").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.red)
                 .confirmationDialog("¿Terminar entreno?", isPresented: $confirmStop) {
                     Button("Guardar") { model.stopWorkout(save: true) }
                     Button("Descartar", role: .destructive) { model.stopWorkout(save: false) }
@@ -297,12 +299,17 @@ struct LiveView: View {
         }
     }
 
-    private func liveStat(_ k: String, _ v: String, _ c: Color) -> some View {
-        VStack(spacing: 2) {
-            Text(v).font(.title3.bold().monospacedDigit()).foregroundStyle(c)
-            Text(k).font(.caption2).foregroundStyle(Theme.secondary)
+    private func liveStat(_ k: String, _ v: String, _ unit: String = "") -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(v).scaledFont(28, weight: .bold, design: .rounded, relativeTo: .title1).monospacedDigit().foregroundStyle(.white)
+                    .contentTransition(.numericText())
+                    .animation(.snappy, value: v)
+                if !unit.isEmpty { Text(unit).font(.caption).foregroundStyle(Theme.secondary) }
+            }
+            Caps(k, size: 10, color: Theme.secondary, weight: .semibold)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     static func duration(_ s: TimeInterval) -> String {
@@ -547,5 +554,51 @@ struct WorkoutDetailView: View {
             Text(k).font(.caption2).foregroundStyle(Theme.secondary)
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+/// The session's pulse as a single white line on a soft fill; the target zone, when set, as a faint band.
+/// Live points are kept for the last 10 minutes, so a longer session shows its latest stretch.
+struct SessionPulseChart: View {
+    let points: [LivePoint]
+    let target: ClosedRange<Double>?
+
+    var body: some View {
+        let values = points.map { Double($0.hr) }
+        let lo = min(values.min() ?? 60, target?.lowerBound ?? .infinity) - 5
+        let hi = max(values.max() ?? 120, target?.upperBound ?? 0) + 5
+        let trimmed = points.first.map { Date().timeIntervalSince($0.date) > 590 } == true
+        VStack(alignment: .leading, spacing: 6) {
+            Caps(trimmed ? "Pulso · últimos 10 min" : "Pulso de la sesión", size: 10, color: Theme.secondary, weight: .semibold)
+            if points.count >= 2 {
+                Chart {
+                    if let t = target, let a = points.first?.date, let b = points.last?.date {
+                        RectangleMark(xStart: .value("Inicio", a), xEnd: .value("Fin", b),
+                                      yStart: .value("Zona", t.lowerBound), yEnd: .value("Zona", t.upperBound))
+                            .foregroundStyle(Color.white.opacity(0.08))
+                    }
+                    ForEach(points) { p in
+                        AreaMark(x: .value("Hora", p.date), yStart: .value("Base", lo), yEnd: .value("Pulso", p.hr))
+                            .foregroundStyle(LinearGradient(colors: [Color.white.opacity(0.16), .clear], startPoint: .top, endPoint: .bottom))
+                            .interpolationMethod(.monotone)
+                        LineMark(x: .value("Hora", p.date), y: .value("Pulso", p.hr))
+                            .foregroundStyle(.white)
+                            .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
+                            .interpolationMethod(.monotone)
+                    }
+                }
+                .chartYScale(domain: lo...hi)
+                .chartXAxis(.hidden)
+                .chartYAxis {
+                    AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { v in
+                        AxisGridLine().foregroundStyle(Theme.hairline)
+                        AxisValueLabel { Text("\(v.as(Int.self) ?? 0)").scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary) }
+                    }
+                }
+            } else {
+                Text("Esperando latidos…").font(.caption).foregroundStyle(Theme.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
     }
 }
