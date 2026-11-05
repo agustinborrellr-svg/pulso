@@ -93,6 +93,7 @@ final class AppModel: ObservableObject {
     /// Human-readable state of tonight's alarm ("Vigilando sueño ligero…", "Sonando", …).
     @Published var alarmStatus: String?
     @Published var alarmRinging = false
+    @Published var wakeCallTest: WakeCallTest?
     @Published var intervalStatus: (step: String, remaining: Int, next: String?)?
     @Published var broadcastStatus = "Apagado"
     @Published var ecgRecordings: [ECGRecording] = []
@@ -111,7 +112,6 @@ final class AppModel: ObservableObject {
     let strava = StravaService()
     let broadcaster = HRBroadcaster()
     let alarmBackup = AlarmBackup()
-    let nightKeepAlive = NightKeepAlive()
     let voice = VoiceCoach()
     let analysisQueue = DispatchQueue(label: "pulso.analysis", qos: .utility)
     lazy var engine = DayEngine(db: db)
@@ -159,6 +159,7 @@ final class AppModel: ObservableObject {
         startTicker()
         autoBackupIfDue()
         NotificationService.shared.setup()
+        watchForTermination()
         NotificationService.shared.onAction = { [weak self] action, category, id in
             self?.handleNotificationAction(action, category: category, id: id)
         }
@@ -465,8 +466,10 @@ final class AppModel: ObservableObject {
     private func applyLive() {
         let clients = UIApplication.shared.applicationState == .background ? liveClients.subtracting(Self.screenOnlyLiveClients) : liveClients
         let wanted = !clients.isEmpty || liveWorkout != nil || settings.hrBroadcast
+        // The alarm re-checks every second: only a change reaches the strap (it re-sends the wish on every new link).
+        guard wanted != liveStreamOn else { return }
         strap.setLive(wanted)
-        if wanted != liveStreamOn, let b = battery, charging != true { logBattery(b, live: wanted) }
+        if let b = battery, charging != true { logBattery(b, live: wanted) }
         liveStreamOn = wanted
         if !wanted {
             liveHR = nil
@@ -492,7 +495,6 @@ final class AppModel: ObservableObject {
 
     func appEnteredBackground() {
         refreshAlarmSchedule()
-        updateNightGuard()
         applyLive()
         updateWidget()
     }
@@ -728,7 +730,6 @@ extension AppModel: StrapManagerDelegate {
                 // The strap's own alarm is one-shot: re-arm it on every new session, once the clock
                 // has been set (a few seconds after "ready").
                 DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in self?.armStrapAlarm() }
-                self.updateNightGuard()
             }
         }
     }
@@ -766,8 +767,11 @@ extension AppModel: StrapManagerDelegate {
             case .doubleTap:
                 self.appendLog("Doble toque en la pulsera")
                 self.handleDoubleTap()
+            case .alarmSet:
+                self.wakeCallTestEvent(executed: false)
             case .strapAlarmExecuted:
-                self.appendLog("La pulsera ha hecho sonar su alarma")
+                self.appendLog("La pulsera ha hecho sonar su alarma (despierta a Pulso)")
+                self.wakeCallTestEvent(executed: true)
             default: break
             }
             self.tick()

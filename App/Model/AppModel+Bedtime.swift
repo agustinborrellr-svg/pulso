@@ -7,7 +7,6 @@ extension AppModel {
     func goToSleep() {
         try? db.insertEvent(StoredEvent(ts: Int(Date().timeIntervalSince1970), kind: EventKind.bedtime, value: nil))
         refreshAlarmSchedule()
-        updateNightGuard()
         strap.sync(force: true)
         if let next = nextAlarm {
             NotificationService.shared.now("Buenas noches", "Alarma \(next.isSmart ? "entre las \(Fmt.clock(next.earliest)) y las \(Fmt.clock(next.latest))" : "a las \(Fmt.clock(next.latest))").",

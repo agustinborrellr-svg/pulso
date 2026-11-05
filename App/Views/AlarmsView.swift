@@ -48,6 +48,7 @@ struct AlarmsView: View {
             } footer: {
                 Text("La pulsera vibra primero. Si no te despiertas, suena el iPhone\(model.alarmBackup.usesSystemAlarm ? " como una alarma del sistema, aunque esté en silencio" : " con avisos repetidos"). Doble toque en la pulsera para posponer o apagar.")
             }
+            WakeCallTestSection()
             Section {
                 NavigationLink {
                     SmartAlarmHelp()
@@ -269,7 +270,7 @@ struct AlarmEditor: View {
     private var modeFooter: String {
         switch alarm.mode {
         case .fixed:
-            return "Vibra exactamente a la hora elegida. Para que la pulsera vibre con el iPhone bloqueado, deja Pulso abierta en segundo plano al acostarte: mantiene la conexión durante la noche."
+            return "Vibra exactamente a la hora elegida. Funciona con el iPhone bloqueado si dejas Pulso en segundo plano (sin cerrarla): un minuto antes, la pulsera despierta a la app."
         case .smart:
             return "Durante los \(alarm.windowMinutes) min antes de la hora, Pulso mira tu sueño y vibra cuando estés en sueño ligero. Te despiertas más despejado."
         case .sleepGoal:
@@ -284,8 +285,8 @@ struct SmartAlarmHelp: View {
             Group {
             Section {
                 Text("Durante la ventana de despertar, Pulso descarga cada par de minutos lo último que ha medido la pulsera (movimiento, pulso, su propio estado de sueño) y busca señales de sueño ligero: te mueves, el pulso sube sobre el mínimo de la noche o el ritmo se vuelve irregular, como en el sueño REM.")
-                Text("Si no encuentra un buen momento, vibra igualmente a la hora final. La pulsera tiene además su propia alarma programada a esa hora, por si el iPhone está lejos.")
-                Text("Para que funcione con la pantalla bloqueada, Pulso sigue abierta durante la noche sin pedirle nada a la pulsera. Ninguna alarma lee tu pulso en directo, que es lo que más batería le gasta a la pulsera.")
+                Text("Si no encuentra un buen momento, vibra igualmente a la hora final. Si algo falla, suena el iPhone de respaldo.")
+                Text("Con el iPhone bloqueado, iOS duerme a Pulso. Un minuto antes de la ventana, la pulsera hace saltar una alarma propia sin vibración que la despierta; desde ahí lee tu pulso en directo solo durante la ventana y mientras suena. El resto de la noche no le pide nada a la pulsera.")
             }
             Section("Consejos") {
                 Text("Deja el iPhone cerca de la cama con Bluetooth activado y Pulso abierta en segundo plano (no la cierres deslizando).")
@@ -298,5 +299,44 @@ struct SmartAlarmHelp: View {
         .pulsoList()
         .font(.subheadline)
         .pulsoTitle("Alarma inteligente")
+    }
+}
+
+/// The strap's silent alarm wakes Pulso before each alarm; this checks, once, that the 5.0 really does it.
+struct WakeCallTestSection: View {
+    @EnvironmentObject var model: AppModel
+
+    var body: some View {
+        Section {
+            switch model.wakeCallTest {
+            case nil:
+                Button {
+                    model.startWakeCallTest()
+                } label: {
+                    Label(model.wakeCallVerified ? "Volver a probar" : "Probar ahora (1 min)", systemImage: "bell.badge")
+                }
+            case .armed(let at), .confirmed(let at):
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Bloquea el iPhone y espera", systemImage: "lock")
+                        .font(.subheadline.weight(.semibold))
+                    Text(model.wakeCallTest == .confirmed(at)
+                         ? "La pulsera ha aceptado la alarma. Salta a las \(Fmt.time(Int(at.timeIntervalSince1970)))."
+                         : "Enviando la alarma a la pulsera para las \(Fmt.time(Int(at.timeIntervalSince1970)))…")
+                        .font(.caption).foregroundStyle(Theme.secondary)
+                }
+            case .worked:
+                Label("Funciona: la pulsera ha despertado a Pulso", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(Theme.green)
+                Button("Volver a probar") { model.wakeCallTest = nil }
+            case .failed(let why):
+                Label(why, systemImage: "xmark.circle.fill")
+                    .foregroundStyle(Theme.red)
+                Button("Volver a probar") { model.wakeCallTest = nil }
+            }
+        } header: {
+            Text("Despertador de la pulsera")
+        } footer: {
+            Text("Antes de cada alarma, la pulsera hace saltar una alarma propia sin vibración que despierta a Pulso aunque el iPhone esté bloqueado. Así Pulso solo lee tu pulso en directo durante la ventana y mientras suena. Para probarlo: pulsa, bloquea el iPhone y espera un minuto. Si funciona, te llega una notificación. Fíjate también en si la pulsera vibra: no debería.")
+        }
     }
 }

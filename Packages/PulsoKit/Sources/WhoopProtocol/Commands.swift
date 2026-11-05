@@ -128,7 +128,10 @@ public final class CommandBuilder {
     /// 0 and comes from the 4-byte padding). Experimental on 5.0 firmware.
     /// `[0]=4 [1]=id(1…6) [2..6]=u32 epoch s [6..8]=u16 subsec [8..16]=effects [16..18]=0 [18]=repeats(<8) [19]=duration s`
     /// With repeats = 7 the firmware requires a duration of 30–120 s. The time must be strictly in the future.
-    public func setAlarm(at date: Date, id: UInt8 = 1) -> (seq: UInt8, bytes: [UInt8])? {
+    /// `silent`: no waveforms, no repeats, no duration. Pulso uses it as a wake-up call: when the strap runs its
+    /// alarm it sends STRAP_ALARM_EXECUTED, and that Bluetooth event wakes the suspended app (unconfirmed on 5.0
+    /// firmware whether it accepts an alarm without effects; the Alarmas screen has a test).
+    public func setAlarm(at date: Date, id: UInt8 = 1, silent: Bool = false) -> (seq: UInt8, bytes: [UInt8])? {
         let ms = UInt64(max(0, date.timeIntervalSince1970 * 1000))
         var body = [UInt8](repeating: 0, count: 20)
         body[0] = 4
@@ -137,9 +140,11 @@ public final class CommandBuilder {
         body[2] = s[0]; body[3] = s[1]; body[4] = s[2]; body[5] = s[3]
         let sub = LE.bytes(UInt16(((ms % 1000) * 32768) / 1000))
         body[6] = sub[0]; body[7] = sub[1]
-        body[8] = 47; body[9] = 152
-        body[18] = 7
-        body[19] = 30
+        if !silent {
+            body[8] = 47; body[9] = 152
+            body[18] = 7
+            body[19] = 30
+        }
         return frame(Opcode.setAlarmTime, body)
     }
 

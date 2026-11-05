@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import UIKit
 import PulsoStore
 import PulsoAnalytics
 import PulsoFeatures
@@ -80,7 +81,7 @@ extension AppModel {
             }
             strap.setAlarm(nil)
             updateAlarmStatus()
-            updateNightGuard()
+            updateAlarmStream()
             return
         }
         if wakeSession?.planned != next {
@@ -93,7 +94,7 @@ extension AppModel {
         // A backup about to ring belongs to an alarm nobody answered: leave it alone.
         if let st = stored, st != backupAt, st > Date(), st.timeIntervalSinceNow < 20 * 60 {
             updateAlarmStatus()
-            updateNightGuard()
+            updateAlarmStream()
             return
         }
         if next.alarm.phoneBackup {
@@ -107,34 +108,41 @@ extension AppModel {
         }
         armStrapAlarm()
         updateAlarmStatus()
-        updateNightGuard()
+        updateAlarmStream()
     }
 
-    /// The strap's own firmware alarm at the latest time: one more backup that works even if the
-    /// phone is far away (experimental on 5.0 firmware).
+    /// How long before the window (or the set time) the strap's silent alarm wakes the app.
+    static let wakeCallLead: TimeInterval = 60
+
+    /// The alarm needs the app alive when its time comes: the strap can only be told to vibrate by a running app,
+    /// and iOS suspends Pulso soon after the screen locks. Nothing keeps it awake overnight: the strap's own alarm,
+    /// armed silent a minute before the window (or the set time), sends a Bluetooth event that wakes the app.
     func armStrapAlarm() {
-        guard let s = wakeSession, !s.isActive else { return }
-        strap.setAlarm(s.planned.latest)
+        guard let s = wakeSession, s.state == .waiting else { return }
+        let at = s.planned.earliest.addingTimeInterval(-Self.wakeCallLead)
+        guard at > Date() else { return }
+        strap.setAlarm(at, silent: true)
     }
 
-    /// The alarm needs the app alive when its time comes, fixed or smart: the strap can only be told to
-    /// vibrate by a running app. A silent audio track keeps Pulso running without asking the strap for
-    /// anything, and no alarm uses the live stream: the smart window decides from a download every 2.5 min.
-    /// It has to start while the app is still awake (going to the background at bedtime,
-    /// a reconnect), because nothing wakes a suspended app later on, hence the 10 h lead.
-    func updateNightGuard() {
-        guard let s = wakeSession, !(s.state == .finished) else {
-            nightKeepAlive.stop()
-            return
+    /// Once awake, the live stream keeps Pulso running, only from the wake-up call through the window, the
+    /// ringing and the snoozes.
+    func updateAlarmStream() {
+        var on = false
+        if let s = wakeSession {
+            switch s.state {
+            case .monitoring, .ringing, .snoozed: on = true
+            case .waiting: on = Date() >= s.planned.earliest.addingTimeInterval(-Self.wakeCallLead - 60)
+            case .finished: on = false
+            }
         }
-        let untilWindow = s.planned.earliest.timeIntervalSinceNow
-        if untilWindow < 10 * 3600 && untilWindow > -3 * 3600 { nightKeepAlive.start() } else { nightKeepAlive.stop() }
+        setLive(on, client: "alarm")
     }
 
     func alarmTick(now: Date) {
         guard let s = wakeSession else { return }
         let actions = s.tick(now: Int(now.timeIntervalSince1970))
         if !actions.isEmpty { perform(actions, session: s) }
+        updateAlarmStream()
     }
 
     /// After each sync inside the smart window, decide whether to wake now.
@@ -266,6 +274,92 @@ extension AppModel {
             startBreathingGuide()
         case (NotificationService.Category.sleepQuestion, _):
             handleSleepQuestionAction(action, id: id)
+        default:
+            break
+        }
+    }
+}
+
+// MARK: - Closed app
+
+extension AppModel {
+    /// Swiping Pulso away stops everything in the background (iOS never relaunches an app the user closed), so say
+    /// so, above all with an alarm coming. iOS only tells an app that is running at that moment (alarm night, live
+    /// stream, a download), not one already suspended.
+    func watchForTermination() {
+        NotificationCenter.default.addObserver(forName: UIApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.notifyClosed() }
+        }
+    }
+
+    private func notifyClosed() {
+        guard !AppMode.screenshots else { return }
+        let alarmSoon = wakeSession.map { $0.state != .finished && $0.planned.latest.timeIntervalSinceNow < 14 * 3600 } ?? false
+        let content = UNMutableNotificationContent()
+        content.title = "Pulso se ha cerrado"
+        content.body = alarmSoon
+            ? "La alarma no podrá hacer vibrar la pulsera. Ábrela otra vez y déjala en segundo plano, sin cerrarla."
+            : "Ábrela otra vez para que siga descargando los datos de la pulsera."
+        content.sound = .default
+        content.interruptionLevel = alarmSoon ? .timeSensitive : .active
+        // The process is about to end: give the request a moment to reach the notification centre.
+        let done = DispatchSemaphore(value: 0)
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "pulso.closed", content: content, trigger: nil)) { _ in done.signal() }
+        _ = done.wait(timeout: .now() + 1.5)
+    }
+}
+
+// MARK: - Wake-up call test
+
+/// The "despertador de la pulsera" test on the Alarmas screen: a silent strap alarm one minute ahead.
+enum WakeCallTest: Equatable {
+    /// Sent; waiting for the strap to confirm it.
+    case armed(Date)
+    /// The strap said the alarm is set.
+    case confirmed(Date)
+    /// The strap ran it and its event reached the app.
+    case worked(Date)
+    case failed(String)
+}
+
+extension AppModel {
+    static let wakeCallVerifiedKey = "alarm.wakeCall.verified"
+
+    /// Whether a strap alarm has ever reached the app (test or real night).
+    var wakeCallVerified: Bool { UserDefaults.standard.bool(forKey: Self.wakeCallVerifiedKey) }
+
+    func startWakeCallTest() {
+        guard strapState.isConnected else {
+            wakeCallTest = .failed("Conecta la pulsera y vuelve a probar.")
+            return
+        }
+        let at = Date().addingTimeInterval(60)
+        strap.setAlarm(at, silent: true)
+        wakeCallTest = .armed(at)
+        // Runs late if the app was suspended and nothing woke it, which is itself the answer.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 240) { [weak self] in self?.endWakeCallTestIfPending() }
+    }
+
+    private func endWakeCallTestIfPending() {
+        switch wakeCallTest {
+        case .armed: wakeCallTest = .failed("La pulsera no confirmó la alarma.")
+        case .confirmed: wakeCallTest = .failed("La pulsera aceptó la alarma, pero no avisó a Pulso a su hora.")
+        default: return
+        }
+        armStrapAlarm()
+    }
+
+    /// Strap events ALARM_SET (`executed` false) and STRAP_ALARM_EXECUTED (true).
+    func wakeCallTestEvent(executed: Bool) {
+        if executed { UserDefaults.standard.set(true, forKey: Self.wakeCallVerifiedKey) }
+        switch (wakeCallTest, executed) {
+        case (.armed(let at), false):
+            wakeCallTest = .confirmed(at)
+        case (.armed, true), (.confirmed, true):
+            wakeCallTest = .worked(Date())
+            NotificationService.shared.now("La pulsera ha despertado a Pulso",
+                                           "Funciona: las alarmas ya no necesitan el pulso en directo de noche.", id: "pulso.wakecall.test")
+            armStrapAlarm()
         default:
             break
         }

@@ -131,7 +131,7 @@ final class ProtocolTests: XCTestCase {
         XCTAssertEqual(Array(p[6...]), [0, 0])
     }
 
-    func testForbiddenOpcodesCannotBeBuilt() {
+    func testForbiddenOpcodesCannotBeBuilt() throws {
         let b = CommandBuilder()
         XCTAssertNil(b.frame(25))   // FORCE_TRIM
         XCTAssertNil(b.frame(45))   // ENTER_BLE_DFU
@@ -144,6 +144,16 @@ final class ProtocolTests: XCTestCase {
         XCTAssertNotNil(b.getDataRange())
         XCTAssertNotNil(b.setClock())
         XCTAssertNotNil(b.setAlarm(at: Date()))
+        // Silent wake-up call: same layout, no waveforms, repeats or duration.
+        let date = Date(timeIntervalSince1970: 1_790_000_000)
+        let loud = try Framing.decode(.gen5, XCTUnwrap(b.setAlarm(at: date)).bytes)
+        let quiet = try Framing.decode(.gen5, XCTUnwrap(b.setAlarm(at: date, silent: true)).bytes)
+        XCTAssertTrue(quiet.crcOK)
+        let body = Array(quiet.inner.dropFirst(3).prefix(20)), loudBody = Array(loud.inner.dropFirst(3).prefix(20))
+        XCTAssertEqual(body[0], 4)
+        XCTAssertEqual(Array(body[1...7]), Array(loudBody[1...7]), "same id and time")
+        XCTAssertEqual(Array(body[8...19]), [UInt8](repeating: 0, count: 12))
+        XCTAssertEqual(Array(loudBody[8...9]), [47, 152])
     }
 
     func testHapticRepeatByteCountsPulsesAfterTheFirst() throws {

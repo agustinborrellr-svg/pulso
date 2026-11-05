@@ -349,16 +349,16 @@ final class StrapManager: NSObject {
         queue.async { self.recorder.clear() }
     }
 
-    /// Arms the strap's own vibrating alarm (experimental on 5.0 firmware; the app also schedules a
-    /// phone notification as a backup).
-    func setAlarm(_ date: Date?) {
+    /// Arms the strap's own alarm (experimental on 5.0 firmware; the app also schedules a phone notification
+    /// as a backup). `silent`: no vibration, only the Bluetooth event that wakes the app.
+    func setAlarm(_ date: Date?, silent: Bool = false) {
         guard active else { return }
         queue.async {
             guard self.bonded else { return }
             if let date {
                 if let armed = self.armedAlarm, abs(armed.timeIntervalSince(date)) < 1 { return }
                 self.armedAlarm = date
-                self.send(self.commands.setAlarm(at: date))
+                self.send(self.commands.setAlarm(at: date, silent: silent))
             } else {
                 guard self.armedAlarm != nil else { return }
                 self.armedAlarm = nil

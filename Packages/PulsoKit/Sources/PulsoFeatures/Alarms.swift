@@ -268,9 +268,9 @@ public enum HapticPlan {
 
 /// Runs one alarm occurrence: watches the smart window, rings, snoozes and stops.
 ///
-/// It is driven by `tick(now:)`, which the app calls once a second (it stays running overnight on a
-/// silent audio track, without the strap's live stream). Inside the smart window it asks for a sync every
-/// `syncInterval` and the app calls `evaluate(samples:now:)` with the downloaded seconds.
+/// It is driven by `tick(now:)`, which the app calls once a second while awake (the strap's silent alarm wakes
+/// it just before the window, then the live stream keeps it running). Inside the smart window it asks for a
+/// sync every `syncInterval` and the app calls `evaluate(samples:now:)` with the downloaded seconds.
 /// Pure logic: it only returns actions for the app to perform.
 public final class WakeSession {
     public enum State: Equatable {
