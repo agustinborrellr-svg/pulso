@@ -178,7 +178,7 @@ struct LiveView: View {
             Toggle(isOn: $stressAlertOn) {
                 VStack(alignment: .leading, spacing: 3) {
                     Caps("Alerta de estrés", size: 12)
-                    Text("Si llevas 5 minutos quieto con el estrés alto, la pulsera vibra y te propone dos minutos de respiración. Como mucho una vez por hora.")
+                    Text("Si llevas 5 minutos quieto con el estrés alto, la pulsera vibra y te propone dos minutos de respiración. Con Live abierta, al momento; con el móvil bloqueado, en la siguiente descarga de datos. Como mucho una vez por hora.")
                         .font(.caption).foregroundStyle(Theme.secondary)
                 }
             }

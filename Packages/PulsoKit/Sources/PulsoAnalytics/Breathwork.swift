@@ -204,4 +204,15 @@ public enum StressAlert {
         guard let first = recent.first, now - first.t >= (minutes - 0.5) * 60, recent.count >= 5 else { return false }
         return recent.allSatisfy { $0.still && $0.stress >= threshold }
     }
+
+    /// Without the live stream: the per-minute stress of the latest download (`Stress.everyMinute`, already net of
+    /// the pulse that movement explains). Returns the start of a high stretch of at least `minutes` that runs up to
+    /// the newest minute with data, when that minute is at most `maxAge` seconds old (an old stretch is no longer
+    /// worth a tap). A gap with no data breaks the stretch.
+    public static func recentRun(_ stress: [Double?], origin: Int, now: Int, maxAge: Int = 20 * 60) -> Int? {
+        guard let last = stress.lastIndex(where: { $0 != nil }), now - (origin + last * 60) <= maxAge else { return nil }
+        var i = last
+        while i >= 0, let v = stress[i], v >= threshold { i -= 1 }
+        return last - i >= Int(minutes) ? origin + (i + 1) * 60 : nil
+    }
 }

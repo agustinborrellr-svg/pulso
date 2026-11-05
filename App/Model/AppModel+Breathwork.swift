@@ -24,6 +24,8 @@ extension AppModel {
     static let breathworkKey = "breathwork.sessions"
     static let breathworkSettingsKey = "breathwork.settings"
     static let stressAlertKey = "pulso.stressAlert"
+    static let stressAlertLastKey = "pulso.stressAlert.last"
+    static let stressAlertRunKey = "pulso.stressAlert.run"
 
     var breathworkRecords: [BreathworkRecord] { db.get([BreathworkRecord].self, for: Self.breathworkKey) ?? [] }
 
@@ -72,12 +74,41 @@ extension AppModel {
         let still = CMMotionActivityManager.isActivityAvailable() ? now - s.lastMovement > 300 : true
         s.readings.append((now, stress, still))
         s.readings.removeAll { $0.t < now - 600 }
-        guard StressAlert.shouldAlert(s.readings, now: now, lastAlert: s.lastAlert) else { return }
-        s.lastAlert = now
+        guard StressAlert.shouldAlert(s.readings, now: now, lastAlert: lastStressAlert) else { return }
+        sendStressAlert(at: now, since: nil)
+    }
+
+    /// After each download, the same alert from the downloaded minutes, so it also works with the live stream off
+    /// (phone locked, app in the background).
+    func checkStressFromDownload() {
+        guard stressAlertEnabled, liveWorkout == nil, let today = day(currentDayKey), let cs = today.cycleStart,
+              let newestIndex = today.stressMinutes.lastIndex(where: { $0 != nil }) else { return }
+        let origin = today.stressOrigin ?? cs - cs % 60
+        let now = Date().timeIntervalSince1970
+        guard let start = StressAlert.recentRun(today.stressMinutes, origin: origin, now: Int(now)),
+              start > UserDefaults.standard.integer(forKey: Self.stressAlertRunKey),
+              now - (lastStressAlert ?? 0) >= StressAlert.quietHours * 3600 else { return }
+        let newest = origin + newestIndex * 60
+        guard !likelyAsleep(Date(timeIntervalSince1970: TimeInterval(newest))) else { return }
+        // A pulse raised by a workout (or the 90 min after it) isn't the stress this is about.
+        guard !workouts(for: today).contains(where: { $0.start <= newest && $0.end + 90 * 60 >= start }) else { return }
+        UserDefaults.standard.set(start, forKey: Self.stressAlertRunKey)
+        sendStressAlert(at: now, since: start)
+    }
+
+    /// Last alert from either path, kept across launches so a relaunch in the background doesn't tap you twice.
+    private var lastStressAlert: Double? {
+        let saved = UserDefaults.standard.double(forKey: Self.stressAlertLastKey)
+        return max(stressAlertState.lastAlert ?? 0, saved) > 0 ? max(stressAlertState.lastAlert ?? 0, saved) : nil
+    }
+
+    private func sendStressAlert(at now: Double, since: Int?) {
+        stressAlertState.lastAlert = now
+        UserDefaults.standard.set(now, forKey: Self.stressAlertLastKey)
         strap.buzz(loops: 2)
         let content = UNMutableNotificationContent()
         content.title = "Llevas un rato con el estrés alto"
-        content.body = "¿2 minutos de suspiro fisiológico? Abre Live y la pulsera te marca el ritmo."
+        content.body = (since.map { "Desde las \(Fmt.time($0)). " } ?? "") + "¿2 minutos de suspiro fisiológico? Abre Live y la pulsera te marca el ritmo."
         content.sound = .default
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "stress-alert-\(Int(now))", content: content, trigger: nil))
     }

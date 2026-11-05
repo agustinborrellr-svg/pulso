@@ -50,4 +50,19 @@ final class BreathworkTests: XCTestCase {
         XCTAssertFalse(StressAlert.shouldAlert(moving, now: now, lastAlert: nil), "a walk raises the pulse, not stress")
         XCTAssertFalse(StressAlert.shouldAlert(Array(high.suffix(4)), now: now, lastAlert: nil), "two minutes are not a while")
     }
+
+    func testStressAlertFromDownloadedMinutes() {
+        let origin = 1_000_000
+        // 10 calm minutes, then 6 high ones up to the newest data.
+        let mins: [Double?] = Array(repeating: 0.8, count: 10) + Array(repeating: 2.3, count: 6)
+        let newest = origin + 15 * 60
+        XCTAssertEqual(StressAlert.recentRun(mins, origin: origin, now: newest + 300), origin + 10 * 60)
+        XCTAssertNil(StressAlert.recentRun(mins, origin: origin, now: newest + 30 * 60), "too old to tap you now")
+        XCTAssertNil(StressAlert.recentRun(Array(mins.dropLast(2)), origin: origin, now: newest), "four minutes are not a while")
+        var gap = mins
+        gap[12] = nil
+        XCTAssertNil(StressAlert.recentRun(gap, origin: origin, now: newest), "a gap breaks the stretch")
+        XCTAssertNil(StressAlert.recentRun(mins + [1.0], origin: origin, now: newest), "it has to run up to the newest minute")
+        XCTAssertNil(StressAlert.recentRun([], origin: origin, now: newest))
+    }
 }

@@ -420,6 +420,7 @@ final class AppModel: ObservableObject {
                 // Simulated days must never reach Apple Health as real samples.
                 if !self.demoActive { self.exportToHealthIfEnabled() }
                 self.evaluateAlerts(force: true)
+                self.checkStressFromDownload()
                 if let next = self.pendingRecompute {
                     self.pendingRecompute = nil
                     self.recompute(fromDay: next)
@@ -477,7 +478,8 @@ final class AppModel: ObservableObject {
     func appBecameActive() {
         autoBackupIfDue()
         strap.connect()
-        strap.sync(force: false)
+        // Opening the app always brings the latest seconds (sleep, stress and health monitor recompute after it).
+        strap.sync(force: true)
         applyLive()
         let stale = lastRecompute.map { Date().timeIntervalSince($0) > 15 * 60 } ?? true
         if rawSampleCount > 0 && stale {
