@@ -578,10 +578,10 @@ struct SessionPulseChart: View {
                             .foregroundStyle(Color.white.opacity(0.08))
                     }
                     ForEach(points) { p in
-                        AreaMark(x: .value("Hora", p.date), yStart: .value("Base", lo), yEnd: .value("Pulso", p.hr))
+                        AreaMark(x: .value("Hora", p.date), yStart: .value("Base", lo), yEnd: .value("Pulso", Double(p.hr)))
                             .foregroundStyle(LinearGradient(colors: [Color.white.opacity(0.16), .clear], startPoint: .top, endPoint: .bottom))
                             .interpolationMethod(.monotone)
-                        LineMark(x: .value("Hora", p.date), y: .value("Pulso", p.hr))
+                        LineMark(x: .value("Hora", p.date), y: .value("Pulso", Double(p.hr)))
                             .foregroundStyle(.white)
                             .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
                             .interpolationMethod(.monotone)
