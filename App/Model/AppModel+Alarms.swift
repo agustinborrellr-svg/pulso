@@ -119,8 +119,8 @@ extension AppModel {
 
     /// The alarm needs the app alive when its time comes, fixed or smart: the strap can only be told to
     /// vibrate by a running app. A silent audio track keeps Pulso running without asking the strap for
-    /// anything; the live stream only comes on inside the smart window (`WakeSession`), and a fixed alarm
-    /// never uses it. It has to start while the app is still awake (going to the background at bedtime,
+    /// anything, and no alarm uses the live stream: the smart window decides from a download every 2.5 min.
+    /// It has to start while the app is still awake (going to the background at bedtime,
     /// a reconnect), because nothing wakes a suspended app later on, hence the 10 h lead.
     func updateNightGuard() {
         guard let s = wakeSession, !(s.state == .finished) else {
@@ -149,12 +149,8 @@ extension AppModel {
     func perform(_ actions: [WakeSession.Action], session s: WakeSession) {
         for a in actions {
             switch a {
-            case .startLiveStream:
-                strap.connect()
-                setLive(true, client: "alarm")
-            case .stopLiveStream:
-                setLive(false, client: "alarm")
             case .requestSync:
+                strap.connect()
                 strap.sync(force: true)
             case .buzz(let loops):
                 strap.buzz(loops: loops)

@@ -269,8 +269,8 @@ public enum HapticPlan {
 /// Runs one alarm occurrence: watches the smart window, rings, snoozes and stops.
 ///
 /// It is driven by `tick(now:)`, which the app calls once a second (it stays running overnight on a
-/// silent audio track, and inside the smart window the live stream adds a Bluetooth notification a
-/// second). After each sync during the window the app calls `evaluate(samples:now:)`.
+/// silent audio track, without the strap's live stream). Inside the smart window it asks for a sync every
+/// `syncInterval` and the app calls `evaluate(samples:now:)` with the downloaded seconds.
 /// Pure logic: it only returns actions for the app to perform.
 public final class WakeSession {
     public enum State: Equatable {
@@ -282,9 +282,6 @@ public final class WakeSession {
     }
 
     public enum Action: Equatable {
-        /// Turn the strap's live heart-rate stream on (keeps the app awake in the background).
-        case startLiveStream
-        case stopLiveStream
         /// Pull the latest seconds off the strap, then call `evaluate`.
         case requestSync
         case buzz(loops: UInt8)
@@ -300,7 +297,6 @@ public final class WakeSession {
     public private(set) var snoozeCount = 0
     public private(set) var lastDecision: SmartWake.Decision?
     public private(set) var wokeEarlyBy: Int?
-    private var streamStarted = false
     private var lastSyncRequest: Int?
     private var lastPlayedIndex = -1
     private var ringSteps: [HapticStep]
@@ -310,10 +306,6 @@ public final class WakeSession {
     public var ringDuration: Double = 180
     /// Seconds between strap syncs inside the window.
     public var syncInterval = 150
-    /// Lead before the window when the live stream is switched on. None: it costs the strap a notification a
-    /// second, so it runs only inside the window (the app is kept awake until then by `NightKeepAlive`).
-    public var streamLead = 0
-
     public init(planned: PlannedAlarm, needMinutes: Double? = nil) {
         self.planned = planned
         self.needMinutes = needMinutes
@@ -348,14 +340,10 @@ public final class WakeSession {
         }
         if overdue {
             state = .finished
-            return [.stopLiveStream, .finished(reason: "Perdida (la app estaba dormida)")]
+            return [.finished(reason: "Perdida (la app estaba dormida)")]
         }
         switch state {
         case .waiting:
-            if planned.isSmart, !streamStarted, now >= earliest - streamLead {
-                streamStarted = true
-                out.append(.startLiveStream)
-            }
             if now >= latest {
                 out += ring(now: now, reason: "Hora de despertar")
             } else if planned.isSmart, now >= earliest {
@@ -377,7 +365,6 @@ public final class WakeSession {
                     out += snoozeActions(now: now, auto: true)
                 } else {
                     state = .finished
-                    out.append(.stopLiveStream)
                     out.append(.finished(reason: "Sin respuesta: suena el iPhone"))
                 }
             } else {
@@ -444,7 +431,7 @@ public final class WakeSession {
         guard state != .finished else { return [] }
         let wasActive = isActive
         state = .finished
-        var out: [Action] = [.stopLiveStream, .backup(at: nil)]
+        var out: [Action] = [.backup(at: nil)]
         out.append(.finished(reason: wasActive ? "Apagada" : "Cancelada"))
         return out
     }

@@ -155,9 +155,9 @@ final class FeaturesTests: XCTestCase {
         let p = planned(.smart)
         let s = WakeSession(planned: p)
         let earliest = Int(p.earliest.timeIntervalSince1970)
-        XCTAssertTrue(s.tick(now: earliest - 15 * 60).isEmpty, "no live stream before the window")
+        XCTAssertTrue(s.tick(now: earliest - 15 * 60).isEmpty, "nothing before the window")
         XCTAssertTrue(s.tick(now: earliest - 60).isEmpty)
-        XCTAssertEqual(s.tick(now: earliest), [.startLiveStream, .requestSync])
+        XCTAssertEqual(s.tick(now: earliest), [.requestSync])
         XCTAssertEqual(s.state, .monitoring)
         XCTAssertTrue(s.tick(now: earliest + 60).isEmpty)
         XCTAssertEqual(s.tick(now: earliest + 150), [.requestSync])
@@ -189,7 +189,7 @@ final class FeaturesTests: XCTestCase {
         XCTAssertEqual(s.tick(now: t + 550).first, .buzz(loops: 2))
         // No snoozes left: double tap stops and cancels the iPhone backup.
         let stop = s.doubleTap(now: t + 560)
-        XCTAssertEqual(stop, [.stopLiveStream, .backup(at: nil), .finished(reason: "Apagada")])
+        XCTAssertEqual(stop, [.backup(at: nil), .finished(reason: "Apagada")])
         XCTAssertEqual(s.state, .finished)
         XCTAssertTrue(s.tick(now: t + 9999).isEmpty)
     }
