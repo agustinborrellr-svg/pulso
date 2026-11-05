@@ -220,38 +220,30 @@ struct HomeStressStatusTile: View {
         let last = day?.stressPoints.last
         let current = last?.v
         NavigationLink { StressMonitorView() } label: {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Caps("Estrés", size: 10.5, weight: .semibold)
                     Spacer()
                     Image(systemName: "chevron.right").font(.caption2.weight(.bold)).foregroundStyle(Theme.tertiary)
                 }
+                // One row, no scale bar: the tile stays as short as the health monitor's icons beside it.
                 HStack(spacing: 8) {
                     Text(current.map { Fmt.dec($0) } ?? "–")
-                        .scaledFont(15, weight: .bold, relativeTo: .body).monospacedDigit()
+                        .scaledFont(14, weight: .bold, relativeTo: .body).monospacedDigit()
                         .foregroundStyle(Theme.stressColor(current))
-                        .frame(width: 34, height: 34)
+                        .frame(width: 32, height: 32)
                         .background(Theme.stressColor(current).opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
                     VStack(alignment: .leading, spacing: 1) {
-                        Caps(current == nil ? "Sin lecturas" : Theme.stressLevel(current), size: 15, color: Theme.stressColor(current))
+                        Caps(current == nil ? "Sin lecturas" : Theme.stressLevel(current), size: 13, color: Theme.stressColor(current))
+                            .lineLimit(1).minimumScaleFactor(0.8)
                         Text(last.flatMap { p in day.map { "a las \($0.stressClock(p.x))" } } ?? "aún sin lecturas hoy")
                             .scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary).lineLimit(1)
                     }
                 }
-                GeometryReader { g in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(LinearGradient(colors: [Theme.stressLow, Theme.stressMid, Theme.stressHigh], startPoint: .leading, endPoint: .trailing))
-                            .opacity(0.5)
-                        if let c = current {
-                            Circle().fill(.white).frame(width: 8, height: 8).offset(x: CGFloat(min(max(c / 3, 0), 1)) * (g.size.width - 8))
-                        }
-                    }
-                }
-                .frame(height: 8)
             }
-            .padding(14)
+            .padding(12)
             // Fills the row's height: side by side on Inicio, both tiles are always the size of the taller one.
-            .frame(maxWidth: .infinity, minHeight: 104, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)

@@ -71,9 +71,9 @@ struct HomeHealthMonitorTile: View {
                         .scaledFont(11, weight: .medium, relativeTo: .caption1).foregroundStyle(Theme.secondary).lineLimit(2)
                 }
             }
-            .padding(14)
+            .padding(12)
             // Fills the row's height: side by side on Inicio, both tiles are always the size of the taller one.
-            .frame(maxWidth: .infinity, minHeight: 104, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)
