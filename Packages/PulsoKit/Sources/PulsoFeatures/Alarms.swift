@@ -268,9 +268,9 @@ public enum HapticPlan {
 
 /// Runs one alarm occurrence: watches the smart window, rings, snoozes and stops.
 ///
-/// It is driven by `tick(now:)`, which the app calls from every Bluetooth notification (the live
-/// heart-rate stream arrives ~1 Hz and keeps the app running in the background) and from timers
-/// when in the foreground. After each sync during the window the app calls `evaluate(samples:now:)`.
+/// It is driven by `tick(now:)`, which the app calls once a second (it stays running overnight on a
+/// silent audio track, and inside the smart window the live stream adds a Bluetooth notification a
+/// second). After each sync during the window the app calls `evaluate(samples:now:)`.
 /// Pure logic: it only returns actions for the app to perform.
 public final class WakeSession {
     public enum State: Equatable {
@@ -310,8 +310,9 @@ public final class WakeSession {
     public var ringDuration: Double = 180
     /// Seconds between strap syncs inside the window.
     public var syncInterval = 150
-    /// Lead before the window when the live stream is switched on.
-    public var streamLead = 15 * 60
+    /// Lead before the window when the live stream is switched on. None: it costs the strap a notification a
+    /// second, so it runs only inside the window (the app is kept awake until then by `NightKeepAlive`).
+    public var streamLead = 0
 
     public init(planned: PlannedAlarm, needMinutes: Double? = nil) {
         self.planned = planned

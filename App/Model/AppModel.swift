@@ -111,6 +111,7 @@ final class AppModel: ObservableObject {
     let strava = StravaService()
     let broadcaster = HRBroadcaster()
     let alarmBackup = AlarmBackup()
+    let nightKeepAlive = NightKeepAlive()
     let voice = VoiceCoach()
     let analysisQueue = DispatchQueue(label: "pulso.analysis", qos: .utility)
     lazy var engine = DayEngine(db: db)

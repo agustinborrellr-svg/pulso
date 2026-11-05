@@ -285,7 +285,7 @@ struct SmartAlarmHelp: View {
             Section {
                 Text("Durante la ventana de despertar, Pulso descarga cada par de minutos lo último que ha medido la pulsera (movimiento, pulso, su propio estado de sueño) y busca señales de sueño ligero: te mueves, el pulso sube sobre el mínimo de la noche o el ritmo se vuelve irregular, como en el sueño REM.")
                 Text("Si no encuentra un buen momento, vibra igualmente a la hora final. La pulsera tiene además su propia alarma programada a esa hora, por si el iPhone está lejos.")
-                Text("Para que funcione con la pantalla bloqueada, Pulso mantiene la conexión con la pulsera durante la noche (también con las alarmas de hora fija). Gasta algo más de batería, sobre todo de la pulsera.")
+                Text("Para que funcione con la pantalla bloqueada, Pulso sigue abierta durante la noche sin pedirle nada a la pulsera. Con hora fija no lee tu pulso en directo; con la inteligente, solo dentro de la ventana para buscar el mejor momento.")
             }
             Section("Consejos") {
                 Text("Deja el iPhone cerca de la cama con Bluetooth activado y Pulso abierta en segundo plano (no la cierres deslizando).")
