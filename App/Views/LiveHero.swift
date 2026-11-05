@@ -51,7 +51,7 @@ struct LiveHeroMonitor: View {
             .padding(16)
         }
         if fullBleed {
-            monitor.frame(height: 220).padding(.horizontal, -16)
+            monitor.frame(height: 190).padding(.horizontal, -16)
         } else {
             monitor
                 .frame(height: 250)
