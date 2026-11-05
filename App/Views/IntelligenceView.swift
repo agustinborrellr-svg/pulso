@@ -96,8 +96,11 @@ struct SignalBar: View {
         }
     }
 
-    private func value(_ v: Double) -> String {
-        switch signal.key {
+    private func value(_ v: Double) -> String { Self.format(signal.key, v) }
+
+    /// A signal's value in the unit people read.
+    static func format(_ key: String, _ v: Double) -> String {
+        switch key {
         case "hrv": return "\(Int(v.rounded())) ms"
         case "rhr": return "\(Int(v.rounded())) lpm"
         case "resp": return String(format: "%.1f rpm", v)
