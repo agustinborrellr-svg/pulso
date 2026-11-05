@@ -1,5 +1,6 @@
 import SwiftUI
 import PulsoStore
+import PulsoFeatures
 
 /// "CONFIGURACIÓN DEL DISPOSITIVO": connection, battery, heart-rate broadcast and the strap's tools.
 struct DeviceView: View {
@@ -193,7 +194,22 @@ struct DeviceView: View {
             infoRow("waveform.path.ecg", "Pulso en directo", liveText(status), status.liveFresh ? Theme.green : .white)
             divider
             infoRow("sensor", "Sensor", sensorText(status), .white)
+            divider
+            let drain = model.batteryDrain
+            infoRow("battery.75percent", "Duración de la carga", drainText(drain), .white)
+            if let d = drain, let live = d.liveHourly, let idle = d.idleHourly {
+                Text("Desde la última carga: \(Fmt.one(live)) % por hora con el pulso en directo y \(Fmt.one(idle)) % sin él (\(Fmt.hm(d.liveHours * 60)) en directo).")
+                    .font(.caption).foregroundStyle(Theme.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.bottom, 10)
+            }
         }
+    }
+
+    /// The pace since the last charge, once there are enough hours behind it.
+    private func drainText(_ d: BatteryLog.Drain?) -> String {
+        guard let d else { return "Midiendo…" }
+        return "\(Fmt.one(min(d.daysPerCharge, 99))) días · \(Fmt.one(d.perDay)) %/día"
     }
 
     private var deviceCard: some View {

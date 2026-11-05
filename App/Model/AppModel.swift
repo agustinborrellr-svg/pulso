@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 import Combine
 import UserNotifications
 import WhoopProtocol
@@ -448,11 +449,23 @@ final class AppModel: ObservableObject {
 
     /// Screens that want the live stream (live view, workout, alarm window, breathing, broadcast).
     private var liveClients = Set<String>()
+    /// Whether the strap was last told to stream (for the battery log).
+    private(set) var liveStreamOn = false
+    /// Clients that only show the pulse on screen. With the app in the background they don't count: the stream costs
+    /// the strap a notification a second, and a screen left open on Live used to keep it going all day and night.
+    private static let screenOnlyLiveClients: Set<String> = ["view", "monitor", "scan", "poincare", "orthostatic", "hrr", "maxhr"]
 
     func setLive(_ on: Bool, client: String = "view") {
         if on { liveClients.insert(client) } else { liveClients.remove(client) }
-        let wanted = !liveClients.isEmpty || liveWorkout != nil || settings.hrBroadcast
+        applyLive()
+    }
+
+    private func applyLive() {
+        let clients = UIApplication.shared.applicationState == .background ? liveClients.subtracting(Self.screenOnlyLiveClients) : liveClients
+        let wanted = !clients.isEmpty || liveWorkout != nil || settings.hrBroadcast
         strap.setLive(wanted)
+        if wanted != liveStreamOn, let b = battery, charging != true { logBattery(b, live: wanted) }
+        liveStreamOn = wanted
         if !wanted {
             liveHR = nil
         }
@@ -464,6 +477,7 @@ final class AppModel: ObservableObject {
         autoBackupIfDue()
         strap.connect()
         strap.sync(force: false)
+        applyLive()
         let stale = lastRecompute.map { Date().timeIntervalSince($0) > 15 * 60 } ?? true
         if rawSampleCount > 0 && stale {
             recompute(fromDay: DayKey.shift(DayKey.string(Date()), days: -1))
@@ -476,6 +490,7 @@ final class AppModel: ObservableObject {
     func appEnteredBackground() {
         refreshAlarmSchedule()
         updateNightGuard()
+        applyLive()
         updateWidget()
     }
 
@@ -723,6 +738,7 @@ extension AppModel: StrapManagerDelegate {
         MainActor.assumeIsolated {
             self.battery = percent
             if let charging { self.charging = charging }
+            if self.charging != true { self.logBattery(percent, live: self.liveStreamOn) }
             self.updateWidget()
         }
     }

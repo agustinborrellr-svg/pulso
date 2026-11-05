@@ -394,6 +394,7 @@ struct BreathworkSessionView: View {
         }
         .preferredColorScheme(.dark)
         .onAppear(perform: start)
+        .onDisappear { model.setLive(false, client: "breathwork") }
         .onReceive(ticker) { now in advanceIfDue(now) }
         .onReceive(model.$liveHR) { hr in
             guard let hr, saved == nil else { return }
@@ -508,7 +509,7 @@ struct BreathworkSessionView: View {
         sessionStart = Date()
         stepStart = sessionStart
         beatLog = model.beats(since: sessionStart.addingTimeInterval(-60))
-        model.setLive(true)
+        model.setLive(true, client: "breathwork") // its own client: it keeps pacing with the screen locked
         cue(steps.first, previous: nil)
     }
 

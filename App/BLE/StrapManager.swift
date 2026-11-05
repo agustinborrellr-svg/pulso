@@ -275,6 +275,9 @@ final class StrapManager: NSObject {
         guard active else { return }
         queue.async {
             self.wantsLive = on
+            if self.bonded, let p = self.peripheral, p.state == .connected, let hr = self.chars[StrapUUID.heartRateMeasurement] {
+                p.setNotifyValue(on, for: hr)
+            }
             guard self.bonded, self.sessionStarted else { return }
             self.send(self.commands.toggleRealtimeHR(on))
         }
@@ -537,7 +540,9 @@ final class StrapManager: NSObject {
     }
 
     private func subscribeStandardChars(_ p: CBPeripheral) {
-        if let hr = chars[StrapUUID.heartRateMeasurement] { p.setNotifyValue(true, for: hr) }
+        // The standard pulse only while something wants it: a strap with heart-rate broadcast on would otherwise
+        // notify every second all day long.
+        if wantsLive, let hr = chars[StrapUUID.heartRateMeasurement] { p.setNotifyValue(true, for: hr) }
         if let b = chars[StrapUUID.batteryLevel] {
             if b.properties.contains(.notify) { p.setNotifyValue(true, for: b) }
             p.readValue(for: b)
@@ -607,6 +612,8 @@ final class StrapManager: NSObject {
         offloadLast = nil
         state = .syncing(records: 0)
         log("Descargando historial…")
+        // A battery reading with every download feeds the battery log (Dispositivo → duración de la carga).
+        send(commands.getBattery())
         // NOOP / OpenStrap: the 5.0 asks for the data range before the history request (read-only).
         send(commands.getDataRange())
         send(commands.sendHistoricalData())
