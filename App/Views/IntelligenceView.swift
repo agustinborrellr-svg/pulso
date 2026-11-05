@@ -103,8 +103,8 @@ struct SignalBar: View {
         switch key {
         case "hrv": return "\(Int(v.rounded())) ms"
         case "rhr": return "\(Int(v.rounded())) lpm"
-        case "resp": return String(format: "%.1f rpm", v)
-        default: return String(format: "%.2f °C", v)
+        case "resp": return String(format: "%.1f rpm", locale: Locale(identifier: "es_ES"), v)
+        default: return String(format: "%.2f °C", locale: Locale(identifier: "es_ES"), v)
         }
     }
 }

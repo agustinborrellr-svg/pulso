@@ -47,12 +47,21 @@ struct IntelNightCard: View {
     let report: IntelligenceReport
 
     var body: some View {
-        let point = report.lastNight?.point ?? report.deviation.last
+        let night = report.lastNight
+        let point = night?.point ?? report.deviation.last
+        // Only "anoche" when it is: otherwise the latest night with every signal, and why last night isn't it.
+        let isLastNight = night?.point != nil
         NavigationLink { IntelTodayView() } label: {
             PCard {
-                CardHeader(title: "Anoche frente a tu normal",
+                CardHeader(title: isLastNight || point == nil ? "Anoche frente a tu normal" : "Tu última noche completa",
                            subtitle: point.map { "Noche del \(Deviation.shortDate($0.day)), comparada con tus \($0.baselineNights) noches anteriores" },
                            chevron: true)
+                if !isLastNight, point != nil, let night {
+                    Text(night.hasNight && !night.missing.isEmpty
+                         ? "A la de anoche le falta: \(night.missing.map(Self.lowerFirst).joined(separator: ", "))."
+                         : "De anoche aún no hay datos de la pulsera.")
+                        .font(.caption).foregroundStyle(Theme.secondary)
+                }
                 if let p = point {
                     Text(Self.verdict(p.coherence))
                         .scaledFont(26, weight: .bold, design: .rounded, relativeTo: .title1)
@@ -75,6 +84,13 @@ struct IntelNightCard: View {
         .buttonStyle(.plain)
     }
 
+    /// "Respiración" → "respiración", but "FC en reposo" and "VFC" keep their capitals.
+    static func lowerFirst(_ s: String) -> String {
+        guard let f = s.first else { return s }
+        if s.dropFirst().first?.isUppercase == true { return s }
+        return f.lowercased() + s.dropFirst()
+    }
+
     static func verdict(_ coherence: Double) -> String {
         coherence >= 50 ? "Noche normal para ti" : (coherence >= 10 ? "Noche algo inusual" : "Noche muy inusual")
     }
@@ -85,7 +101,7 @@ struct IntelNightCard: View {
             return "Todas tus señales de anoche estaban dentro de lo habitual."
         }
         let dir = s.z > 0 ? "más alta" : "más baja"
-        return "Lo que más se sale: \(s.label.lowercased()) \(dir) de lo habitual" + (s.adverse ? "." : ", y eso es buena señal.")
+        return "Lo que más se sale: \(lowerFirst(s.label)) \(dir) de lo habitual" + (s.adverse ? "." : ", y eso es buena señal.")
     }
 }
 
@@ -94,7 +110,8 @@ struct IntelSignalRow: View {
     let signal: Deviation.Contributor
 
     var body: some View {
-        let off = abs(signal.z) >= 1
+        // Coloured when the dot falls outside the grey band, so the colour and the drawing always agree.
+        let off = !signal.band.contains(signal.z)
         let color = !off ? Color.white : (signal.adverse ? Theme.worse : Theme.better)
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -339,7 +356,7 @@ struct IntelLoadPatternCard: View {
                         }
                     }
                     .chartXAxis {
-                        AxisMarks(values: stride(from: 0, to: events.count, by: max(1, events.count / 4)).map { events[$0].day }) { v in
+                        AxisMarks(values: Self.ticks(events.map(\.day), every: max(2, events.count / 4))) { v in
                             AxisValueLabel { Text(Deviation.shortDate(v.as(String.self) ?? "")).scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary) }
                         }
                     }
@@ -352,6 +369,11 @@ struct IntelLoadPatternCard: View {
             }
         }
         .buttonStyle(.plain)
+    }
+
+    /// Axis days counted back from the newest, leaving out the first bar (its label would be clipped at the edge).
+    static func ticks(_ days: [String], every: Int) -> [String] {
+        stride(from: days.count - 1, through: 1, by: -every).map { days[$0] }
     }
 }
 
@@ -388,7 +410,7 @@ struct IntelSchedulePatternCard: View {
                         }
                     }
                     .chartXAxis {
-                        AxisMarks(values: stride(from: 0, to: nights.count, by: max(1, nights.count / 5)).map { nights[$0].0 }) { v in
+                        AxisMarks(values: IntelLoadPatternCard.ticks(nights.map(\.0), every: max(2, nights.count / 4))) { v in
                             AxisValueLabel { Text(Deviation.shortDate(v.as(String.self) ?? "")).scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary) }
                         }
                     }
