@@ -18,7 +18,7 @@ struct HealthView: View {
                     AgeTrendCard()
                     PlanSummaryCard()
                     if let day = model.selected {
-                        NavigationLink { RecoveryDetailView() } label: { HealthMonitorCard(day: day) }
+                        NavigationLink { HealthMonitorView() } label: { HealthMonitorCard(day: day) }
                             .buttonStyle(.plain)
                         if day.stressHourly.contains(where: { $0 != nil }) {
                             NavigationLink { StressMonitorView() } label: { stressCard(day) }
