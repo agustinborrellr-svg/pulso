@@ -1,0 +1,200 @@
+/Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app: replacing existing signature
+
+RegisterExecutionPolicyException /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-RegisterExecutionPolicyException /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest
+
+Touch /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    /usr/bin/touch -c /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest
+
+2026-11-05 16:11:16.126054+0000 PulsoUITests-Runner[16655:48840] [Default] Running tests...
+    t =      nans Interface orientation changed to Portrait
+Test Suite 'All tests' started at 2026-11-05 16:11:30.752.
+Test Suite 'PulsoUITests.xctest' started at 2026-11-05 16:11:30.753.
+Test Suite 'PageCaptureTests' started at 2026-11-05 16:11:30.753.
+Test Case '-[PulsoUITests.PageCaptureTests testCaptureAllPages]' started.
+    t =     0.00s Start Test at 2026-11-05 16:11:30.754
+    t =     1.24s Set Up
+    t =     1.26s Open es.gusborrell.pulso
+    t =     1.26s     Launch es.gusborrell.pulso
+    t =    20.50s         Setting up automation session
+    t =    24.68s         Wait for es.gusborrell.pulso to idle
+    t =   430.82s Terminate es.gusborrell.pulso:17534
+    t =   431.93s Open es.gusborrell.pulso
+    t =   431.93s     Launch es.gusborrell.pulso
+    t =   457.51s         Setting up automation session
+    t =   461.84s         Wait for es.gusborrell.pulso to idle
+    t =   503.97s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   503.97s     Wait for es.gusborrell.pulso to idle
+    t =   503.97s     Find the Window (First Match)
+    t =   505.38s     Check for interrupting elements affecting Window
+    t =   506.91s     Synthesize event
+    t =   506.91s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   508.35s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   510.35s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   512.28s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   513.60s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   515.91s     Wait for es.gusborrell.pulso to idle
+    t =   517.79s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   517.79s     Wait for es.gusborrell.pulso to idle
+    t =   518.05s     Find the Window (First Match)
+    t =   518.50s     Check for interrupting elements affecting Window
+    t =   518.68s     Synthesize event
+    t =   518.68s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   520.21s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   522.07s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   522.50s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   523.46s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   525.78s     Wait for es.gusborrell.pulso to idle
+    t =   527.44s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   527.44s     Wait for es.gusborrell.pulso to idle
+    t =   527.56s     Find the Window (First Match)
+    t =   527.62s     Check for interrupting elements affecting Window
+    t =   528.54s     Synthesize event
+    t =   528.54s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   528.67s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   529.45s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   529.53s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   530.15s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   532.66s     Wait for es.gusborrell.pulso to idle
+    t =   534.37s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   534.37s     Wait for es.gusborrell.pulso to idle
+    t =   534.52s     Find the Window (First Match)
+    t =   534.60s     Check for interrupting elements affecting Window
+    t =   534.94s     Synthesize event
+    t =   534.94s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   535.62s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   535.87s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   536.44s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   536.51s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   538.67s     Wait for es.gusborrell.pulso to idle
+    t =   540.38s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   540.38s     Wait for es.gusborrell.pulso to idle
+    t =   540.46s     Find the Window (First Match)
+    t =   541.42s     Check for interrupting elements affecting Window
+    t =   541.90s     Synthesize event
+    t =   541.90s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   542.03s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   542.32s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   542.58s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   543.00s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   545.41s     Wait for es.gusborrell.pulso to idle
+    t =   547.21s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   547.21s     Wait for es.gusborrell.pulso to idle
+    t =   547.25s     Find the Window (First Match)
+    t =   547.38s     Check for interrupting elements affecting Window
+    t =   547.50s     Synthesize event
+    t =   547.50s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   547.54s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   547.60s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   547.71s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   548.08s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   550.47s     Wait for es.gusborrell.pulso to idle
+    t =   552.33s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   552.33s     Wait for es.gusborrell.pulso to idle
+    t =   552.37s     Find the Window (First Match)
+    t =   553.76s     Check for interrupting elements affecting Window
+    t =   554.35s     Synthesize event
+    t =   554.35s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   554.49s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   554.99s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   555.16s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   555.37s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   557.97s     Wait for es.gusborrell.pulso to idle
+    t =   559.74s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   559.74s     Wait for es.gusborrell.pulso to idle
+    t =   559.79s     Find the Window (First Match)
+    t =   560.35s     Check for interrupting elements affecting Window
+    t =   560.90s     Synthesize event
+    t =   560.90s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   561.28s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   561.51s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   561.62s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   561.78s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   563.99s     Wait for es.gusborrell.pulso to idle
+    t =   565.94s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   565.94s     Wait for es.gusborrell.pulso to idle
+    t =   565.99s     Find the Window (First Match)
+    t =   566.55s     Check for interrupting elements affecting Window
+    t =   567.38s     Synthesize event
+    t =   567.38s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   567.63s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   568.25s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   568.38s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   568.62s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   571.03s     Wait for es.gusborrell.pulso to idle
+    t =   572.80s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   572.81s     Wait for es.gusborrell.pulso to idle
+    t =   572.83s     Find the Window (First Match)
+    t =   573.32s     Check for interrupting elements affecting Window
+    t =   573.64s     Synthesize event
+    t =   573.64s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   574.15s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   574.41s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   574.58s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   574.99s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   577.16s     Wait for es.gusborrell.pulso to idle
+    t =   579.24s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   579.24s     Wait for es.gusborrell.pulso to idle
+    t =   579.25s     Find the Window (First Match)
+    t =   579.40s     Check for interrupting elements affecting Window
+    t =   579.58s     Synthesize event
+    t =   579.58s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   579.66s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   579.71s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   579.83s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   579.92s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   582.04s     Wait for es.gusborrell.pulso to idle
+    t =   583.89s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   583.89s     Wait for es.gusborrell.pulso to idle
+    t =   583.98s     Find the Window (First Match)
+    t =   584.37s     Check for interrupting elements affecting Window
+    t =   584.68s     Synthesize event
+    t =   584.68s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   585.13s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   585.40s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   585.53s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   585.76s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   588.07s     Wait for es.gusborrell.pulso to idle
+    t =   589.84s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   589.84s     Wait for es.gusborrell.pulso to idle
+    t =   589.85s     Find the Window (First Match)
+    t =   589.89s     Check for interrupting elements affecting Window
+    t =   590.24s     Synthesize event
+    t =   590.24s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   590.34s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   590.48s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   590.60s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   590.72s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   593.01s     Wait for es.gusborrell.pulso to idle
+    t =   594.84s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   594.84s     Wait for es.gusborrell.pulso to idle
+    t =   594.85s     Find the Window (First Match)
+    t =   595.11s     Check for interrupting elements affecting Window
+    t =   595.45s     Synthesize event
+    t =   595.46s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   595.63s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   595.73s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   595.90s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   596.04s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   598.48s     Wait for es.gusborrell.pulso to idle
+    t =   599.96s Terminate es.gusborrell.pulso:38841
+    t =   602.03s Tear Down
+Test Case '-[PulsoUITests.PageCaptureTests testCaptureAllPages]' passed (602.930 seconds).
+Test Suite 'PageCaptureTests' passed at 2026-11-05 16:21:33.685.
+	 Executed 1 test, with 0 failures (0 unexpected) in 602.930 (602.932) seconds
+Test Suite 'PulsoUITests.xctest' passed at 2026-11-05 16:21:33.686.
+	 Executed 1 test, with 0 failures (0 unexpected) in 602.930 (602.933) seconds
+Test Suite 'All tests' passed at 2026-11-05 16:21:33.687.
+	 Executed 1 test, with 0 failures (0 unexpected) in 602.930 (602.935) seconds
+2026-11-05 16:22:20.657 xcodebuild[3330:14508] [MT] IDETestOperationsObserverDebug: 709.005 elapsed -- Testing started completed.
+2026-11-05 16:22:20.664 xcodebuild[3330:14508] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-11-05 16:22:20.664 xcodebuild[3330:14508] [MT] IDETestOperationsObserverDebug: 709.005 sec, +709.005 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/runner/work/pulso/pulso/build-ui/Logs/Test/Test-Pulso-2026.11.05_16-05-51-+0000.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started
