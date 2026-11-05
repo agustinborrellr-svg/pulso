@@ -47,7 +47,6 @@ struct HomeHealthMonitorTile: View {
     var body: some View {
         let all = model.vitalReadings()
         let readings = HealthMonitorView.order.compactMap { id in all.first { $0.id == id } }
-        let off = readings.filter { $0.level == .orange || $0.level == .red }
         NavigationLink { HealthMonitorView() } label: {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
@@ -66,11 +65,11 @@ struct HomeHealthMonitorTile: View {
                         .frame(maxWidth: .infinity)
                     }
                 }
-                Text(readings.isEmpty ? "Tras tu primera noche con la pulsera"
-                     : (off.isEmpty ? "Todo en tu rango" : off.map { "\($0.short) \($0.raw > ($0.range?.upperBound ?? .infinity) ? "alta" : "baja")" }.joined(separator: " · ")))
-                    .scaledFont(11, weight: .medium, relativeTo: .caption1)
-                    .foregroundStyle(off.isEmpty ? Theme.secondary : (off.map(\.level).max() == .red ? Theme.red : Theme.worse))
-                    .lineLimit(2)
+                // Only the icons and their marks: a line of text made the tile taller than the stress one beside it.
+                if readings.isEmpty {
+                    Text("Tras tu primera noche con la pulsera")
+                        .scaledFont(11, weight: .medium, relativeTo: .caption1).foregroundStyle(Theme.secondary).lineLimit(2)
+                }
             }
             .padding(14)
             // Fills the row's height: side by side on Inicio, both tiles are always the size of the taller one.
