@@ -111,7 +111,9 @@ extension AppModel {
                     clock += v / 1000
                     beats.append(Int(v))
                 }
-                let hr = Int(60000 / Double(max(1, beats.last ?? 800)))
+                // A tick with no new beat has no pulse to report (it used to send 75 lpm, a spike on the charts).
+                guard let last = beats.last else { return }
+                let hr = Int(60000 / Double(max(1, last)))
                 self.handleLive(heartRate: hr, rr: beats, at: Date())
             }
         }

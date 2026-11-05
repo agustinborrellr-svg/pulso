@@ -564,7 +564,11 @@ struct SessionPulseChart: View {
     let target: ClosedRange<Double>?
 
     var body: some View {
-        let values = points.map { Double($0.hr) }
+        // Median of each reading and its neighbours: a single dropped reading doesn't draw a spike to the floor.
+        let values = points.indices.map { i -> Double in
+            let w = points[max(0, i - 1)...min(points.count - 1, i + 1)].map { Double($0.hr) }.sorted()
+            return w[w.count / 2]
+        }
         let lo = min(values.min() ?? 60, target?.lowerBound ?? .infinity) - 5
         let hi = max(values.max() ?? 120, target?.upperBound ?? 0) + 5
         let trimmed = points.first.map { Date().timeIntervalSince($0.date) > 590 } == true
@@ -577,11 +581,12 @@ struct SessionPulseChart: View {
                                       yStart: .value("Zona", t.lowerBound), yEnd: .value("Zona", t.upperBound))
                             .foregroundStyle(Color.white.opacity(0.08))
                     }
-                    ForEach(points) { p in
-                        AreaMark(x: .value("Hora", p.date), yStart: .value("Base", lo), yEnd: .value("Pulso", Double(p.hr)))
+                    ForEach(points.indices, id: \.self) { i in
+                        let p = points[i]
+                        AreaMark(x: .value("Hora", p.date), yStart: .value("Base", lo), yEnd: .value("Pulso", values[i]))
                             .foregroundStyle(LinearGradient(colors: [Color.white.opacity(0.16), .clear], startPoint: .top, endPoint: .bottom))
                             .interpolationMethod(.monotone)
-                        LineMark(x: .value("Hora", p.date), y: .value("Pulso", Double(p.hr)))
+                        LineMark(x: .value("Hora", p.date), y: .value("Pulso", values[i]))
                             .foregroundStyle(.white)
                             .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
                             .interpolationMethod(.monotone)
