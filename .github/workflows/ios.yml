@@ -13,6 +13,10 @@ on:
         description: "Pantallas a capturar (separadas por espacios)"
         type: string
         default: "today health recovery sleep live"
+      paginas:
+        description: "Páginas enteras (pantallas separadas por comas; vacío = ninguna)"
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -229,7 +233,7 @@ jobs:
 
   pages:
     # Full-length captures of every screen: commit message with [paginas], or [paginas:a,b,c] for only those screens.
-    if: contains(github.event.head_commit.message, '[paginas')
+    if: contains(github.event.head_commit.message, '[paginas') || (github.event_name == 'workflow_dispatch' && inputs.paginas != '')
     runs-on: macos-15
     timeout-minutes: 90
     steps:
@@ -249,9 +253,10 @@ jobs:
       - name: Capturar todas las páginas
         env:
           MSG: ${{ github.event.head_commit.message }}
+          ONLY: ${{ inputs.paginas }}
         run: |
           set -x
-          export TEST_RUNNER_SHOTS_ONLY="$(printf '%s' "$MSG" | sed -n 's/.*\[paginas:\([^]]*\)\].*/\1/p' | head -1)"
+          export TEST_RUNNER_SHOTS_ONLY="${ONLY:-$(printf '%s' "$MSG" | sed -n 's/.*\[paginas:\([^]]*\)\].*/\1/p' | head -1)}"
           UDID=$(xcrun simctl list devices available -j | python3 -c "
           import json,sys
           d=json.load(sys.stdin)['devices']
