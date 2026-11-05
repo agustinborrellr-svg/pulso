@@ -24,12 +24,12 @@ struct LiveView: View {
                     LiveRunBanner()
                     if model.liveWorkout != nil {
                         // Only while an activity runs: the live line, the minis and the workout itself.
-                        LiveHeroMonitor()
+                        LiveHeroMonitor(fullBleed: true)
                         liveStats
                         workoutCard
                     } else {
                         // Your state now, then what to do with it.
-                        LiveHeroMonitor()
+                        LiveHeroMonitor(fullBleed: true)
                         liveStats
                         suggestion
                         group("Actívate", "Sube el pulso y la energía", [.alert])
