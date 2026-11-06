@@ -357,7 +357,8 @@ struct ScreenHeader<Trailing: View>: View {
             HStack {
                 if let back {
                     Button(action: back) {
-                        Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold)).frame(width: 44, height: 44)
+                        Image(systemName: "chevron.left").font(.system(size: 20, weight: .semibold))
+                            .frame(width: 44, height: 44).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Atrás")

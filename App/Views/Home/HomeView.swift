@@ -149,16 +149,21 @@ struct HomeTopBar: View {
             }
             Spacer(minLength: 0)
             HStack(spacing: 4) {
+                // With the plain style only the glyph itself is tappable: give each arrow a full 44 pt target.
                 Button { model.shiftSelectedDay(-1) } label: {
-                    Image(systemName: "chevron.left").font(.subheadline.weight(.bold)).frame(width: 30, height: 34)
+                    Image(systemName: "chevron.left").font(.subheadline.weight(.bold))
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
                 }
+                .accessibilityLabel("Día anterior")
                 Caps(model.cycleTitle(model.selectedDay), size: 12)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
                     .background(Theme.cardHighlight, in: Capsule())
                 Button { model.shiftSelectedDay(1) } label: {
-                    Image(systemName: "chevron.right").font(.subheadline.weight(.bold)).frame(width: 30, height: 34)
+                    Image(systemName: "chevron.right").font(.subheadline.weight(.bold))
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
                 }
+                .accessibilityLabel("Día siguiente")
                 .disabled(model.selectedDay >= model.currentDayKey)
                 .opacity(model.selectedDay >= model.currentDayKey ? 0.3 : 1)
             }
