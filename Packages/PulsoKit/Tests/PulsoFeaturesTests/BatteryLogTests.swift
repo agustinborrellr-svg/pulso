@@ -37,6 +37,37 @@ final class BatteryLogTests: XCTestCase {
         XCTAssertEqual(d.daysPerCharge, 100 / d.perDay, accuracy: 1e-9)
     }
 
+    func testDrainFindsAChargeSeenInSmallSteps() throws {
+        let h = 3600
+        // Discharging, then charged in 0.5-point readings (no 2-point jump between neighbours), then discharging.
+        var log = [P(t: 0, pct: 45, live: false), P(t: 5 * h, pct: 40, live: false)]
+        var t = 5 * h
+        for i in 1...120 {
+            t += 60
+            log.append(P(t: t, pct: 40 + Double(i) * 0.5, live: false))
+        }
+        let peak = t
+        log.append(P(t: peak + 2 * h, pct: 100, live: false)) // still full after unplugging: part of the run
+        log.append(P(t: peak + 10 * h, pct: 96, live: false))
+        log.append(P(t: peak + 20 * h, pct: 91, live: false))
+        let d = try XCTUnwrap(BatteryLog.drain(log))
+        XCTAssertEqual(d.hours, 20, accuracy: 1e-9, "the run starts at the first 100 % reading")
+        XCTAssertEqual(d.perDay, 9.0 / 20 * 24, accuracy: 1e-9)
+    }
+
+    func testSmallWobblesAreNotCharges() throws {
+        let h = 3600
+        let log = [
+            P(t: 0, pct: 80, live: false),
+            P(t: 4 * h, pct: 78, live: false),
+            P(t: 5 * h, pct: 78.5, live: false), // rounding wobble, under the charge threshold
+            P(t: 6 * h, pct: 79, live: false),
+            P(t: 10 * h, pct: 75, live: false),
+        ]
+        let d = try XCTUnwrap(BatteryLog.drain(log))
+        XCTAssertEqual(d.hours, 10, accuracy: 1e-9)
+    }
+
     func testDrainNeedsEnoughTime() {
         XCTAssertNil(BatteryLog.drain([P(t: 0, pct: 90, live: false), P(t: 3 * 3600, pct: 85, live: false)]))
         XCTAssertNil(BatteryLog.drain([P(t: 0, pct: 90, live: false), P(t: 10 * 3600, pct: 89, live: false)]))

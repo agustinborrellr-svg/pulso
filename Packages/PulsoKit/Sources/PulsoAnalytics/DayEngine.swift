@@ -22,7 +22,9 @@ public final class DayEngine {
     public let db: PulsoDatabase
     public var calendar: Calendar
 
-    public init(db: PulsoDatabase, calendar: Calendar = .current) {
+    /// Defaults to the autoupdating calendar: a copy of `.current` would freeze the time zone at launch, and
+    /// after travelling the engine's day boundaries would disagree with the UI's (tests inject a fixed one).
+    public init(db: PulsoDatabase, calendar: Calendar = .autoupdatingCurrent) {
         self.db = db
         self.calendar = calendar
     }
@@ -240,7 +242,9 @@ public final class DayEngine {
         }
         // No night sleep (shift work, a late night): the longest daytime sleep becomes the day's sleep, but
         // only if the strap was on through the night. Without night data a daytime rest is not "last night".
-        let nightWorn = samples.lazy.filter { $0.ts >= dayStart && $0.ts < self.ts(day, hour: 9) && $0.hr != nil }.count
+        // The 09:00 cut-off goes through Calendar: compute it once, not once per second of samples.
+        let nightEnd = ts(day, hour: 9)
+        let nightWorn = samples.lazy.filter { $0.ts >= dayStart && $0.ts < nightEnd && $0.hr != nil }.count
         if main == nil, nightWorn >= 3 * 3600, let longest = daySleeps.max(by: { $0.inBedMinutes < $1.inBedMinutes }) {
             main = longest
             daySleeps.removeAll { $0.id == longest.id }
@@ -257,8 +261,9 @@ public final class DayEngine {
         }
         let cycleStart = main?.end ?? ts(day, hour: 4)
         let nextDay = DayKey.shift(day, days: 1, calendar: calendar)
+        let nextMidnight = ts(nextDay, hour: 0)
         let nextManual = try db.sleeps(from: ts(nextDay, hour: -12), to: ts(nextDay, hour: 16))
-            .first { $0.manual && !$0.isNap && $0.end > ts(nextDay, hour: 0) }
+            .first { $0.manual && !$0.isNap && $0.end > nextMidnight }
         let nextMain = nextManual.map { ($0.start, $0.end) } ?? mainSleep(for: nextDay, blocks: blocks)
         var cycleEnd: Int
         if let nm = nextMain {
@@ -348,7 +353,7 @@ public final class DayEngine {
             d.spo2 = m.spo2
             d.skinTemp = m.skinTemp
 
-            let prevDay = past.last { $0.day == DayKey.shift(day, days: -1, calendar: calendar) }
+            let prevDay = past.last { $0.day == yesterday }
             // Debt carried into this night's need: last night's debt and last night's shortfall against its need
             // without debt (WHOOP's "sleep debt" is this same top-up of the need).
             var debt = 0.0

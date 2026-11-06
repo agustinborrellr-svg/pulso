@@ -92,7 +92,7 @@ extension AppModel {
         }
         if played, hapticQueue.isEmpty, breathingGuideActive {
             breathingGuideActive = false
-            setLive(false, client: "breathing")
+            setLive(false, client: "breathing-guide")
         }
     }
 
@@ -100,14 +100,14 @@ extension AppModel {
     func startBreathingGuide(cycles: Int = 6) {
         guard !breathingGuideActive else { return }
         breathingGuideActive = true
-        setLive(true, client: "breathing") // keeps the app ticking with the screen off
+        setLive(true, client: "breathing-guide") // keeps the app ticking with the screen off
         enqueueHaptics(HapticPlan.breathing(cycles: cycles))
     }
 
     func stopBreathingGuide() {
         hapticQueue.removeAll()
         breathingGuideActive = false
-        setLive(false, client: "breathing")
+        setLive(false, client: "breathing-guide")
     }
 
     // MARK: - Intervals

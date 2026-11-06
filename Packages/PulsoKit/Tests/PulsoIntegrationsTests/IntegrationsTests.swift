@@ -173,6 +173,40 @@ final class IntegrationsTests: XCTestCase {
         XCTAssertNil(StravaClient.code(fromCallback: URL(string: "pulso://localhost/strava?state=&error=access_denied")!))
     }
 
+    func testAuthorizationStateGuardsTheCallback() {
+        let c = StravaClient(credentials: StravaCredentials(clientID: "1", clientSecret: "s"), tokens: nil, transport: MockTransport([]))
+        let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+        func callback(_ query: String) -> URL { URL(string: "pulso://localhost/strava?\(query)")! }
+        // No flow started in Pulso: a link with a code is never exchanged.
+        XCTAssertEqual(c.checkCallback(callback("state=&code=evil"), now: t0), .unexpected)
+
+        for app in [false, true] {
+            let url = c.beginAuthorization(app: app, now: t0)
+            let state = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "state" }?.value
+            XCTAssertNotNil(state)
+            XCTAssertEqual(state?.count, 36, "UUID string")
+            XCTAssertEqual(c.checkCallback(callback("code=evil"), now: t0), .unexpected, "missing state")
+            XCTAssertEqual(c.checkCallback(callback("state=&code=evil"), now: t0), .unexpected, "empty state")
+            XCTAssertEqual(c.checkCallback(callback("state=other&code=evil"), now: t0), .unexpected, "different state")
+            // The real answer still works after the stray ones, and only once.
+            XCTAssertEqual(c.checkCallback(callback("state=\(state!)&code=abc&scope=read"), now: t0.addingTimeInterval(60)), .code("abc"))
+            XCTAssertEqual(c.checkCallback(callback("state=\(state!)&code=abc"), now: t0.addingTimeInterval(61)), .unexpected, "one use")
+        }
+
+        // A new flow replaces the old state.
+        let first = c.beginAuthorization(now: t0).absoluteString
+        let second = c.beginAuthorization(app: true, now: t0)
+        XCTAssertNotEqual(first, second.absoluteString)
+        let s2 = URLComponents(url: second, resolvingAgainstBaseURL: false)!.queryItems!.first { $0.name == "state" }!.value!
+        XCTAssertEqual(c.checkCallback(callback("state=\(s2)&error=access_denied"), now: t0), .declined)
+
+        // Expired after 10 minutes.
+        let late = c.beginAuthorization(now: t0)
+        let s3 = URLComponents(url: late, resolvingAgainstBaseURL: false)!.queryItems!.first { $0.name == "state" }!.value!
+        XCTAssertEqual(c.checkCallback(callback("state=\(s3)&code=abc"), now: t0.addingTimeInterval(StravaClient.authorizationLifetime + 1)), .unexpected)
+        XCTAssertEqual(c.checkCallback(callback("state=\(s3)&code=abc"), now: t0), .unexpected, "expired flow is gone")
+    }
+
     func testTokenExchangeRefreshAndActivities() async throws {
         let mock = MockTransport([
             (200, #"{"token_type":"Bearer","expires_at":100,"expires_in":21600,"refresh_token":"r1","access_token":"a1","athlete":{"id":7,"firstname":"Gus","lastname":"B"}}"#),

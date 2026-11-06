@@ -141,7 +141,8 @@ public final class StravaClient: @unchecked Sendable {
     /// `app == false`: the web page for an ASWebAuthenticationSession (callback scheme `pulso`).
     /// `app == true`: opens the Strava app itself (already logged in: one tap on «Autorizar»); it returns to
     /// Pulso through the `pulso://localhost/strava` URL, handled by the app's onOpenURL.
-    public func authorizeURL(app: Bool = false) -> URL {
+    /// `state` is echoed back by Strava in the callback (see `beginAuthorization`).
+    public func authorizeURL(app: Bool = false, state: String? = nil) -> URL {
         var c = URLComponents(string: app ? "strava://oauth/mobile/authorize" : "https://www.strava.com/oauth/authorize")!
         c.queryItems = [
             URLQueryItem(name: "client_id", value: credentials.clientID),
@@ -150,6 +151,7 @@ public final class StravaClient: @unchecked Sendable {
             URLQueryItem(name: "approval_prompt", value: "auto"),
             URLQueryItem(name: "scope", value: Self.scope),
         ]
+        if let state { c.queryItems?.append(URLQueryItem(name: "state", value: state)) }
         return c.url!
     }
 
@@ -158,6 +160,48 @@ public final class StravaClient: @unchecked Sendable {
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         if items.contains(where: { $0.name == "error" }) { return nil }
         return items.first { $0.name == "code" }?.value
+    }
+
+    /// How long an authorization started in Pulso waits for Strava's answer.
+    public static let authorizationLifetime: TimeInterval = 10 * 60
+    private var pendingState: (value: String, expires: Date)?
+
+    /// Starts a connection: a fresh random `state` is kept in memory and sent in the authorize URL. Only a
+    /// callback carrying that same `state` within `authorizationLifetime` is exchanged for tokens, so a
+    /// `pulso://localhost/strava?code=…` link opened from anywhere else can't attach someone else's account.
+    /// A new call replaces the previous flow (e.g. the web page after the Strava app failed to open).
+    public func beginAuthorization(app: Bool = false, now: Date = Date()) -> URL {
+        let state = UUID().uuidString
+        lock.lock()
+        pendingState = (state, now.addingTimeInterval(Self.authorizationLifetime))
+        lock.unlock()
+        return authorizeURL(app: app, state: state)
+    }
+
+    public enum CallbackCheck: Equatable, Sendable {
+        /// Answer to the pending flow with an authorization code: exchange it.
+        case code(String)
+        /// Answer to the pending flow, but the user declined.
+        case declined
+        /// No pending flow, expired, or missing / different `state`: ignore it, never exchange.
+        case unexpected
+    }
+
+    /// Checks a callback against the pending flow. A matching answer ends the flow (one use only); a callback
+    /// with the wrong `state` leaves it pending so a stray link can't cancel the user's real connection.
+    public func checkCallback(_ url: URL, now: Date = Date()) -> CallbackCheck {
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        let state = items.first { $0.name == "state" }?.value
+        lock.lock()
+        defer { lock.unlock() }
+        guard let pending = pendingState else { return .unexpected }
+        guard now < pending.expires else {
+            pendingState = nil
+            return .unexpected
+        }
+        guard let state, !state.isEmpty, state == pending.value else { return .unexpected }
+        pendingState = nil
+        return Self.code(fromCallback: url).map(CallbackCheck.code) ?? .declined
     }
 
     static func form(_ fields: [String: String]) -> Data {

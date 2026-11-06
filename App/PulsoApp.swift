@@ -11,6 +11,9 @@ struct PulsoApp: App {
     static let refreshTaskID = "es.gusborrell.pulso.refresh"
 
     init() {
+        // A background launch (refresh task, a notification button) connects no scene, so the lazy @StateObject
+        // would never build the model and its notification delegate. Deferred a turn: UIApplication is up by then.
+        Task { @MainActor in _ = AppModel.shared }
         _ = BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.refreshTaskID, using: nil) { task in
             PulsoApp.handleRefresh(task)
         }
@@ -43,9 +46,17 @@ struct PulsoApp: App {
 
     /// Background refresh: iOS gives us ~30 s. Reconnecting is cheap (the pending connection is already
     /// armed); the strap offload + analysis then run as soon as the link is up.
+    /// The work runs here and not in a view: on a cold background launch no view exists.
     static func handleRefresh(_ task: BGTask) {
         scheduleRefresh()
-        NotificationCenter.default.post(name: .pulsoBackgroundRefresh, object: nil)
+        Task { @MainActor in
+            let model = AppModel.shared
+            model.connect()
+            model.syncNow()
+            model.refreshAlarmSchedule()
+            model.evaluateAlerts(force: false)
+            model.importExternalIfDue()
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 25) {
             task.setTaskCompleted(success: true)
         }
@@ -53,10 +64,6 @@ struct PulsoApp: App {
             task.setTaskCompleted(success: false)
         }
     }
-}
-
-extension Notification.Name {
-    static let pulsoBackgroundRefresh = Notification.Name("pulso.background.refresh")
 }
 
 struct RootView: View {
@@ -114,13 +121,6 @@ struct RootView: View {
                 .interactiveDismissDisabled()
         }
         .fullScreenCover(isPresented: $showGuide) { GuideView() }
-        .onReceive(NotificationCenter.default.publisher(for: .pulsoBackgroundRefresh).receive(on: RunLoop.main)) { _ in
-            model.connect()
-            model.syncNow()
-            model.refreshAlarmSchedule()
-            model.evaluateAlerts(force: false)
-            model.importExternalIfDue()
-        }
         .alert("Pulso", isPresented: Binding(get: { model.errorMessage != nil && !AppMode.screenshots },
                                              set: { if !$0 { model.errorMessage = nil } })) {
             Button("OK", role: .cancel) { model.errorMessage = nil }

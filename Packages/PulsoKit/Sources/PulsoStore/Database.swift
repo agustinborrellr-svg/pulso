@@ -1,4 +1,9 @@
 import Foundation
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
 import WhoopProtocol
 
 /// The app's on-device database: raw per-second strap data plus every derived summary.
@@ -433,19 +438,57 @@ public final class PulsoDatabase {
 
     // MARK: - Backup
 
-    /// Writes a consistent, compacted copy of the whole database to `path` (overwrites it).
+    public enum BackupError: Error, CustomStringConvertible {
+        case damagedCopy
+        case naming(Int32)
+
+        public var description: String {
+            switch self {
+            case .damagedCopy: return "la copia recién escrita no supera la comprobación de integridad"
+            case .naming(let code): return "no se pudo dar nombre a la copia (errno \(code))"
+            }
+        }
+    }
+
+    /// Writes a consistent, compacted copy of the whole database to `path` (replaces it).
     /// A consistent snapshot of everything (VACUUM INTO works while the database is in use).
     public func backup(to path: String) throws {
-        if FileManager.default.fileExists(atPath: path) { try FileManager.default.removeItem(atPath: path) }
-        try sql.run("VACUUM INTO ?", [.text(path)])
+        try writeCopy(to: path) { _ in }
     }
 
     /// A small snapshot: every summary, sleep, workout, import, journal entry, setting and ECG, without the
     /// raw per-second data (a few MB instead of hundreds). It restores like a full one.
     public func backupLight(to path: String) throws {
-        try backup(to: path)
-        let copy = try SQLiteConnection(path: path)
-        try copy.execute("DELETE FROM samples; DELETE FROM live_hr; PRAGMA journal_mode=DELETE; VACUUM;")
+        try writeCopy(to: path) { tmp in
+            let copy = try SQLiteConnection(path: tmp)
+            try copy.execute("DELETE FROM samples; DELETE FROM live_hr; PRAGMA journal_mode=DELETE; VACUUM;")
+        }
+    }
+
+    /// Hidden file next to `path` where a copy is written before it gets its real name. The backup folder's
+    /// listing and rotation never see it (`BackupPolicy.parse` only knows "Pulso-…sqlite").
+    public static func temporaryPath(for path: String) -> String {
+        let url = URL(fileURLWithPath: path)
+        return url.deletingLastPathComponent().appendingPathComponent(".\(url.lastPathComponent).tmp").path
+    }
+
+    /// Writes to a temporary file, lets `trim` slim it, checks its integrity and only then renames it to
+    /// `path` (atomic), so a half-written or damaged file never carries a backup's name and whatever was at
+    /// `path` before survives a failure.
+    private func writeCopy(to path: String, trim: (String) throws -> Void) throws {
+        let fm = FileManager.default
+        let tmp = Self.temporaryPath(for: path)
+        func clean() { for suffix in ["", "-journal", "-wal", "-shm"] { try? fm.removeItem(atPath: tmp + suffix) } }
+        clean()
+        do {
+            try sql.run("VACUUM INTO ?", [.text(tmp)])
+            try trim(tmp)
+            guard Self.isIntactCopy(path: tmp) else { throw BackupError.damagedCopy }
+            guard rename(tmp, path) == 0 else { throw BackupError.naming(errno) }
+        } catch {
+            clean()
+            throw error
+        }
     }
 
     /// Bytes on disk of the database and its write-ahead log.
@@ -458,12 +501,19 @@ public final class PulsoDatabase {
 
     /// True if `path` is a readable Pulso database (used before restoring a backup over the live one).
     public static func isValidBackup(path: String) -> Bool {
+        guard isIntactCopy(path: path), let c = try? SQLiteConnection(path: path, readOnly: true) else { return false }
+        let version = Int((try? c.scalarInt("PRAGMA user_version;")) ?? 0)
+        return version <= schemaVersion
+    }
+
+    /// Opens, has Pulso's tables and passes `PRAGMA quick_check` (any schema version: a copy written by a
+    /// build older than the data is still a good copy).
+    static func isIntactCopy(path: String) -> Bool {
         guard let c = try? SQLiteConnection(path: path, readOnly: true) else { return false }
         let tables = (try? c.query("SELECT name FROM sqlite_master WHERE type='table'") { $0.text(0) ?? "" }) ?? []
         guard ["samples", "days", "sleeps", "workouts", "kv"].allSatisfy(tables.contains) else { return false }
         let check = (try? c.query("PRAGMA quick_check;") { $0.text(0) ?? "" }) ?? []
-        let version = Int((try? c.scalarInt("PRAGMA user_version;")) ?? 0)
-        return check == ["ok"] && version <= schemaVersion
+        return check == ["ok"]
     }
 
     // MARK: - Journal

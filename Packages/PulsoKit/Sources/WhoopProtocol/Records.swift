@@ -48,11 +48,17 @@ public struct HistorySample: Equatable, Sendable {
         self.offWrist = offWrist
     }
 
-    /// Decodes a gen5 v18 record. Returns nil for any other frame.
+    /// Unix times a real record can carry (same window as HELLO's strap clock). A strap whose clock reset
+    /// writes records stamped near 1970; decoded, they would sit in the database forever and make a full
+    /// recompute walk every day since then.
+    public static let plausibleUnix: ClosedRange<UInt32> = 1_600_000_000...2_200_000_000
+
+    /// Decodes a gen5 v18 record. Returns nil for any other frame, and for a record with an implausible
+    /// timestamp: the offload then keeps it as an undecoded raw frame (stored before the ack, never lost).
     public static func decodeV18(_ f: Frame) -> HistorySample? {
         guard f.family == .gen5, f.canonicalType == .historicalData, f.version == 18 else { return nil }
         let b = f.inner
-        guard let unix = LE.u32(b, 7) else { return nil }
+        guard let unix = LE.u32(b, 7), plausibleUnix.contains(unix) else { return nil }
 
         let hr = LE.u8(b, 14).flatMap { (25...240).contains($0) ? $0 : nil }
         let rr = readRR(b, countAt: 15, firstAt: 16, maxSlots: 4)
@@ -265,7 +271,7 @@ public struct HelloInfo: Equatable, Sendable {
         let b = r.body
         guard b.count >= 25 else { return nil }
         let rawBatt = LE.u32(b, 1).map { Int($0 / 10) }
-        let ts = LE.u32(b, 6).flatMap { (1_600_000_000...2_200_000_000).contains($0) ? $0 : nil }
+        let ts = LE.u32(b, 6).flatMap { HistorySample.plausibleUnix.contains($0) ? $0 : nil }
         var fw = ""
         if let a = LE.u8(b, 91), let c = LE.u8(b, 92), let d = LE.u8(b, 93) {
             fw = "\(a).\(c).\(d)"

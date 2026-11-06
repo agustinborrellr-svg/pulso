@@ -104,7 +104,7 @@ struct StrainDetailView: View {
         return VStack(alignment: .leading, spacing: 10) {
             SectionHeading(text: "Actividades")
             if list.isEmpty {
-                Text("Hoy no hay actividades. Los entrenos se detectan solos; también puedes grabar uno en En vivo.")
+                Text("Hoy no hay actividades. Los entrenos se detectan solos; también puedes grabar uno en Live.")
                     .font(.subheadline).foregroundStyle(Theme.secondary)
             }
             Button { adding = true } label: {

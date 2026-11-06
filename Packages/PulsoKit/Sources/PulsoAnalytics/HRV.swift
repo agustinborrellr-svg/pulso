@@ -68,7 +68,7 @@ public enum HRV {
     static let respBand = 0.2...0.5
 
     /// Respiratory rate from respiratory sinus arrhythmia: resample the tachogram at 4 Hz, remove the
-    /// slow trend, and find the dominant frequency in 0.1–0.5 Hz (6–30 breaths/min).
+    /// slow trend, and find the dominant frequency in `respBand` (0.2–0.5 Hz, 12–30 breaths/min).
     /// Returns breaths/min for one window of runs, or nil if there is not enough clean signal.
     public static func respiratoryRate(_ runs: [RRRun], minSeconds: Double = 90) -> Double? {
         var estimates: [(rate: Double, weight: Double)] = []

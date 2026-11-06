@@ -21,14 +21,30 @@ extension AppModel {
             let names = (try? fm.contentsOfDirectory(atPath: dir.path)) ?? []
             let now = Date()
             let plan = BackupPolicy.plan(existing: names, now: now)
+            // Leftovers of a copy interrupted by a crash (an hour old, so never one being written right now).
+            for name in names where BackupPolicy.isUnfinished(name) {
+                let url = dir.appendingPathComponent(name)
+                let modified = (try? fm.attributesOfItem(atPath: url.path)[.modificationDate] as? Date) ?? now
+                if now.timeIntervalSince(modified) > 3600 { try? fm.removeItem(at: url) }
+            }
             guard (try? db.hasSamples()) == true || (try? db.allDays().isEmpty) == false else { return }
-            if plan.makeDaily { try? db.backupLight(to: dir.appendingPathComponent(BackupPolicy.fileName(.daily, at: now)).path) }
-            if plan.makeWeekly { try? db.backup(to: dir.appendingPathComponent(BackupPolicy.fileName(.weekly, at: now)).path) }
-            for name in plan.delete { try? fm.removeItem(at: dir.appendingPathComponent(name)) }
+            // Each copy is written aside, checked and only then named (see `PulsoDatabase.backup`). Older copies
+            // of a kind are rotated out only once the new one of that kind exists.
+            var rotate: Set<BackupPolicy.Kind> = [.safety]
+            if !plan.makeDaily || (try? db.backupLight(to: dir.appendingPathComponent(BackupPolicy.fileName(.daily, at: now)).path)) != nil {
+                rotate.insert(.daily)
+            }
+            if !plan.makeWeekly || (try? db.backup(to: dir.appendingPathComponent(BackupPolicy.fileName(.weekly, at: now)).path)) != nil {
+                rotate.insert(.weekly)
+            }
+            for name in plan.delete where BackupPolicy.parse(name).map({ rotate.contains($0.kind) }) == true {
+                try? fm.removeItem(at: dir.appendingPathComponent(name))
+            }
         }
     }
 
-    /// A full copy taken synchronously right before data is replaced or deleted.
+    /// A full copy taken synchronously right before data is replaced or deleted. It is written aside, checked
+    /// with `quick_check` and only then named, and older safety copies are rotated only after it exists.
     /// Returns false when the copy could not be written: callers that delete data must then stop.
     @discardableResult
     func safetyBackup(reason: String) -> Bool {

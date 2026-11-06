@@ -96,15 +96,21 @@ extension AppModel {
         sendStressAlert(at: now, since: start)
     }
 
-    /// Last alert from either path, kept across launches so a relaunch in the background doesn't tap you twice.
-    private var lastStressAlert: Double? {
+    /// Last stress alert from any path (live, download, or the hourly one of Más → Avisos), kept across launches so
+    /// a relaunch in the background doesn't tap you twice.
+    var lastStressAlert: Double? {
         let saved = UserDefaults.standard.double(forKey: Self.stressAlertLastKey)
         return max(stressAlertState.lastAlert ?? 0, saved) > 0 ? max(stressAlertState.lastAlert ?? 0, saved) : nil
     }
 
-    private func sendStressAlert(at now: Double, since: Int?) {
+    /// Starts the quiet hour (`StressAlert.quietHours`) shared by this alert and the hourly stress notice.
+    func noteStressAlert(at now: Double) {
         stressAlertState.lastAlert = now
         UserDefaults.standard.set(now, forKey: Self.stressAlertLastKey)
+    }
+
+    private func sendStressAlert(at now: Double, since: Int?) {
+        noteStressAlert(at: now)
         strap.buzz(loops: 2)
         let content = UNMutableNotificationContent()
         content.title = "Llevas un rato con el estrés alto"

@@ -1,5 +1,6 @@
 import Foundation
 import PulsoStore
+import PulsoAnalytics
 import PulsoFeatures
 
 extension AppModel {
@@ -36,6 +37,15 @@ extension AppModel {
                     markAlertSent(a.id)
                     scheduled[a.id] = nil
                     continue
+                }
+                // The hourly stress notice and Live's stress alert share one quiet hour: whichever fires first
+                // silences the other, so the strap never taps twice for the same stretch of stress.
+                if a.kind == .stress {
+                    if let last = lastStressAlert, Double(now) - last < StressAlert.quietHours * 3600 {
+                        markAlertSent(a.id)
+                        continue
+                    }
+                    noteStressAlert(at: Double(now))
                 }
                 NotificationService.shared.deliver(PlannedAlert(id: a.id, kind: a.kind, title: a.title, body: a.body, fireAt: nil,
                                                                 buzzStrap: a.buzzStrap, timeSensitive: a.timeSensitive))

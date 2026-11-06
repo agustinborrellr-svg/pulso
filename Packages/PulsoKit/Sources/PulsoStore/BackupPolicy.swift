@@ -35,6 +35,12 @@ public enum BackupPolicy {
         return "Pulso-\(tag)-\(formatter().string(from: date)).sqlite"
     }
 
+    /// A copy still being written (`PulsoDatabase.temporaryPath`) or left half-written by a crash: hidden,
+    /// never listed, restored or counted as a copy.
+    public static func isUnfinished(_ name: String) -> Bool {
+        name.hasPrefix(".Pulso-") && name.contains(".sqlite.tmp")
+    }
+
     public static func parse(_ name: String) -> Copy? {
         guard name.hasPrefix("Pulso-"), name.hasSuffix(".sqlite") else { return nil }
         let core = name.dropFirst("Pulso-".count).dropLast(".sqlite".count)

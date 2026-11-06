@@ -3,10 +3,9 @@ import PulsoStore
 
 // MARK: - Training load
 
-/// Acute / chronic training load from daily Strain (Banister-style exponentially weighted averages).
+/// Acute / chronic training load from daily load (Edwards TRIMP, see `trimp` and `series`).
 ///
-/// Daily load is the cardiovascular load behind each day's Strain (the inverse of `Strain.score`).
-/// ATL = 7-day EWMA (fatigue), CTL = 42-day EWMA (fitness), TSB = CTL − ATL (form) and
+/// ATL = plain 7-day mean (fatigue), CTL = plain 28-day mean (fitness), TSB = CTL − ATL (form) and
 /// ACWR = ATL / CTL (acute:chronic ratio; 0.8–1.3 is the usual "sweet spot").
 public enum TrainingLoad {
     public struct Point: Equatable {
@@ -149,6 +148,11 @@ public enum HealthMonitor {
         }
     }
 
+    /// "+0,6": signed, one decimal, Spanish comma (these details are shown as they are).
+    static func signedOne(_ v: Double) -> String {
+        String(format: "%+.1f", v).replacingOccurrences(of: ".", with: ",")
+    }
+
     /// `history` = days strictly before `day` (used for the baselines).
     public static func assess(_ day: DaySummary, history: [DaySummary]) -> Assessment {
         let b = Baselines.from(history: history)
@@ -156,7 +160,7 @@ public enum HealthMonitor {
         if let t = day.skinTemp, let bt = b.temp, bt.isUsable {
             let dev = t - bt.center
             if dev >= 0.5 {
-                signals.append(Signal(key: "temp", label: "Temperatura", detail: String(format: "temperatura %+.1f °C", dev),
+                signals.append(Signal(key: "temp", label: "Temperatura", detail: "temperatura \(signedOne(dev)) °C",
                                       weight: dev >= 0.8 ? 2 : 1))
             }
         }
@@ -170,7 +174,7 @@ public enum HealthMonitor {
         if let r = day.respRate, let br = b.resp, br.isUsable {
             let d = r - br.center
             if d >= max(0.8, 2 * br.spread) {
-                signals.append(Signal(key: "resp", label: "Respiración", detail: String(format: "respiración +%.1f rpm", d), weight: 1))
+                signals.append(Signal(key: "resp", label: "Respiración", detail: "respiración \(signedOne(d)) rpm", weight: 1))
             }
         }
         if let h = day.hrv, h > 0, let bh = b.lnHRV, bh.isUsable, bh.z(log(h)) <= -1.5 {

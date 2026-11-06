@@ -77,7 +77,7 @@ struct SignalBar: View {
                 Text(signal.label).font(.subheadline).foregroundStyle(.white)
                 Spacer()
                 Text("\(value(signal.value)) · tu mediana \(value(signal.usual))").font(.caption.monospacedDigit()).foregroundStyle(Theme.secondary)
-                Text(String(format: "%+.1f σ", signal.z)).font(.caption.bold().monospacedDigit()).foregroundStyle(color)
+                Text(Fmt.signed(signal.z).replacingOccurrences(of: ".", with: ",") + " σ").font(.caption.bold().monospacedDigit()).foregroundStyle(color)
                     .frame(width: 52, alignment: .trailing)
             }
             GeometryReader { g in
@@ -374,11 +374,11 @@ struct MetricDetailView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("\(e.sport) · \(e.intensity)").font(.subheadline)
-                                Text("\(Fmt.dayTitle(e.day)) · esfuerzo \(String(format: "%.1f", e.strain))\(e.chained ? " · encadenado" : "")")
+                                Text("\(Fmt.dayTitle(e.day)) · esfuerzo \(Fmt.dec(e.strain))\(e.chained ? " · encadenado" : "")")
                                     .font(.caption2).foregroundStyle(Theme.tertiary)
                             }
                             Spacer()
-                            Text(e.recoveryNights.map { String(format: "%.1f noches", $0) } ?? (e.censored ? "≥ 5 noches" : "sin medir"))
+                            Text(e.recoveryNights.map { "\(Fmt.dec($0)) noches" } ?? (e.censored ? "≥ 5 noches" : "sin medir"))
                                 .font(.caption.monospacedDigit()).foregroundStyle(Theme.secondary)
                         }
                     }
@@ -403,10 +403,10 @@ struct FingerprintCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(f.sport) · \(f.intensity)").font(.subheadline.bold())
                     HStack(spacing: 12) {
-                        stat("Recuperas", f.recoveryNights.map { String(format: "%.1f n", $0) } ?? "–")
+                        stat("Recuperas", f.recoveryNights.map { "\(Fmt.dec($0)) n" } ?? "–")
                         stat("VFC", f.hrvChangePct.map { String(format: "%+.0f%%", $0) } ?? "–")
                         stat("FC reposo", f.rhrChange.map { String(format: "%+.0f", $0) } ?? "–")
-                        stat("Coste", String(format: "%.1f", f.cost))
+                        stat("Coste", Fmt.dec(f.cost))
                     }
                     Text("\(f.count) sesiones").font(.caption2).foregroundStyle(Theme.tertiary)
                 }
@@ -463,7 +463,7 @@ struct HabitsCard: View {
 
 enum HabitText {
     static func counts(_ h: HabitImpact.Item) -> String {
-        "n = \(h.n) (\(h.withCount) con · \(h.withoutCount) sin) · q = \(String(format: "%.2f", h.qValue)) · confianza \(h.confidence.label)"
+        "n = \(h.n) (\(h.withCount) con · \(h.withoutCount) sin) · q = \(Fmt.dec(h.qValue, 2)) · confianza \(h.confidence.label)"
     }
 
     static func footnote(_ count: Int) -> String {
@@ -620,7 +620,7 @@ struct WhatIfView: View {
                             Slider(value: $sleep, in: 4...10, step: 0.25).tint(Theme.sleep)
                         }
                         VStack(alignment: .leading) {
-                            Text("Esfuerzo de hoy \(String(format: "%.1f", strain))").font(.subheadline)
+                            Text("Esfuerzo de hoy \(Fmt.dec(strain))").font(.subheadline)
                             Slider(value: $strain, in: 0...21, step: 0.5).tint(Theme.strain)
                         }
                         ForEach(0..<3, id: \.self) { i in

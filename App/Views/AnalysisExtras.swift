@@ -159,7 +159,7 @@ struct ImpactCard: View {
                 ForEach(top) { h in
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
-                            Text(h.label.replacingOccurrences(of: "whoop:", with: "")).font(.subheadline).foregroundStyle(.white).lineLimit(1)
+                            Text(h.label).font(.subheadline).foregroundStyle(.white).lineLimit(1)
                             Spacer()
                             Text(clear(h) ? (h.recoveryDelta >= 0 ? "+" : "−") + String(format: "%.0f", abs(h.recoveryDelta)) : "no claro")
                                 .font(.subheadline.bold().monospacedDigit())
@@ -274,8 +274,8 @@ struct RelationExplorerView: View {
                         .frame(height: 280)
                         if let f = fit {
                             let ci = Association.fisherInterval(r: f.r, n: f.n)
-                            Text("\(headline(f, ci)) · r = \(String(format: "%.2f", f.r))").font(.headline).foregroundStyle(.white)
-                            Text("n = \(f.n) días" + (ci.map { String(format: " · IC 90 %% de r: %.2f a %.2f", $0.lowerBound, $0.upperBound) } ?? ""))
+                            Text("\(headline(f, ci)) · r = \(Fmt.dec(f.r, 2))").font(.headline).foregroundStyle(.white)
+                            Text("n = \(f.n) días" + (ci.map { " · IC 90 % de r: \(Fmt.dec($0.lowerBound, 2)) a \(Fmt.dec($0.upperBound, 2))" } ?? ""))
                                 .font(.caption.monospacedDigit()).foregroundStyle(Theme.secondary)
                             Text(sentence(f, ci)).font(.subheadline).foregroundStyle(Theme.secondary)
                         }
@@ -308,7 +308,7 @@ struct RelationExplorerView: View {
         guard f.n >= 10 else { return "Hacen falta al menos 10 días con las dos métricas." }
         guard let ci, !ci.contains(0) else { return "El intervalo de r incluye 0: con estos datos no se puede decir que vayan juntas." }
         let dir = f.slope > 0 ? "más alto" : "más bajo"
-        return "Correlación: los días con una unidad más de \(x.title.lowercased()) tienen de media \(y.title.lowercased())\(nextDay ? " del día siguiente" : "") \(String(format: "%.1f", abs(f.slope))) \(y.unit) \(dir). No demuestra que una cause la otra."
+        return "Correlación: los días con una unidad más de \(x.title.lowercased()) tienen de media \(y.title.lowercased())\(nextDay ? " del día siguiente" : "") \(Fmt.dec(abs(f.slope))) \(y.unit) \(dir). No demuestra que una cause la otra."
     }
 }
 
@@ -441,14 +441,14 @@ struct MonthlyReportPage: View {
 
     private func fmt(_ v: Double?, _ unit: String) -> String {
         guard let v else { return "–" }
-        let s = abs(v) >= 1000 ? Fmt.thousands(v) : (abs(v) < 20 && unit != "%" ? String(format: "%.1f", v) : "\(Int(v.rounded()))")
+        let s = abs(v) >= 1000 ? Fmt.thousands(v) : (abs(v) < 20 && unit != "%" ? Fmt.dec(v) : "\(Int(v.rounded()))")
         return unit.isEmpty || unit.hasPrefix("/") ? s : "\(s) \(unit)"
     }
 
     private func delta(_ l: MonthlyReport.Line) -> String {
         guard let d = l.delta else { return "–" }
         let a = abs(d)
-        let s = a >= 100 ? Fmt.thousands(a) : (a < 10 ? String(format: "%.1f", a) : "\(Int(a.rounded()))")
+        let s = a >= 100 ? Fmt.thousands(a) : (a < 10 ? Fmt.dec(a) : "\(Int(a.rounded()))")
         return (d >= 0 ? "+" : "−") + s
     }
 

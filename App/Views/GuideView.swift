@@ -49,7 +49,7 @@ struct GuideView: View {
              ]),
         Page(id: 3, symbol: "heart.circle", color: Theme.green, kicker: "Recuperación · 0–100 %",
              title: "¿Cómo de preparado estás hoy?",
-             text: "Sale de la noche: tu VFC, tu pulso en reposo, tu respiración y tu temperatura comparados con tu normal.",
+             text: "Sale de la noche: tu VFC y tu pulso en reposo comparados con tu normal, y cuánto dormiste frente a lo que necesitabas.",
              points: [
                 ("circle.fill", "Verde (67–100): cuerpo listo, buen día para apretar."),
                 ("circle.lefthalf.filled", "Amarillo (34–66): normal; entrena con cabeza."),
@@ -61,7 +61,7 @@ struct GuideView: View {
              points: [
                 ("figure.walk", "0–9: día ligero o de descanso."),
                 ("figure.run", "10–17: entreno normal o día movido."),
-                ("bolt.heart", "18–21: muy exigente. En Hoy verás el esfuerzo que te conviene según tu recuperación."),
+                ("bolt.heart", "18–21: muy exigente. En Inicio verás el esfuerzo que te conviene según tu recuperación."),
              ]),
         Page(id: 5, symbol: "moon.zzz", color: Theme.sleep, kicker: "Sueño",
              title: "Lo que dormiste frente a lo que necesitabas",
@@ -69,7 +69,7 @@ struct GuideView: View {
              points: [
                 ("bed.double", "Fases (ligero, profundo, REM) estimadas con pulso, VFC y movimiento: úsalas como orientación."),
                 ("clock.badge.checkmark", "La consistencia mide si te acuestas y levantas a horas parecidas: pesa más de lo que parece."),
-                ("moon.haze", "«Me voy a dormir» en Hoy te dice a qué hora acostarte para despertar recuperado."),
+                ("moon.haze", "«Me voy a dormir» en Inicio te dice a qué hora acostarte para despertar recuperado."),
              ]),
         Page(id: 6, symbol: "brain.head.profile", color: Theme.red, kicker: "Análisis",
              title: "Patrones que solo salen de tus datos",
@@ -94,9 +94,9 @@ struct GuideView: View {
                 ("waveform", "Inteligente: dentro de una ventana, vibra cuando estás en sueño ligero."),
                 ("iphone.radiowaves.left.and.right", "Para que vibre con el iPhone bloqueado, deja Pulso en segundo plano al acostarte. Doble toque en la pulsera para posponer."),
              ]),
-        Page(id: 9, symbol: "figure.run.circle", color: Theme.green, kicker: "En vivo y entrenos",
+        Page(id: 9, symbol: "figure.run.circle", color: Theme.green, kicker: "Live y entrenos",
              title: "Tu pulso en directo",
-             text: "En la pestaña En vivo ves el pulso segundo a segundo, tu zona y puedes grabar un entreno, con intervalos guiados por vibración y voz.",
+             text: "En la pestaña Live ves el pulso segundo a segundo, tu zona y puedes grabar un entreno, con intervalos guiados por vibración y voz.",
              points: [
                 ("figure.mixed.cardio", "Los entrenos se detectan solos; luego puedes cambiarles el deporte."),
                 ("arrow.up.right.square", "Se pueden mandar a Apple Salud y a Strava (Más → Conexiones)."),

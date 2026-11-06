@@ -215,8 +215,13 @@ extension AppModel {
             errorMessage = "Ese archivo no es una copia de Pulso válida."
             return false
         }
+        // A full copy of the current data first; without it nothing is staged.
+        guard safetyBackup(reason: "restaurar") else {
+            try? FileManager.default.removeItem(at: tmp)
+            errorMessage = "No se pudo hacer la copia de seguridad previa (¿falta espacio?). No se ha preparado la restauración: tus datos siguen igual."
+            return false
+        }
         try? FileManager.default.removeItem(atPath: dest)
-        safetyBackup(reason: "restaurar")
         do {
             try FileManager.default.moveItem(at: tmp, to: URL(fileURLWithPath: dest))
             errorMessage = "Copia lista. Cierra Pulso del todo y vuelve a abrirla para restaurarla."

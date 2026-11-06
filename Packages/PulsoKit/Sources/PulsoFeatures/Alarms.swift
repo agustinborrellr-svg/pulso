@@ -96,7 +96,8 @@ public struct AlarmConfig: Codable, Identifiable, Equatable, Sendable {
         case snoozeMinutes, maxSnoozes, doubleTap, morningReport, skipDay, dayTimes
     }
 
-    /// Tolerant decoding: alarms saved by older versions keep working when fields are added.
+    /// Tolerant decoding: alarms saved by older versions keep working when fields are added, and an enum case
+    /// this build doesn't know (saved by a newer one) falls back to the default instead of failing the whole list.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let d = AlarmConfig()
@@ -106,14 +107,14 @@ public struct AlarmConfig: Codable, Identifiable, Equatable, Sendable {
         hour = try c.decodeIfPresent(Int.self, forKey: .hour) ?? d.hour
         minute = try c.decodeIfPresent(Int.self, forKey: .minute) ?? d.minute
         weekdays = try c.decodeIfPresent([Int].self, forKey: .weekdays) ?? d.weekdays
-        mode = try c.decodeIfPresent(WakeMode.self, forKey: .mode) ?? d.mode
+        mode = (try? c.decodeIfPresent(WakeMode.self, forKey: .mode)) ?? d.mode
         windowMinutes = try c.decodeIfPresent(Int.self, forKey: .windowMinutes) ?? d.windowMinutes
-        vibration = try c.decodeIfPresent(VibrationStyle.self, forKey: .vibration) ?? d.vibration
+        vibration = (try? c.decodeIfPresent(VibrationStyle.self, forKey: .vibration)) ?? d.vibration
         phoneBackup = try c.decodeIfPresent(Bool.self, forKey: .phoneBackup) ?? d.phoneBackup
         phoneBackupDelay = try c.decodeIfPresent(Int.self, forKey: .phoneBackupDelay) ?? d.phoneBackupDelay
         snoozeMinutes = try c.decodeIfPresent(Int.self, forKey: .snoozeMinutes) ?? d.snoozeMinutes
         maxSnoozes = try c.decodeIfPresent(Int.self, forKey: .maxSnoozes) ?? d.maxSnoozes
-        doubleTap = try c.decodeIfPresent(AlarmDoubleTap.self, forKey: .doubleTap) ?? d.doubleTap
+        doubleTap = (try? c.decodeIfPresent(AlarmDoubleTap.self, forKey: .doubleTap)) ?? d.doubleTap
         morningReport = try c.decodeIfPresent(Bool.self, forKey: .morningReport) ?? d.morningReport
         skipDay = try c.decodeIfPresent(String.self, forKey: .skipDay)
         dayTimes = try c.decodeIfPresent([Int: Int].self, forKey: .dayTimes) ?? [:]

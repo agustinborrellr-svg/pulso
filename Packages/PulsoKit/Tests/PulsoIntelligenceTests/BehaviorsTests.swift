@@ -51,6 +51,7 @@ final class BehaviorsTests: XCTestCase {
         XCTAssertEqual(r.impact.last?.helps, false)
         let breakfast = try XCTUnwrap(r.locked.first { $0.key == "whoop:¿Desayunaste?" })
         XCTAssertEqual(breakfast.yes, 1)
+        XCTAssertEqual(breakfast.label, "Desayunaste", "imported question shown without the internal prefix")
         XCTAssertNil(breakfast.impactPct)
         // Constant wake time every day: no «without» days, so it stays locked.
         XCTAssertTrue(r.locked.contains { $0.key == "auto.wakeConsistent" })

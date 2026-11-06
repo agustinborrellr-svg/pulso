@@ -27,8 +27,12 @@ public enum JournalCatalog {
         Item(key: "shared_bed", label: "Cama compartida", icon: "bed.double"),
     ]
 
+    /// Catalogue label, or for an imported question ("whoop:¿…?") the question itself without the
+    /// internal prefix or the ¿? marks, as `HabitImpact` shows it.
     public static func label(_ key: String) -> String {
-        items.first { $0.key == key }?.label ?? key
+        if let item = items.first(where: { $0.key == key }) { return item.label }
+        guard key.hasPrefix("whoop:") else { return key }
+        return String(key.dropFirst("whoop:".count)).trimmingCharacters(in: CharacterSet(charactersIn: "¿? "))
     }
 }
 

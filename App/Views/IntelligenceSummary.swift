@@ -565,7 +565,7 @@ struct IntelArea: Identifiable {
             let value: String, caption: String
             if let h = clear.first {
                 value = (h.recoveryDelta >= 0 ? "+" : "−") + "\(Int(abs(h.recoveryDelta).rounded())) %"
-                caption = "\(h.label.replacingOccurrences(of: "whoop:", with: "")) es lo que más mueve tu recuperación"
+                caption = "\(h.label) es lo que más mueve tu recuperación"
                     + (clear.count > 1 ? " (y \(clear.count - 1) más)." : ".")
             } else if !r.habits.isEmpty {
                 value = "Sin efecto claro"

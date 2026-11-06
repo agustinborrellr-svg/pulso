@@ -42,7 +42,7 @@ struct WorkoutCardiacCard: View {
                 }
                 Divider().overlay(Color.white.opacity(0.1))
                 if let d = r.drift.percent {
-                    LabeledContent("Deriva cardíaca", value: String(format: "%+.1f %%", d))
+                    LabeledContent("Deriva cardíaca", value: Fmt.signed(d).replacingOccurrences(of: ".", with: ",") + " %")
                 } else {
                     LabeledContent("Deriva cardíaca", value: "–")
                 }
@@ -57,7 +57,7 @@ struct WorkoutCardiacCard: View {
                 }
                 if let e = model.loadEvent(for: workout) {
                     Divider().overlay(Color.white.opacity(0.1))
-                    LabeledContent("Noches hasta normalizarte", value: e.recoveryNights.map { String(format: "%.1f", $0) } ?? (e.censored ? "≥ 5" : "sin medir"))
+                    LabeledContent("Noches hasta normalizarte", value: e.recoveryNights.map { Fmt.dec($0) } ?? (e.censored ? "≥ 5" : "sin medir"))
                     if let h = e.hrvChangePct { LabeledContent("VFC la noche siguiente", value: String(format: "%+.0f %%", h)) }
                     if e.chained { Text("Hubo otro día exigente antes de recuperarte: carga encadenada.").font(.caption2).foregroundStyle(Theme.yellow) }
                 }

@@ -54,7 +54,7 @@ enum PlanText {
     }
 
     static func habit(_ g: PlanGoal) -> String {
-        (g.habit.map { JournalCatalog.label($0) } ?? "Hábito").replacingOccurrences(of: "whoop:", with: "")
+        g.habit.map { JournalCatalog.label($0) } ?? "Hábito"
     }
 
     static func clock(_ minutes: Double) -> String {

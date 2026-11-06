@@ -46,7 +46,7 @@ struct LiveView: View {
             .background(PulsoBackground())
             .pulsoTitle("Live")
             .onAppear { model.setLive(true) }
-            .onDisappear { if model.liveWorkout == nil { model.setLive(false) } }
+            .onDisappear { model.setLive(false) } // a running workout keeps the stream on its own (applyLive)
             .onChange(of: model.liveHR) { _, _ in refreshSlow() }
             .sheet(isPresented: $startingWorkout) {
                 StartActivitySheet(isPresented: $startingWorkout)
@@ -479,7 +479,7 @@ struct WorkoutDetailView: View {
                         Label("Registrado con \(app)", systemImage: "app.connected.to.app.below.fill").font(.caption).foregroundStyle(Theme.secondary)
                     }
                     if let d = workout.distanceMeters {
-                        Label(String(format: "%.2f km", d / 1000), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                        Label("\(Fmt.dec(d / 1000, 2)) km", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
                             .font(.caption).foregroundStyle(Theme.secondary)
                     }
                     if workout.externalID("strava") != nil {

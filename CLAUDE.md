@@ -306,3 +306,23 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
   la misma muñeca. Ahora `Fitness.passiveVO2` = Jurca 2005 (sexo, edad, IMC, FC reposo, puntos de actividad desde minutos en
   zonas 2-5 de 4 semanas / zona 1 / pasos): con los datos de Gus 42,1-43,5. Las carreras (3+ en 90 días) siguen mandando.
   Estrés por minuto suavizado (mediana 5 min + media exponencial 0,25), gráfica de una línea con colores por nivel. `derivedVersion` 13.
+
+## Estado (2026-11-06, batería, alarma y auditoría)
+
+- Batería de la pulsera (~7 días vs 14): el gasto era el pulso en directo (1 notificación/s). Clientes solo de pantalla
+  (`AppModel.screenOnlyLiveClients`) no cuentan en segundo plano; 0x2A37 solo con directo; solo los cambios llegan a la
+  pulsera. Registro `battery.log` (`BatteryLog`) → Dispositivo «Duración de la carga».
+- Alarma (Gus rechazó audio silencioso y Atajos): alarma SILENCIOSA de la pulsera (SET_ALARM sin efectos) 60 s antes de la
+  ventana/hora (`armStrapAlarm`, `StrapManager.desiredAlarm` sobrevive a desconexiones); su evento 57 despierta la app y
+  `updateAlarmStream` enciende el directo solo en ventana/sonando/pospuesta. SIN PROBAR en la 5.0: Alarmas → Despertador de
+  la pulsera (kv `alarm.wakeCall.verified`). Ya no hay directo de noche ni `NightKeepAlive`.
+- Abrir la app siempre descarga; aviso de estrés también desde lo descargado (`StressAlert.recentRun`), comparte hora de
+  silencio con `AlertKind.stress`. Aviso al cerrar la app (`willTerminate`).
+- Auditoría con agentes (06-nov): notificaciones viejas ya no apagan la alarma de mañana; tramas con CRC malo en una
+  descarga → se guardan crudas, no se confirma y se repite (máx. 2); `derivedVersion` solo tras recálculo completo con
+  éxito; enums tolerantes al decodificar alarmas/ajustes; fechas fuera de 2020–2039 → sin decodificar; copias escritas en
+  .tmp + rename y verificadas; release solo con tests verdes y sin borrar «ultima»; Strava con `state` y SIN secreto en la
+  IPA (repo público); textos de metodología reales; sin «whoop:» en Comportamientos.
+- `TodayView.swift`/`SleepView.swift` casi muertos (solo se usan AlarmBanner, CoachCard, FlowChips, JournalCard,
+  RecoveryBreakdown, SleepEditSheet); `StartActivityCard` ya no se usa. La pestaña es «Live», no «En vivo».
+- Pendiente de decidir con Gus: tamaño de las copias, unificar «estrés alto» (3 cálculos distintos).

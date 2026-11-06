@@ -122,8 +122,10 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
 
     /// A burst of loud notifications, one a minute, starting at `date`.
     func scheduleAlarmBurst(at date: Date, title: String, count: Int = 5) {
-        cancelPending(prefix: "pulso.backup.")
-        for i in 0..<count {
+        // Removed by fixed ids, queued before the adds: a get-then-remove would land after the adds and delete the
+        // new requests (same ids).
+        center.removePendingNotificationRequests(withIdentifiers: Self.burstIDs)
+        for i in 0..<min(count, Self.burstIDs.count) {
             let fire = date.addingTimeInterval(Double(i) * 60)
             let delay = fire.timeIntervalSinceNow
             guard delay > 1 else { continue }
@@ -144,8 +146,16 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         center.removePendingNotificationRequests(withIdentifiers: ids)
     }
 
+    /// Every id a burst can use ("pulso.backup.0" …).
+    private static let burstIDs = (0..<10).map { "pulso.backup.\($0)" }
+
     func cancelAlarmBurst() {
-        cancelPending(prefix: "pulso.backup.")
+        center.removePendingNotificationRequests(withIdentifiers: Self.burstIDs)
+        removeDeliveredAlarmBurst()
+    }
+
+    /// Clears burst notifications already shown, leaving pending ones (they may belong to the next alarm).
+    func removeDeliveredAlarmBurst() {
         center.getDeliveredNotifications { list in
             let ids = list.map { $0.request.identifier }.filter { $0.hasPrefix("pulso.backup.") }
             self.center.removeDeliveredNotifications(withIdentifiers: ids)

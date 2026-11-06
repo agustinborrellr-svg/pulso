@@ -145,7 +145,8 @@ public struct FeatureSettings: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let d = FeatureSettings()
-        doubleTap = try c.decodeIfPresent(DoubleTapAction.self, forKey: .doubleTap) ?? d.doubleTap
+        // Enums decode with try?: an unknown case (from a newer build) keeps the default, not a reset of all settings.
+        doubleTap = (try? c.decodeIfPresent(DoubleTapAction.self, forKey: .doubleTap)) ?? d.doubleTap
         quickSport = try c.decodeIfPresent(String.self, forKey: .quickSport) ?? d.quickSport
         hrBroadcast = try c.decodeIfPresent(Bool.self, forKey: .hrBroadcast) ?? d.hrBroadcast
         voiceCues = try c.decodeIfPresent(Bool.self, forKey: .voiceCues) ?? d.voiceCues
@@ -155,7 +156,7 @@ public struct FeatureSettings: Codable, Equatable, Sendable {
         healthWorkouts = try c.decodeIfPresent(Bool.self, forKey: .healthWorkouts) ?? d.healthWorkouts
         labEnabled = try c.decodeIfPresent(Bool.self, forKey: .labEnabled) ?? d.labEnabled
         tapURL = try c.decodeIfPresent(String.self, forKey: .tapURL) ?? d.tapURL
-        tapMethod = try c.decodeIfPresent(DoubleTapWebhook.Method.self, forKey: .tapMethod) ?? d.tapMethod
+        tapMethod = (try? c.decodeIfPresent(DoubleTapWebhook.Method.self, forKey: .tapMethod)) ?? d.tapMethod
         tapShortcut = try c.decodeIfPresent(String.self, forKey: .tapShortcut) ?? d.tapShortcut
     }
 }

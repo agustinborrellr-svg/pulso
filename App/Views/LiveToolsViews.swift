@@ -332,7 +332,7 @@ struct ScanView: View {
             row("Pulso", "\(Int(r.hr.rounded())) lpm", signed(r.hrDelta, "lpm"))
             row("VFC (RMSSD)", Fmt.int(r.rmssd) + " ms", r.hrvRatio.map { "\(Int(($0 * 100).rounded())) % de tu normal" })
             row("Respiración", Fmt.dec(r.respRate) + " rpm")
-            row("Estrés", r.stress.map { String(format: "%.1f / 3", $0) } ?? "–")
+            row("Estrés", r.stress.map { "\(Fmt.dec($0)) / 3" } ?? "–")
             Text("\(r.beats) latidos analizados.").font(.caption2).foregroundStyle(Theme.tertiary)
         }
     }
@@ -656,7 +656,7 @@ struct OrthostaticTestView: View {
             row("Pulso de pie (min 2–3)", "\(Int(r.standingHR)) lpm")
             row("Subida", "+\(Int(r.rise.rounded())) lpm")
             row("VFC tumbado → de pie", "\(Fmt.int(r.lyingRMSSD)) → \(Fmt.int(r.standingRMSSD)) ms")
-            if let q = r.ratio3015 { row("Índice 30:15", String(format: "%.2f", q)) }
+            if let q = r.ratio3015 { row("Índice 30:15", Fmt.dec(q, 2)) }
             Text(r.verdict).font(.subheadline).foregroundStyle(.white)
             if let prev = model.liveTests.filter({ $0.kind == .orthostatic }).dropLast().last {
                 Text("La vez anterior subiste \(Int(prev.value)) lpm. Una subida mayor de lo habitual por la mañana suele indicar fatiga acumulada.")

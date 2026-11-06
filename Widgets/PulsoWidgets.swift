@@ -2,6 +2,11 @@ import WidgetKit
 import SwiftUI
 import ActivityKit
 
+/// One decimal with the Spanish comma ("12,4"): the widget can't use the app's `Fmt`.
+private func oneDecimal(_ v: Double) -> String {
+    String(format: "%.1f", v).replacingOccurrences(of: ".", with: ",")
+}
+
 // MARK: - Timeline
 
 struct SnapshotEntry: TimelineEntry {
@@ -125,17 +130,17 @@ struct DayWidgetView: View {
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
                 Text("Recuperación \(s.recovery.map { "\(Int($0)) %" } ?? "–")").font(.headline)
-                Text("Esfuerzo \(s.strain.map { String(format: "%.1f", $0) } ?? "–")\(s.strainTarget.map { " / \($0)" } ?? "")")
+                Text("Esfuerzo \(s.strain.map(oneDecimal) ?? "–")\(s.strainTarget.map { " / \($0)" } ?? "")")
                 Text("Sueño \(s.sleepMinutes.map { "\(Int($0) / 60)h \(Int($0) % 60)m" } ?? "–")")
             }
             .font(.caption)
         case .accessoryInline:
-            Text("Rec \(s.recovery.map { "\(Int($0))%" } ?? "–") · Esf \(s.strain.map { String(format: "%.1f", $0) } ?? "–")")
+            Text("Rec \(s.recovery.map { "\(Int($0))%" } ?? "–") · Esf \(s.strain.map(oneDecimal) ?? "–")")
         case .systemMedium:
             HStack(spacing: 14) {
                 Ring(progress: (s.recovery ?? 0) / 100, color: WTheme.recovery(s.recovery),
                      value: s.recovery.map { "\(Int($0))" } ?? "–", label: "RECUP.")
-                Ring(progress: (s.strain ?? 0) / 21, color: WTheme.strain, value: s.strain.map { String(format: "%.1f", $0) } ?? "–",
+                Ring(progress: (s.strain ?? 0) / 21, color: WTheme.strain, value: s.strain.map(oneDecimal) ?? "–",
                      label: "ESFUERZO")
                 Ring(progress: s.sleepPerformance ?? 0, color: WTheme.sleep,
                      value: s.sleepPerformance.map { "\(Int(($0 * 100).rounded()))" } ?? "–", label: "SUEÑO")
@@ -153,7 +158,7 @@ struct DayWidgetView: View {
                      value: s.recovery.map { "\(Int($0))%" } ?? "–", lineWidth: 8)
                     .frame(width: 74, height: 74)
                 HStack(spacing: 8) {
-                    Label(s.strain.map { String(format: "%.1f", $0) } ?? "–", systemImage: "flame.fill").foregroundStyle(WTheme.strain)
+                    Label(s.strain.map(oneDecimal) ?? "–", systemImage: "flame.fill").foregroundStyle(WTheme.strain)
                     Label(s.sleepPerformance.map { "\(Int(($0 * 100).rounded()))%" } ?? "–", systemImage: "moon.fill").foregroundStyle(WTheme.sleep)
                 }
                 .font(.caption2.bold())
@@ -194,7 +199,7 @@ struct WorkoutLiveActivity: Widget {
                     Label("\(context.state.heartRate)", systemImage: "heart.fill")
                         .font(.title2.bold().monospacedDigit())
                         .foregroundStyle(Self.zoneColor(context.state.zone))
-                    Text(String(format: "Esf. %.1f · %d kcal", context.state.strain, context.state.kcal)).font(.caption).foregroundStyle(.secondary)
+                    Text("Esf. \(oneDecimal(context.state.strain)) · \(context.state.kcal) kcal").font(.caption).foregroundStyle(.secondary)
                 }
             }
             .padding()
@@ -212,7 +217,7 @@ struct WorkoutLiveActivity: Widget {
                         Label("\(context.state.heartRate) lpm", systemImage: "heart.fill")
                             .foregroundStyle(Self.zoneColor(context.state.zone))
                         Spacer()
-                        Text(String(format: "Esfuerzo %.1f", context.state.strain)).foregroundStyle(WTheme.strain)
+                        Text("Esfuerzo \(oneDecimal(context.state.strain))").foregroundStyle(WTheme.strain)
                         Spacer()
                         if let step = context.state.step { Text(step).foregroundStyle(WTheme.yellow).lineLimit(1) }
                     }

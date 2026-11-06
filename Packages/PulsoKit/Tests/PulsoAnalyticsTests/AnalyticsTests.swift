@@ -366,4 +366,13 @@ final class AnalyticsTests: XCTestCase {
         XCTAssertNotNil(alcohol)
         XCTAssertEqual(alcohol?.recoveryDelta ?? 0, -30, accuracy: 0.1)
     }
+
+    func testJournalLabelHidesImportPrefix() {
+        XCTAssertEqual(JournalCatalog.label("alcohol"), "Alcohol")
+        XCTAssertEqual(JournalCatalog.label("whoop:¿Desayunaste?"), "Desayunaste")
+        XCTAssertEqual(JournalCatalog.label("whoop: ¿Tomaste algún suplemento? "), "Tomaste algún suplemento")
+        for key in ["whoop:¿Desayunaste?", "whoop:Viajé", "whoop:"] {
+            XCTAssertFalse(JournalCatalog.label(key).lowercased().contains("whoop"), key)
+        }
+    }
 }

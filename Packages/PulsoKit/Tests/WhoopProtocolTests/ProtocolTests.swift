@@ -114,6 +114,24 @@ final class ProtocolTests: XCTestCase {
         XCTAssertTrue(session.pendingUndecoded.isEmpty)
     }
 
+    func testRecordWithResetClockIsKeptRawNotDecoded() throws {
+        var wire = try XCTUnwrap(Hex.decode(Self.realV18))
+        // inner[7..11] = unix: stamp it 1000 s after the epoch (strap clock reset), then re-seal the CRC32.
+        var inner = Array(wire[8..<(wire.count - 4)])
+        inner.replaceSubrange(7..<11, with: LE.bytes(UInt32(1000)))
+        wire.replaceSubrange(8..<(wire.count - 4), with: inner)
+        wire.replaceSubrange((wire.count - 4)..., with: LE.bytes(CRC.crc32(inner)))
+        let f = try Framing.decode(.gen5, wire)
+        XCTAssertTrue(f.crcOK)
+        XCTAssertNil(HistorySample.decodeV18(f))
+        let session = OffloadSession()
+        let end = try Framing.decode(.gen5, XCTUnwrap(Hex.decode(Self.realHistoryEnd)))
+        XCTAssertNil(session.handle(f))
+        guard case .chunk(let samples, let undecoded, _, _)? = session.handle(end) else { return XCTFail("expected chunk") }
+        XCTAssertTrue(samples.isEmpty)
+        XCTAssertEqual(undecoded, [f], "the raw bytes still travel with the chunk, to be stored before the ack")
+    }
+
     func testCorruptFrameIsIgnoredByOffload() throws {
         var wire = try XCTUnwrap(Hex.decode(Self.realHistoryEnd))
         wire[wire.count - 1] ^= 0xFF

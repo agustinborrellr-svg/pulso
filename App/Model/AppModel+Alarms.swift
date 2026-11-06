@@ -69,6 +69,9 @@ extension AppModel {
     /// Plans the next alarm: wake session, strap alarm and iPhone backup. Never disturbs an alarm
     /// that is monitoring, ringing or snoozed.
     func refreshAlarmSchedule() {
+        // Let the current occurrence catch up first (ring late or end as missed): replacing a session that is
+        // still waiting past its time with tomorrow's would skip it silently and leave a one-off alarm on.
+        alarmTick(now: Date())
         if let s = wakeSession, s.isActive || s.state == .monitoring {
             updateAlarmStatus()
             return
@@ -91,8 +94,12 @@ extension AppModel {
         // iPhone backup a little after the latest time (only rescheduled when it changes).
         let backupAt = next.latest.addingTimeInterval(Double(next.alarm.phoneBackupDelay) * 60)
         let stored = UserDefaults.standard.object(forKey: "pulso.backup.at") as? Date
-        // A backup about to ring belongs to an alarm nobody answered: leave it alone.
-        if let st = stored, st != backupAt, st > Date(), st.timeIntervalSinceNow < 20 * 60 {
+        // A backup about to ring belongs to an alarm nobody answered, and one snoozed from its notification was
+        // asked for: leave it alone.
+        let snoozedAt = UserDefaults.standard.object(forKey: "pulso.backup.snoozedAt") as? Date
+        if let st = stored, st != backupAt, st > Date(), st.timeIntervalSinceNow < 20 * 60 || st == snoozedAt {
+            // The finished alarm disarmed the strap: still arm the next session's wake-up call.
+            armStrapAlarm()
             updateAlarmStatus()
             updateAlarmStream()
             return
@@ -101,6 +108,7 @@ extension AppModel {
             if stored != backupAt {
                 alarmBackup.schedule(at: backupAt, title: next.alarm.label)
                 UserDefaults.standard.set(backupAt, forKey: "pulso.backup.at")
+                UserDefaults.standard.set(next.alarm.id, forKey: "pulso.backup.alarm")
             }
         } else if stored != nil {
             alarmBackup.cancel()
@@ -175,6 +183,7 @@ extension AppModel {
                     let date = Date(timeIntervalSince1970: TimeInterval(at))
                     alarmBackup.schedule(at: date, title: s.planned.alarm.label)
                     UserDefaults.standard.set(date, forKey: "pulso.backup.at")
+                    UserDefaults.standard.set(s.planned.alarm.id, forKey: "pulso.backup.alarm")
                 } else {
                     alarmBackup.cancel()
                     UserDefaults.standard.removeObject(forKey: "pulso.backup.at")
@@ -184,7 +193,10 @@ extension AppModel {
                 appendLog("Alarma: \(reason)")
                 strap.stopHaptics()
                 strap.setAlarm(nil)
-                completeAlarm(s, answered: reason == "Apagada")
+                // Left in the notification centre, clearing the ringing banner later would stop the next alarm.
+                NotificationService.shared.remove(["pulso.alarm.banner", "pulso.alarm.info"])
+                // Stopped by hand (ringing or not): the backup was cancelled with it, nothing is about to ring.
+                completeAlarm(s, answered: reason == "Apagada" || reason == "Cancelada")
             }
         }
         updateAlarmStatus()
@@ -219,13 +231,57 @@ extension AppModel {
     }
 
     func alarmStop() {
-        guard let s = wakeSession else {
-            alarmBackup.cancel()
-            UserDefaults.standard.removeObject(forKey: "pulso.backup.at")
+        guard let s = wakeSession, alarmAnswerable(s) else {
+            stopLeftoverBackup()
             return
         }
         strap.stopHaptics()
         perform(s.stop(now: Int(Date().timeIntervalSince1970)), session: s)
+    }
+
+    /// Whether a stop / snooze / dismissal concerns this session. A banner or backup left over from an alarm that
+    /// already finished must not cancel the next one, which is already waiting for tomorrow.
+    /// A session still waiting after `alarmTick` has not reached its time, so no notification can be its own (with
+    /// two alarms close together, stopping the first one's backup must not cancel the second).
+    private func alarmAnswerable(_ s: WakeSession) -> Bool {
+        s.isActive || s.state == .monitoring
+    }
+
+    /// The stored backup is going off now (or already went), so it belongs to an alarm that has finished; a later
+    /// one belongs to the next alarm and must stay.
+    private var backupRingingNow: Bool {
+        guard let at = UserDefaults.standard.object(forKey: "pulso.backup.at") as? Date else { return true }
+        return at <= Date().addingTimeInterval(60)
+    }
+
+    /// Stop with no alarm in progress: silence the iPhone backup only if it is the one ringing.
+    private func stopLeftoverBackup() {
+        NotificationService.shared.remove(["pulso.alarm.banner", "pulso.alarm.info"])
+        if backupRingingNow {
+            alarmBackup.cancel()
+            UserDefaults.standard.removeObject(forKey: "pulso.backup.at")
+            // Plan the next alarm's backup and wake-up call now: the app may stay suspended until then.
+            refreshAlarmSchedule()
+        } else {
+            NotificationService.shared.removeDeliveredAlarmBurst()
+        }
+    }
+
+    /// Snooze on the iPhone backup with no alarm in progress (app was closed, or the alarm already finished and a
+    /// one-off is now off): ring again later with the settings of the alarm the backup belongs to.
+    private func snoozeBackup() {
+        guard backupRingingNow else {
+            NotificationService.shared.removeDeliveredAlarmBurst()
+            return
+        }
+        let d = UserDefaults.standard
+        let id = d.string(forKey: "pulso.backup.alarm")
+        guard let a = alarms.first(where: { $0.id == id }) ?? alarms.first(where: { $0.enabled }) ?? alarms.first else { return }
+        let at = Date().addingTimeInterval(Double(max(1, a.snoozeMinutes)) * 60)
+        alarmBackup.schedule(at: at, title: a.label)
+        d.set(at, forKey: "pulso.backup.at")
+        d.set(at, forKey: "pulso.backup.snoozedAt")
+        d.set(a.id, forKey: "pulso.backup.alarm")
     }
 
     func updateAlarmStatus() {
@@ -257,14 +313,17 @@ extension AppModel {
     }
 
     func handleNotificationAction(_ action: String, category: String, id: String) {
+        // The action may be what woke a suspended app: bring the session up to date before routing to it.
+        if category == NotificationService.Category.alarm || category == NotificationService.Category.alarmInfo {
+            alarmTick(now: Date())
+        }
         switch (category, action) {
         case (NotificationService.Category.alarm, NotificationService.Action.snooze),
              (NotificationService.Category.alarmInfo, NotificationService.Action.snooze):
             if wakeSession?.isActive == true {
                 alarmSnooze()
-            } else if let a = alarms.first(where: { $0.enabled }) {
-                // Backup ringing with no session (app was closed): ring again later.
-                alarmBackup.schedule(at: Date().addingTimeInterval(Double(a.snoozeMinutes) * 60), title: a.label)
+            } else {
+                snoozeBackup()
             }
         case (NotificationService.Category.alarm, NotificationService.Action.stop),
              (NotificationService.Category.alarmInfo, NotificationService.Action.stop),

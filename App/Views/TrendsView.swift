@@ -122,7 +122,7 @@ struct TrendsView: View {
     }
 }
 
-/// Acute (7 d) vs chronic (42 d) load and their ratio.
+/// Acute (7 d) vs chronic (28 d) load and their ratio.
 struct TrainingLoadCard: View {
     let points: [TrainingLoad.Point]
 
@@ -131,10 +131,10 @@ struct TrainingLoadCard: View {
             let status = TrainingLoad.status(points)
             Card {
                 HStack {
-                    SectionTitle(title: "Carga de entrenamiento", subtitle: "Aguda 7 días · crónica 42 días")
+                    SectionTitle(title: "Carga de entrenamiento", subtitle: "Aguda 7 días · crónica 28 días")
                     Spacer()
                     if let r = points.last?.acwr {
-                        Text(String(format: "%.2f", r)).font(.title3.bold().monospacedDigit()).foregroundStyle(color(status))
+                        Text(Fmt.dec(r, 2)).font(.title3.bold().monospacedDigit()).foregroundStyle(color(status))
                     }
                 }
                 Chart {

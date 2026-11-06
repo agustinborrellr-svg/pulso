@@ -164,7 +164,7 @@ struct RecoveryDetailView: View {
         }
         let yesterday = DayKey.shift(d.day, days: -1)
         let journal = model.journal(for: yesterday).filter { $0.value > 0 }.map {
-            (text: JournalCatalog.label($0.key).replacingOccurrences(of: "whoop:", with: ""), up: Optional<Bool>.none, color: Theme.link)
+            (text: JournalCatalog.label($0.key), up: Optional<Bool>.none, color: Theme.link)
         }
         let all: [(text: String, up: Bool?, color: Color)] = fromVitals.map { ($0.text, Optional($0.up), $0.color) } + journal
         return Group {

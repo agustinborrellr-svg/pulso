@@ -117,6 +117,13 @@ final class StrapManager: NSObject {
     /// Time the strap's firmware alarm was last armed for on this link (avoids re-sending the same
     /// SET_ALARM_TIME on every schedule refresh).
     private var armedAlarm: Date?
+    /// The alarm the app wants on the strap, kept across links (unlike `armedAlarm`): every new session arms it
+    /// right after the clock, so a reconnect while iOS keeps the app suspended still gets the wake-up call.
+    private var desiredAlarm: (date: Date, silent: Bool)?
+    /// A SET_ALARM_TIME was sent and never cancelled. The strap may keep it across a disconnect, so a cancel asked
+    /// for while unlinked goes out on the next link (the alarm is one-shot, so after firing this is just one
+    /// harmless extra disable).
+    private var strapMayHoldAlarm = false
     private var helloReceived = false
     private var helloRetried = false
     private var subscribeQueue: [CBUUID] = []
@@ -144,6 +151,12 @@ final class StrapManager: NSObject {
     private var offloadRecords = 0
     private var offloadFirst: Int?
     private var offloadLast: Int?
+    /// Corrupt (bad-CRC) frames seen on the data channel since the last chunk boundary of the running offload.
+    /// HISTORY_END would still ack that chunk and let the strap free records we never stored.
+    private var offloadBadCRC: [Frame] = []
+    /// Offloads restarted on this link because a chunk had corrupt frames (reset on a clean chunk).
+    private var crcRetries = 0
+    static let maxCRCRetries = 2
     private var lastSyncAt: Date?
     private var lastSyncProgress = Date.distantPast
     /// Next automatic download while the link stays up (runs whenever the app is awake then).
@@ -354,16 +367,29 @@ final class StrapManager: NSObject {
     func setAlarm(_ date: Date?, silent: Bool = false) {
         guard active else { return }
         queue.async {
+            self.desiredAlarm = date.map { (date: $0, silent: silent) }
             guard self.bonded else { return }
-            if let date {
-                if let armed = self.armedAlarm, abs(armed.timeIntervalSince(date)) < 1 { return }
-                self.armedAlarm = date
-                self.send(self.commands.setAlarm(at: date, silent: silent))
-            } else {
-                guard self.armedAlarm != nil else { return }
-                self.armedAlarm = nil
-                self.send(self.commands.disableAlarm())
+            self.applyDesiredAlarm()
+        }
+    }
+
+    /// Sends `desiredAlarm` to the strap (only when it changed on this link). Call on `queue` with the link bonded.
+    private func applyDesiredAlarm() {
+        if let want = desiredAlarm {
+            // Its time went by while unlinked: nothing to arm.
+            guard want.date > Date() else {
+                desiredAlarm = nil
+                return
             }
+            if let armed = armedAlarm, abs(armed.timeIntervalSince(want.date)) < 1 { return }
+            armedAlarm = want.date
+            strapMayHoldAlarm = true
+            send(commands.setAlarm(at: want.date, silent: want.silent))
+        } else {
+            guard armedAlarm != nil || strapMayHoldAlarm else { return }
+            armedAlarm = nil
+            strapMayHoldAlarm = false
+            send(commands.disableAlarm())
         }
     }
 
@@ -466,6 +492,8 @@ final class StrapManager: NSObject {
         helloTimeout?.cancel()
         offloadIdle?.cancel()
         offload = nil
+        offloadBadCRC.removeAll()
+        crcRetries = 0
     }
 
     /// The current mode didn't get a working session: try the other one on a fresh link.
@@ -596,6 +624,8 @@ final class StrapManager: NSObject {
             log("Reloj de la pulsera ajustado")
         }
         send(commands.getBattery())
+        // The strap's alarm is one-shot and the app may be suspended by now: re-arm it here, once the clock is right.
+        applyDesiredAlarm()
         if mode == .sequential { send(commands.getAdvertisingName()) }
         if wantsLive { send(commands.toggleRealtimeHR(true)) }
         queue.asyncAfter(deadline: .now() + 1.2) { [weak self] in self?.startOffload(force: true) }
@@ -610,6 +640,7 @@ final class StrapManager: NSObject {
         offloadRecords = 0
         offloadFirst = nil
         offloadLast = nil
+        offloadBadCRC.removeAll()
         state = .syncing(records: 0)
         log("Descargando historial…")
         // A battery reading with every download feeds the battery log (Dispositivo → duración de la carga).
@@ -632,14 +663,23 @@ final class StrapManager: NSObject {
         queue.asyncAfter(deadline: .now() + 10, execute: item)
     }
 
-    private func store(_ samples: [HistorySample], undecoded: [Frame] = []) -> Bool {
+    /// Stores a chunk. `corrupt` are bad-CRC frames kept raw (in undecoded_records) so their bytes survive.
+    /// Returns false when anything could not be stored: the caller must not ack then.
+    private func store(_ samples: [HistorySample], undecoded: [Frame] = [], corrupt: [Frame] = []) -> Bool {
+        // No persister yet means nothing would be saved: never let an ack free the strap's copy.
+        guard let persist, let persistUndecoded else {
+            log("Almacenamiento no disponible: no confirmo el bloque")
+            return false
+        }
         do {
-            if !undecoded.isEmpty {
-                try persistUndecoded?(undecoded)
-                log("\(undecoded.count) registros en un formato desconocido: guardados sin decodificar")
+            if !undecoded.isEmpty || !corrupt.isEmpty {
+                try persistUndecoded(undecoded + corrupt)
+                if !undecoded.isEmpty {
+                    log("\(undecoded.count) registros en un formato desconocido: guardados sin decodificar")
+                }
             }
             guard !samples.isEmpty else { return true }
-            try persist?(samples)
+            try persist(samples)
             guard offload != nil else { return true }
             offloadRecords += samples.count
             let ts = samples.map { Int($0.unix) }
@@ -658,7 +698,27 @@ final class StrapManager: NSObject {
         guard let step = session.handle(frame) else { return }
         switch step {
         case .chunk(let samples, let undecoded, let token, _):
-            if store(samples, undecoded: undecoded) {
+            let corrupt = offloadBadCRC
+            offloadBadCRC.removeAll()
+            if !corrupt.isEmpty && crcRetries < Self.maxCRCRetries {
+                // Records were lost to corruption: keep what did arrive (re-sending it later is an upsert),
+                // don't ack, and ask again so the strap re-sends the whole chunk.
+                crcRetries += 1
+                _ = store(samples, undecoded: undecoded, corrupt: corrupt)
+                log("\(corrupt.count) tramas dañadas en un bloque: no lo confirmo y vuelvo a pedirlo (intento \(crcRetries) de \(Self.maxCRCRetries))")
+                send(commands.abortHistorical())
+                finishOffload(completed: false)
+                queue.asyncAfter(deadline: .now() + 2) { [weak self] in self?.startOffload(force: true) }
+                return
+            }
+            if !corrupt.isEmpty {
+                // Retries exhausted: keep the corrupt frames' raw bytes and ack anyway, or the strap stays blocked
+                // on this chunk forever.
+                log("\(corrupt.count) tramas dañadas tras \(Self.maxCRCRetries) reintentos: guardadas sin decodificar y confirmo el bloque")
+            }
+            // A clean chunk, or one given up on: the next corrupt chunk gets its own retries.
+            crcRetries = 0
+            if store(samples, undecoded: undecoded, corrupt: corrupt) {
                 send(commands.historyAck(token: token))
                 // Each state change redraws every visible screen: chunks arrive many times a second.
                 if Date().timeIntervalSince(lastSyncProgress) >= 1 {
@@ -670,13 +730,17 @@ final class StrapManager: NSObject {
                 finishOffload(completed: false)
             }
         case .complete(let pending, let undecoded):
-            finishOffload(completed: store(pending, undecoded: undecoded))
+            // Nothing is acked here, so corrupt frames since the last chunk are just kept raw.
+            let corrupt = offloadBadCRC
+            offloadBadCRC.removeAll()
+            finishOffload(completed: store(pending, undecoded: undecoded, corrupt: corrupt))
         }
     }
 
     private func finishOffload(completed: Bool) {
         offloadIdle?.cancel()
         offload = nil
+        offloadBadCRC.removeAll()
         if completed { lastSyncAt = Date() }
         if bonded { state = .ready }
         scheduleAutoSync()
@@ -692,7 +756,15 @@ final class StrapManager: NSObject {
         var handled = frame.crcOK
         if case .ignored = message { handled = false }
         recorder.record(frame, channel: channel.uuidString.prefix(8).lowercased(), handled: handled)
-        guard frame.crcOK else { return }
+        guard frame.crcOK else {
+            // A corrupt frame on the data channel mid-download may be a history record: remember it so its
+            // chunk isn't acked blindly. Live-stream frames (a type byte that still reads as realtime) don't count.
+            let liveType = frame.canonicalType.map { [PacketType.realtimeData, .realtimeRawData, .realtimeImuStream].contains($0) } ?? false
+            if offload != nil, channel == StrapUUID.data, !liveType {
+                offloadBadCRC.append(frame)
+            }
+            return
+        }
         if !handled {
             delegate?.strapUnhandledFrame(frame)
             return

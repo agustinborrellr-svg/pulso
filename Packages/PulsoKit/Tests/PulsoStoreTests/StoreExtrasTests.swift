@@ -87,6 +87,15 @@ final class StoreExtrasTests: XCTestCase {
         try d.backup(to: path)
         try d.backup(to: path) // overwriting works
         XCTAssertTrue(PulsoDatabase.isValidBackup(path: path))
+        // Written aside and renamed: nothing temporary is left, and the cleanup rule never matches a real copy.
+        let tmp = PulsoDatabase.temporaryPath(for: path)
+        for suffix in ["", "-journal", "-wal", "-shm"] { XCTAssertFalse(FileManager.default.fileExists(atPath: tmp + suffix)) }
+        let real = BackupPolicy.fileName(.daily, at: Date())
+        XCTAssertTrue(BackupPolicy.isUnfinished(URL(fileURLWithPath: PulsoDatabase.temporaryPath(for: "/x/" + real)).lastPathComponent))
+        XCTAssertTrue(BackupPolicy.isUnfinished("." + real + ".tmp-wal"))
+        for name in [real, BackupPolicy.fileName(.safety, reason: "importar", at: Date()), "pulso.sqlite", "Pulso.sqlite.tmp"] {
+            XCTAssertFalse(BackupPolicy.isUnfinished(name), name)
+        }
         let copy = try PulsoDatabase(path: path)
         XCTAssertEqual(try copy.day("2026-10-01")?.recovery, 81)
         XCTAssertEqual(try copy.sampleCount(), 1)

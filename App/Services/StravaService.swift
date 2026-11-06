@@ -48,12 +48,21 @@ final class StravaService: ObservableObject {
         attachTokenSink()
     }
 
-    var authorizeURL: URL { client.authorizeURL() }
-    var appAuthorizeURL: URL { client.authorizeURL(app: true) }
+    /// Each read starts a new authorization flow with a fresh `state` (read once per «Conectar»).
+    var authorizeURL: URL { client.beginAuthorization() }
+    var appAuthorizeURL: URL { client.beginAuthorization(app: true) }
 
     func complete(callback url: URL) async {
-        guard let code = StravaClient.code(fromCallback: url) else {
+        let code: String
+        switch client.checkCallback(url) {
+        case .code(let c):
+            code = c
+        case .declined:
             status = "Has cancelado la conexión con Strava."
+            return
+        case .unexpected:
+            // Not an answer to a connection started here (or it took more than 10 minutes): no token exchange.
+            if !connected { status = "Respuesta de Strava no reconocida o caducada. Vuelve a pulsar Conectar." }
             return
         }
         do {

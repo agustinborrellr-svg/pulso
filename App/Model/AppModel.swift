@@ -151,10 +151,14 @@ final class AppModel: ObservableObject {
         migrateRetentionDefault()
         reload()
         // Numbers computed by an older version of the algorithms are recomputed from the raw seconds
-        // (imports, journal, manual sleeps and workouts are kept).
+        // (imports, journal, manual sleeps and workouts are kept). The version is stamped only when that
+        // full recompute succeeds (see recompute()), so an interrupted run is retried on the next launch.
         if db.get(Int.self, for: DayEngine.derivedVersionKey) != DayEngine.derivedVersion {
-            if (try? db.hasSamples()) == true && !AppMode.screenshots { recompute(fromDay: nil) }
-            try? db.set(DayEngine.derivedVersion, for: DayEngine.derivedVersionKey)
+            if (try? db.hasSamples()) == true && !AppMode.screenshots {
+                recompute(fromDay: nil)
+            } else {
+                try? db.set(DayEngine.derivedVersion, for: DayEngine.derivedVersionKey)
+            }
         }
         startTicker()
         autoBackupIfDue()
@@ -416,6 +420,11 @@ final class AppModel: ObservableObject {
             Task { @MainActor in
                 self.analyzing = false
                 if let message { self.errorMessage = "Error analizando: \(message)" }
+                // Only a complete, successful pass over every day means all stored numbers come from the
+                // current algorithms. A queued full run stamps it itself when it finishes.
+                if fromDay == nil && message == nil {
+                    try? self.db.set(DayEngine.derivedVersion, for: DayEngine.derivedVersionKey)
+                }
                 self.reload()
                 self.refreshIntelligence()
                 // Simulated days must never reach Apple Health as real samples.
@@ -456,7 +465,7 @@ final class AppModel: ObservableObject {
     private(set) var liveStreamOn = false
     /// Clients that only show the pulse on screen. With the app in the background they don't count: the stream costs
     /// the strap a notification a second, and a screen left open on Live used to keep it going all day and night.
-    private static let screenOnlyLiveClients: Set<String> = ["view", "monitor", "scan", "poincare", "orthostatic", "hrr", "maxhr"]
+    private static let screenOnlyLiveClients: Set<String> = ["view", "monitor", "scan", "poincare", "breathing", "orthostatic", "hrr", "maxhr"]
 
     func setLive(_ on: Bool, client: String = "view") {
         if on { liveClients.insert(client) } else { liveClients.remove(client) }
@@ -672,7 +681,7 @@ final class AppModel: ObservableObject {
         profile = db.profile
         lastSync = nil
         alarms = []
-        settings = FeatureSettings()
+        saveSettings(FeatureSettings()) // also stops the pulse broadcast and its live-stream client
         alertPrefs = AlertPreferences()
         ecgRecordings = []
         refreshAlarmSchedule()

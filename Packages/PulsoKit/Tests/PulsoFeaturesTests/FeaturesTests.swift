@@ -104,6 +104,27 @@ final class FeaturesTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(AlarmConfig.self, from: JSONEncoder().encode(a)), a)
     }
 
+    func testAlarmDecodingSurvivesUnknownEnumCases() throws {
+        // Saved by a newer build: unknown cases fall back to the defaults, everything else is kept.
+        let json = #"[{"id":"a2","hour":5,"minute":50,"weekdays":[1],"mode":"lunar","vibration":"thunder","doubleTap":"dance","snoozeMinutes":4}]"#
+        let list = try JSONDecoder().decode([AlarmConfig].self, from: Data(json.utf8))
+        XCTAssertEqual(list.count, 1)
+        let a = try XCTUnwrap(list.first)
+        XCTAssertEqual(a.id, "a2")
+        XCTAssertEqual(a.hour, 5)
+        XCTAssertEqual(a.minute, 50)
+        XCTAssertEqual(a.weekdays, [1])
+        XCTAssertEqual(a.snoozeMinutes, 4)
+        XCTAssertEqual(a.mode, AlarmConfig().mode)
+        XCTAssertEqual(a.vibration, AlarmConfig().vibration)
+        XCTAssertEqual(a.doubleTap, AlarmConfig().doubleTap)
+        let s = try JSONDecoder().decode(FeatureSettings.self,
+                                         from: Data(#"{"doubleTap":"teleport","tapMethod":"PATCHX","quickSport":"run"}"#.utf8))
+        XCTAssertEqual(s.doubleTap, FeatureSettings().doubleTap)
+        XCTAssertEqual(s.tapMethod, FeatureSettings().tapMethod)
+        XCTAssertEqual(s.quickSport, "run")
+    }
+
     // MARK: Haptics
 
     func testHapticPlans() {
