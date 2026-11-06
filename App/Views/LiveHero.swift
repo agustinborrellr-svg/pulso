@@ -123,7 +123,7 @@ struct MonitorGrid: View {
             while y <= size.height { path.move(to: CGPoint(x: 0, y: y)); path.addLine(to: CGPoint(x: size.width, y: y)); y += step }
             g.stroke(path, with: .color(Color.white.opacity(0.05)), lineWidth: 1)
         }
-        .background(LinearGradient(colors: [Theme.card, Theme.card.opacity(0.6)], startPoint: .top, endPoint: .bottom).opacity(plain ? 0 : 1))
+        .background { LinearGradient(colors: [Theme.card, Theme.card.opacity(0.6)], startPoint: .top, endPoint: .bottom).opacity(plain ? 0 : 1) }
     }
 }
 
