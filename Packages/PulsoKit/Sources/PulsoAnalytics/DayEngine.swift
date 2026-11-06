@@ -9,7 +9,7 @@ import PulsoStore
 public final class DayEngine {
     /// Version of the derived numbers (days, sleeps, workouts). Bump it whenever an algorithm changes: the app
     /// then recomputes every day from the raw seconds it still has.
-    public static let derivedVersion = 13
+    public static let derivedVersion = 14
 
     /// Daytime sleeps shorter than this are naps unless the user says otherwise.
     public static let napLimit = 3 * 3600
@@ -400,8 +400,8 @@ public final class DayEngine {
         }
         d.extraBeats = counted >= 120 ? extra.rounded() : nil
 
-        // Stress while awake and still, outside workouts (and the recovery after them) and naps, against a
-        // two-week baseline of your typical still moments.
+        // The calm reference: heart rate and HRV of your still, awake moments (outside workouts, the recovery after
+        // them and naps), over two weeks. Stress itself is per minute against it.
         let excluding = workouts.map { $0.start...($0.end + Stress.postWorkoutMinutes * 60) } + naps.map { $0.start...$0.end }
         let still = Stress.stillWindows(samples: samples, epochs: cycleEpochs, from: cycleStart, to: d.cycleEnd!,
                                         excluding: excluding, stillThreshold: stillThr)
@@ -412,30 +412,36 @@ public final class DayEngine {
         let calmHRVs = past.suffix(14).compactMap { $0.calmHRV } + [todayCalm.hrv].compactMap { $0 }
         // One day is no baseline: against a single afternoon, an ordinary evening read as "high stress".
         if past.suffix(14).compactMap({ $0.calmHR }).count >= Stress.minBaselineDays, let refHR = Stats.median(calmHRs) {
-            let stress = Stress.score(still, calmHR: refHR, calmHRV: Stats.median(calmHRVs))
-            if !stress.isEmpty {
-                d.stressAvg = Stats.mean(stress.map { $0.score })
-                d.stressHighMinutes = Double(stress.filter { $0.score >= 2 }.count * 5)
-                var hourly = [[Double]](repeating: [], count: 24)
-                for w in stress {
-                    let h = calendar.component(.hour, from: Date(timeIntervalSince1970: TimeInterval(w.ts)))
-                    hourly[h].append(w.score)
-                }
-                d.stressHourly = hourly.map { Stats.mean($0) }
-                // From going to bed: the night sits between two cycles and gets its (low, like the pulse) stress too.
-                let from = min(main?.start ?? cycleStart, cycleStart)
-                let origin = from - from % 60
-                let epochs = from < cycleStart
-                    ? Epochs.minutes(Epochs.slice(samples, from: from, to: d.cycleEnd!), from: from, to: d.cycleEnd!) : cycleEpochs
-                var minutes = [Double?](repeating: nil, count: max(0, (d.cycleEnd! - origin) / 60))
-                for w in Stress.everyMinute(samples: samples, epochs: epochs, calmHR: refHR, calmHRV: Stats.median(calmHRVs),
-                                            stillThreshold: stillThr, workouts: workouts.map { $0.start...$0.end }) {
-                    let i = (w.ts - origin) / 60
-                    if i >= 0 && i < minutes.count { minutes[i] = (w.score * 100).rounded() / 100 }
-                }
-                while let last = minutes.last, last == nil { minutes.removeLast() }
+            // From going to bed: the night sits between two cycles and gets its (low, like the pulse) stress too.
+            let from = min(main?.start ?? cycleStart, cycleStart)
+            let origin = from - from % 60
+            let epochs = from < cycleStart
+                ? Epochs.minutes(Epochs.slice(samples, from: from, to: d.cycleEnd!), from: from, to: d.cycleEnd!) : cycleEpochs
+            var minutes = [Double?](repeating: nil, count: max(0, (d.cycleEnd! - origin) / 60))
+            for w in Stress.everyMinute(samples: samples, epochs: epochs, calmHR: refHR, calmHRV: Stats.median(calmHRVs),
+                                        stillThreshold: stillThr, workouts: workouts.map { $0.start...$0.end }) {
+                let i = (w.ts - origin) / 60
+                if i >= 0 && i < minutes.count { minutes[i] = (w.score * 100).rounded() / 100 }
+            }
+            while let last = minutes.last, last == nil { minutes.removeLast() }
+            if minutes.contains(where: { $0 != nil }) {
                 d.stressMinutes = minutes
                 d.stressOrigin = origin
+            }
+            // The day's numbers from those same minutes, awake and outside workouts and the 90 minutes after them,
+            // with the same sessions the app reads back for the 21:00 summary (`StressSummary.split`): the workouts
+            // of the cycle without breathing sessions, and the naps and daytime sleeps starting 10:00–22:00.
+            let daytime = try db.sleeps(from: dayStart, to: dayStart + 86_400).filter { s in
+                guard s.id != main?.id || s.isNap else { return false }
+                return (10..<22).contains(calendar.component(.hour, from: Date(timeIntervalSince1970: TimeInterval(s.start))))
+            }
+            let daily = StressSummary.daily(minutes: minutes, origin: origin, wake: cycleStart,
+                                            workouts: workouts.filter { !Breathwork.activityNames.contains($0.sport) }.map { $0.start...$0.end },
+                                            naps: daytime.map { $0.start...$0.end }, calendar: calendar)
+            if daily.counted > 0 {
+                d.stressAvg = daily.avg
+                d.stressHighMinutes = Double(daily.highMinutes)
+                d.stressHourly = daily.hourly
             }
         }
 

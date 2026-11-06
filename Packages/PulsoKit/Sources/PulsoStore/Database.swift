@@ -184,8 +184,16 @@ public final class PulsoDatabase {
         Int(try sql.scalarInt("SELECT COUNT(*) FROM samples") ?? 0)
     }
 
-    /// Deletes raw seconds older than `ts` (summaries are kept).
+    /// Retention limit: deletes raw seconds older than `ts` (summaries are kept), but never a second whose
+    /// month has no archive in the backup folder yet (`updateArchiveCoverage`): with no coverage recorded,
+    /// nothing is deleted.
     public func pruneSamples(olderThan ts: Int) throws {
+        guard let covered = get(Int.self, for: Self.prunableBeforeKey) else { return }
+        try dropSamples(olderThan: min(ts, covered))
+    }
+
+    /// Deletes raw seconds older than `ts` unconditionally (demo data; tests).
+    public func dropSamples(olderThan ts: Int) throws {
         try sql.run("DELETE FROM samples WHERE ts < ?", [.int(Int64(ts))])
         try sql.run("DELETE FROM live_hr WHERE ts < ?", [.int(Int64(ts))])
     }
@@ -453,16 +461,14 @@ public final class PulsoDatabase {
     /// Writes a consistent, compacted copy of the whole database to `path` (replaces it).
     /// A consistent snapshot of everything (VACUUM INTO works while the database is in use).
     public func backup(to path: String) throws {
-        try writeCopy(to: path) { _ in }
+        try writeCopy(to: path) { tmp in try sql.run("VACUUM INTO ?", [.text(tmp)]) }
     }
 
     /// A small snapshot: every summary, sleep, workout, import, journal entry, setting and ECG, without the
-    /// raw per-second data (a few MB instead of hundreds). It restores like a full one.
+    /// raw per-second data (a few MB instead of hundreds). It restores like a full one. Built table by table
+    /// (`writeSlice`), so it never needs a temporary copy of the per-second data.
     public func backupLight(to path: String) throws {
-        try writeCopy(to: path) { tmp in
-            let copy = try SQLiteConnection(path: tmp)
-            try copy.execute("DELETE FROM samples; DELETE FROM live_hr; PRAGMA journal_mode=DELETE; VACUUM;")
-        }
+        try writeSlice(.light, to: path)
     }
 
     /// Hidden file next to `path` where a copy is written before it gets its real name. The backup folder's
@@ -472,17 +478,16 @@ public final class PulsoDatabase {
         return url.deletingLastPathComponent().appendingPathComponent(".\(url.lastPathComponent).tmp").path
     }
 
-    /// Writes to a temporary file, lets `trim` slim it, checks its integrity and only then renames it to
+    /// Lets `build` write the copy to a temporary file, checks its integrity and only then renames it to
     /// `path` (atomic), so a half-written or damaged file never carries a backup's name and whatever was at
     /// `path` before survives a failure.
-    private func writeCopy(to path: String, trim: (String) throws -> Void) throws {
+    func writeCopy(to path: String, build: (String) throws -> Void) throws {
         let fm = FileManager.default
         let tmp = Self.temporaryPath(for: path)
         func clean() { for suffix in ["", "-journal", "-wal", "-shm"] { try? fm.removeItem(atPath: tmp + suffix) } }
         clean()
         do {
-            try sql.run("VACUUM INTO ?", [.text(tmp)])
-            try trim(tmp)
+            try build(tmp)
             guard Self.isIntactCopy(path: tmp) else { throw BackupError.damagedCopy }
             guard rename(tmp, path) == 0 else { throw BackupError.naming(errno) }
         } catch {

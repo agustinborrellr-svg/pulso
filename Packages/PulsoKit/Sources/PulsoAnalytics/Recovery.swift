@@ -208,8 +208,9 @@ public enum SleepCoach {
     }
 }
 
-/// Daytime stress (0–3) from heart rate and HRV while still and awake, relative to your own calm
-/// daytime baseline (the calmer quartile of still windows over the last two weeks).
+/// Stress (0–3) of every minute (`everyMinute`), relative to your own calm reference: heart rate and HRV of your
+/// still, awake moments over the last two weeks (`stillWindows`, `calmReference`). The day's numbers come from those
+/// minutes in `StressSummary.daily`.
 public enum Stress {
     public struct Window: Equatable {
         public var ts: Int
@@ -324,20 +325,9 @@ public enum Stress {
         return (Stats.median(w.map { $0.hr }), Stats.median(w.compactMap { $0.rmssd }))
     }
 
-    /// After a workout HR stays up and HRV down for a while: that is recovery from exercise, not stress.
+    /// After a workout HR stays up and HRV down for a while: that is recovery from exercise, not stress. Left out of
+    /// the calm reference and of the day's stress (`StressSummary.afterActivity`).
     public static let postWorkoutMinutes = 90
     /// Previous strap days with a calm reference needed before stress is scored.
     public static let minBaselineDays = 3
-
-    public static func score(_ windows: [StillWindow], calmHR: Double, calmHRV: Double?) -> [Window] {
-        windows.map { w in
-            var z = (w.hr - calmHR) / 6
-            if let r = w.rmssd, let ref = calmHRV, ref > 0 {
-                z += (log(ref) - log(max(r, 3))) / 0.35
-            } else {
-                z *= 1.5
-            }
-            return Window(ts: w.ts, score: 3 * Stats.logistic(z - 1.2))
-        }
-    }
 }

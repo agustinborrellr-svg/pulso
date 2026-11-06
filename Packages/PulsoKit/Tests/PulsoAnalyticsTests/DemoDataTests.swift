@@ -39,6 +39,27 @@ final class DemoDataTests: XCTestCase {
         } else {
             XCTFail("no day with a night and stress minutes")
         }
+        // One definition of high stress: the day's number is the 21:00 summary's count with the sessions the app
+        // reads back (workouts of the cycle without breathing, naps and daytime sleeps starting 10:00-22:00).
+        var checked = 0
+        for d in days where !d.stressMinutes.isEmpty {
+            guard let cs = d.cycleStart, let ce = d.cycleEnd, let origin = d.stressOrigin else { continue }
+            let dayStart = Int(DayKey.date(d.day, calendar: cal)!.timeIntervalSince1970)
+            let naps = try db.sleeps(from: dayStart, to: dayStart + 86_400).filter { s in
+                (s.id != d.sleepId || s.isNap) && (10..<22).contains(cal.component(.hour, from: Date(timeIntervalSince1970: TimeInterval(s.start))))
+            }
+            let workouts = try db.workouts(from: cs, to: ce).filter { !Breathwork.activityNames.contains($0.sport) }
+            let split = StressSummary.split(minutes: d.stressMinutes, origin: origin, wake: cs, workouts: workouts.map { $0.start...$0.end },
+                                            naps: naps.map { $0.start...$0.end })
+            XCTAssertEqual(Int(d.stressHighMinutes ?? 0), split.counted, d.day)
+            XCTAssertEqual(split.counted, split.total - split.activity - split.asleep, d.day)
+            let daily = StressSummary.daily(minutes: d.stressMinutes, origin: origin, wake: cs, workouts: workouts.map { $0.start...$0.end },
+                                            naps: naps.map { $0.start...$0.end }, calendar: cal)
+            XCTAssertEqual(d.stressAvg ?? -1, daily.avg ?? -1, accuracy: 1e-9, d.day)
+            if d.stressAvg != nil { XCTAssertEqual(d.stressHourly.count, 24, d.day) }
+            checked += 1
+        }
+        XCTAssertGreaterThan(checked, 3)
         // Old raw seconds are pruned, recent ones kept.
         let bounds = try db.sampleBounds()!
         XCTAssertGreaterThanOrEqual(bounds.first, Int(now.timeIntervalSince1970) - 4 * 86400)

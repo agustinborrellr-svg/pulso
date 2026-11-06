@@ -3,33 +3,6 @@ import PulsoStore
 @testable import PulsoAnalytics
 
 final class StressTests: XCTestCase {
-    /// An ordinary day of still moments, spread around your usual HR and HRV.
-    private func ordinaryDay(seed: UInt64 = 3) -> [Stress.StillWindow] {
-        var x = seed
-        func r() -> Double { x = x &* 6364136223846793005 &+ 1442695040888963407; return Double(x >> 11) / Double(1 << 53) }
-        return (0..<80).map { i in
-            Stress.StillWindow(ts: i * 300, hr: 64 + (r() - 0.5) * 10, rmssd: 45 + (r() - 0.5) * 20)
-        }
-    }
-
-    func testAnOrdinaryDayReadsLowNotPermanentlyStressed() {
-        let day = ordinaryDay()
-        let ref = Stress.calmReference(day)
-        let scores = Stress.score(day, calmHR: ref.hr!, calmHRV: ref.hrv).map(\.score)
-        let mean = scores.reduce(0, +) / Double(scores.count)
-        XCTAssertLessThan(mean, 1, "a typical still moment is low stress")
-        XCTAssertLessThan(Double(scores.filter { $0 >= 2 }.count) / Double(scores.count), 0.1, "high stress is the exception")
-    }
-
-    func testARealStressBoutStandsOut() {
-        var day = ordinaryDay()
-        let ref = Stress.calmReference(day)
-        for i in 30..<36 { day[i].hr += 18; day[i].rmssd = 18 }
-        let scores = Stress.score(day, calmHR: ref.hr!, calmHRV: ref.hrv).map(\.score)
-        XCTAssertGreaterThan(scores[32], 2)
-        XCTAssertLessThan(scores[50], 1.5, "and it comes back down afterwards")
-    }
-
     /// A day minute by minute: `hr(i)`, `motion(i)` and `steps(i)` per minute, beats at that pulse with `rr` jitter.
     private func minutes(_ count: Int, hr: (Int) -> Double, motion: (Int) -> Double = { _ in 0.005 },
                          steps: (Int) -> Int = { _ in 0 }, jitter: Int = 50) -> (samples: [Sample], epochs: [MinuteEpoch]) {
@@ -44,6 +17,18 @@ final class StressTests: XCTestCase {
             }
         }
         return (samples, Epochs.minutes(samples, from: 0, to: count * 60))
+    }
+
+    func testAnOrdinaryDayReadsLowNotPermanentlyStressed() {
+        // Sitting around your calm pulse, a few beats up or down each minute.
+        var x: UInt64 = 3
+        func r() -> Double { x = x &* 6364136223846793005 &+ 1442695040888963407; return Double(x >> 11) / Double(1 << 53) }
+        let hrs = (0..<240).map { _ in 64 + (r() - 0.5) * 10 }
+        let d = minutes(240, hr: { hrs[$0] }, jitter: 50)
+        let scores = Stress.everyMinute(samples: d.samples, epochs: d.epochs, calmHR: 64, calmHRV: 100, stillThreshold: 0.02,
+                                        workouts: []).map(\.score)
+        XCTAssertLessThan(scores.reduce(0, +) / Double(scores.count), 1, "a typical still moment is low stress")
+        XCTAssertLessThan(Double(scores.filter { $0 >= StressAlert.threshold }.count) / Double(scores.count), 0.1, "high stress is the exception")
     }
 
     func testEveryWornMinuteGetsAReading() {

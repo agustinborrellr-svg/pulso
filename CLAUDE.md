@@ -325,4 +325,10 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
   IPA (repo público); textos de metodología reales; sin «whoop:» en Comportamientos.
 - `TodayView.swift`/`SleepView.swift` casi muertos (solo se usan AlarmBanner, CoachCard, FlowChips, JournalCard,
   RecoveryBreakdown, SleepEditSheet); `StartActivityCard` ya no se usa. La pestaña es «Live», no «En vivo».
-- Pendiente de decidir con Gus: tamaño de las copias, unificar «estrés alto» (3 cálculos distintos).
+- Copias (opción A, 06-nov): ligera diaria ×14; archivo por mes cerrado `Pulso-segundos-YYYY-MM.sqlite` (segundos, nunca
+  se borra; se reescribe si llegan datos tardíos; `SecondsArchive`); semanal = todo + mes en curso ×2; seguridad ×5 (ligera
+  antes de importar, ligera+mes antes de restaurar, completa antes de borrar; borrar archiva antes todos los meses).
+  Restaurar aparta la base anterior y funde sus segundos y los archivos. La retención nunca borra segundos sin archivo.
+  Las grandes, fuera de la copia de iCloud.
+- Estrés unificado (06-nov): solo la fórmula por minuto. «Estrés alto» = minutos ≥ 2 despierto, sin entrenos + 90 min ni
+  sueño (la hora tras despertar cuenta); media y horas de esos mismos minutos (`StressSummary.daily`). `derivedVersion` 14.

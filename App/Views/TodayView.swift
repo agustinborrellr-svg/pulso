@@ -265,7 +265,7 @@ struct StressCard: View {
     var body: some View {
         Card {
             HStack {
-                SectionTitle(title: "Estrés", subtitle: "0–3 · en reposo y despierto, fuera de entrenos")
+                SectionTitle(title: "Estrés", subtitle: "0–3 · despierto, fuera de entrenos y sueño")
                 Spacer()
                 Text(Fmt.one(day.stressAvg)).font(.title2.bold()).monospacedDigit().foregroundStyle(Theme.stressColor(day.stressAvg))
             }

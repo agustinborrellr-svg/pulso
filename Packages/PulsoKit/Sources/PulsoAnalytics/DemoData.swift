@@ -183,7 +183,7 @@ public enum DemoData {
         // Keep only the last few days of per-second data (summaries, sleeps and workouts stay): three
         // million demo rows would otherwise take hundreds of MB on the phone.
         if let keep = keepRawDays {
-            try db.pruneSamples(olderThan: Int(now.timeIntervalSince1970) - keep * 86400)
+            try db.dropSamples(olderThan: Int(now.timeIntervalSince1970) - keep * 86400)
             try db.sql.execute("VACUUM;")
         }
         return days

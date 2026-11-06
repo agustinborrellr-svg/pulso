@@ -150,11 +150,14 @@ final class AppModel: ObservableObject {
         migrateLegacyAlarm()
         migrateRetentionDefault()
         reload()
+        // After a restore, the seconds the copy lacks come back first (queued before any recompute below).
+        let mergingRestore = resumeRestoreMerge()
         // Numbers computed by an older version of the algorithms are recomputed from the raw seconds
         // (imports, journal, manual sleeps and workouts are kept). The version is stamped only when that
         // full recompute succeeds (see recompute()), so an interrupted run is retried on the next launch.
+        // A restored light copy has no seconds yet, but the merge queued above brings them back first.
         if db.get(Int.self, for: DayEngine.derivedVersionKey) != DayEngine.derivedVersion {
-            if (try? db.hasSamples()) == true && !AppMode.screenshots {
+            if ((try? db.hasSamples()) == true || mergingRestore) && !AppMode.screenshots {
                 recompute(fromDay: nil)
             } else {
                 try? db.set(DayEngine.derivedVersion, for: DayEngine.derivedVersionKey)
@@ -673,11 +676,23 @@ final class AppModel: ObservableObject {
     }
 
     func eraseEverything() {
-        guard safetyBackup(reason: "borrar") else {
+        // Every month's seconds, the current one included, go to their archives first: the full safety copy
+        // below is rotated out after a few more safety copies, the archives never are.
+        if !AppMode.screenshots {
+            guard let dir = Self.backupsFolder,
+                  (try? db.archiveAllMonths(in: dir.path, calendar: db.archiveCalendar())) != nil else {
+                errorMessage = "No se pudo archivar el detalle por segundo (¿falta espacio?). No se ha borrado nada."
+                return
+            }
+        }
+        guard safetyBackup(reason: "borrar", content: .full) else {
             errorMessage = "No se pudo hacer la copia de seguridad previa (¿falta espacio?). No se ha borrado nada."
             return
         }
+        // The archives' month boundaries survive the erase (a new time zone would cut months differently).
+        let archiveZone = db.get(String.self, for: PulsoDatabase.archiveTimeZoneKey)
         try? db.eraseAll()
+        if let archiveZone { try? db.set(archiveZone, for: PulsoDatabase.archiveTimeZoneKey) }
         profile = db.profile
         lastSync = nil
         alarms = []

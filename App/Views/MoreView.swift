@@ -354,7 +354,7 @@ struct MoreView: View {
         } header: {
             Text("Datos")
         } footer: {
-            Text("Todo se guarda en tu iPhone y nunca se borra solo. Pulso hace copias automáticas cada día y cada semana, y otra antes de importar, restaurar o borrar. Para traer tu historial de otra pulsera, exporta sus CSV y súbelos en «Importar historial»: tus líneas base estarán listas desde el primer día.")
+            Text("Todo se guarda en tu iPhone y nunca se borra solo. Pulso hace copias automáticas cada día y cada semana, guarda el detalle por segundo de cada mes en su propio archivo y hace otra copia antes de importar, restaurar o borrar. Para traer tu historial de otra pulsera, exporta sus CSV y súbelos en «Importar historial»: tus líneas base estarán listas desde el primer día.")
         }
     }
 }
@@ -518,7 +518,7 @@ struct MethodologyView: View {
             item("Recuperación", "Curva logística (0–100 %) de tres datos de la noche: tu VFC y tu FC en reposo frente a tus líneas base (28 noches, con más peso a las recientes) y cuánto de tu necesidad de sueño cubriste. La respiración, la temperatura y la SpO₂ se muestran, pero no cuentan en el %. Necesita 4 noches para calibrar. Verás cuánto suma o resta cada factor en «Por qué».")
             item("Esfuerzo (0–21)", "Carga cardiovascular por minuto según tu reserva de FC (Karvonen): nada por debajo del 15 %, muy poco entre el 15 y el 40 % (el día a día) y, desde el 40 %, +1 por cada 10 % adicional (estilo Edwards). Se comprime con un logaritmo: cuesta mucho más pasar de 17 a 18 que de 4 a 5.")
             item("Calorías", "Metabolismo basal Mifflin-St Jeor en reposo y ecuación de Keytel (2005) cuando la FC indica actividad.")
-            item("Estrés (0–3)", "Minuto a minuto, el pulso adicional que el movimiento no explica (y la VFC con la muñeca casi quieta), frente a tu referencia de calma de las últimas 2 semanas. La media del día sale de los ratos quieto y despierto, fuera de entrenos.")
+            item("Estrés (0–3)", "Minuto a minuto, el pulso adicional que el movimiento no explica (y la VFC con la muñeca casi quieta), frente a tu referencia de calma de las últimas 2 semanas (tus ratos quieto y despierto). La media del día, la de cada hora y el estrés alto (2 o más) cuentan solo los minutos despierto, sin entrenos ni los 90 min posteriores, ni el sueño.")
             item("Necesidad de sueño", "Tu base (8 h por defecto) + extra por el esfuerzo del día (1,7 / (1 + e^((17 − esfuerzo)/3,5)) horas: unos 12 min con 10, 51 con 17, 77 con 21) + parte de la deuda reciente − siestas.")
             item("VO₂máx", "Modelo de Jurca 2005: sexo, edad, IMC, FC en reposo y minutos de ejercicio aeróbico; con 3+ carreras, desde ellas. Orientativo.")
             item("Carga de entrenamiento", "La carga de cada día son los minutos en cada zona de FC por el número de la zona (en los días importados, sin zonas, se estima desde el esfuerzo). La carga aguda es la media de los últimos 7 días (fatiga) y la crónica la de los últimos 28 (forma). Su cociente indica si subes carga a buen ritmo (1,0–1,3) o demasiado deprisa (1,5 o más).")
@@ -663,7 +663,7 @@ struct StorageView: View {
                     Label("Guardar datos por segundo", systemImage: "waveform.path.ecg")
                 }
             } footer: {
-                Text("La pulsera mide cada segundo: pulso, intervalos entre latidos, movimiento, temperatura, SpO₂ y pasos. Son los datos en bruto con los que Pulso calcula todo lo demás. Guardarlos permite recalcular el historial cuando mejoran los algoritmos y ver gráficas al detalle. Ocupan unos 4–5 MB por día (unos 1,7 GB al año). Si eliges un límite, solo se borra el detalle segundo a segundo más antiguo: tus puntuaciones, sueños, entrenos, diario e importaciones se guardan siempre.")
+                Text("La pulsera mide cada segundo: pulso, intervalos entre latidos, movimiento, temperatura, SpO₂ y pasos. Son los datos en bruto con los que Pulso calcula todo lo demás. Guardarlos permite recalcular el historial cuando mejoran los algoritmos y ver gráficas al detalle. Ocupan unos 4–5 MB por día (unos 1,7 GB al año). Si eliges un límite, el detalle segundo a segundo más antiguo sale de la base de datos de la app solo cuando su mes ya está en su archivo de Copias de seguridad, que se guarda para siempre (pero no entra en la copia de iCloud del iPhone). Tus puntuaciones, sueños, entrenos, diario e importaciones se guardan siempre.")
             }
             Section {
                 Text(summary.isEmpty ? "Calculando…" : summary)
@@ -676,7 +676,7 @@ struct StorageView: View {
             } header: {
                 Text("Copias automáticas")
             } footer: {
-                Text("Cada día: copia ligera (todo menos el detalle por segundo), se guardan 14. Cada semana: copia completa, se guardan 3. Y una copia completa antes de importar, restaurar o borrar. Están en Archivos → En mi iPhone → Pulso → Copias de seguridad, y entran en la copia de iCloud del iPhone. Para restaurar una: Más → Restaurar una copia.")
+                Text("Cada día, una copia ligera (todo menos el detalle por segundo); se guardan 14. Cada mes cerrado, un archivo con sus datos por segundo que se guarda para siempre (si luego llegan más de ese mes, se añaden). Cada semana, una copia con todo y el detalle por segundo del mes en curso; se guardan 2. Antes de importar o restaurar, una copia de seguridad, y antes de borrar todo, una completa y el archivo del mes en curso. Al restaurar, los datos por segundo que falten en la copia se recuperan solos. Están en Archivos → En mi iPhone → Pulso → Copias de seguridad. Las ligeras entran en la copia de iCloud del iPhone; los archivos grandes no, porque la base de datos de la app ya va en ella. Para restaurar una: Más → Restaurar una copia.")
             }
         }
         .pulsoList()

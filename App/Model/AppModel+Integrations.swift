@@ -177,16 +177,33 @@ extension AppModel {
         guard let live = try? PulsoDatabase.defaultPath(), let pending = restorePath,
               FileManager.default.fileExists(atPath: pending) else { return }
         let fm = FileManager.default
-        // Set the live database aside first and only drop it once the restored one is in place.
-        let aside = live + ".before-restore"
-        try? fm.removeItem(atPath: aside)
-        guard (try? fm.moveItem(atPath: live, toPath: aside)) != nil || !fm.fileExists(atPath: live) else { return }
+        // The live database is set aside under its own name, never dropped here: its per-second data is merged
+        // into the restored one (`resumeRestoreMerge`), which deletes it only once that worked. Its -wal goes
+        // with it, as it may hold the last writes; without both, nothing is restored.
+        let aside = live + ".before-restore-\(Int(Date().timeIntervalSince1970))"
+        var setAside = false
+        if fm.fileExists(atPath: live) {
+            guard (try? fm.moveItem(atPath: live, toPath: aside)) != nil else { return }
+            if fm.fileExists(atPath: live + "-wal"), (try? fm.moveItem(atPath: live + "-wal", toPath: aside + "-wal")) == nil {
+                try? fm.moveItem(atPath: aside, toPath: live)
+                return
+            }
+            try? fm.removeItem(atPath: live + "-shm")
+            setAside = true
+        } else if fm.fileExists(atPath: live + "-wal") {
+            // Killed between moving the database and its -wal last time: that -wal belongs with the newest set-aside
+            // database (never applied to the restored one, never deleted).
+            let home = setAsideDatabases().last { !fm.fileExists(atPath: $0 + "-wal") } ?? live + ".orphan-\(Int(Date().timeIntervalSince1970))"
+            guard (try? fm.moveItem(atPath: live + "-wal", toPath: home + "-wal")) != nil else { return }
+            try? fm.removeItem(atPath: live + "-shm")
+        }
         do {
             try fm.moveItem(atPath: pending, toPath: live)
-            for suffix in ["-wal", "-shm"] { try? fm.removeItem(atPath: live + suffix) }
-            try? fm.removeItem(atPath: aside)
         } catch {
-            try? fm.moveItem(atPath: aside, toPath: live)
+            if setAside {
+                try? fm.moveItem(atPath: aside, toPath: live)
+                try? fm.moveItem(atPath: aside + "-wal", toPath: live + "-wal")
+            }
         }
     }
 
@@ -215,8 +232,16 @@ extension AppModel {
             errorMessage = "Ese archivo no es una copia de Pulso válida."
             return false
         }
-        // A full copy of the current data first; without it nothing is staged.
-        guard safetyBackup(reason: "restaurar") else {
+        // A month archive only holds per-second data: restoring it would leave every summary empty. It is merged
+        // on its own into whatever copy is restored.
+        if PulsoDatabase.monthArchiveInfo(path: tmp.path) != nil {
+            try? FileManager.default.removeItem(at: tmp)
+            errorMessage = "Ese archivo solo guarda los datos por segundo de un mes y Pulso lo usa por su cuenta al restaurar. Elige una copia diaria, semanal o «antes de»."
+            return false
+        }
+        // A copy of the current data first (everything but the archived months' seconds, which come back on
+        // their own); without it nothing is staged.
+        guard safetyBackup(reason: "restaurar", content: .month) else {
             try? FileManager.default.removeItem(at: tmp)
             errorMessage = "No se pudo hacer la copia de seguridad previa (¿falta espacio?). No se ha preparado la restauración: tus datos siguen igual."
             return false
@@ -224,7 +249,7 @@ extension AppModel {
         try? FileManager.default.removeItem(atPath: dest)
         do {
             try FileManager.default.moveItem(at: tmp, to: URL(fileURLWithPath: dest))
-            errorMessage = "Copia lista. Cierra Pulso del todo y vuelve a abrirla para restaurarla."
+            errorMessage = "Copia lista. Cierra Pulso del todo y vuelve a abrirla para restaurarla. Los datos por segundo que no estén en la copia se recuperan solos."
             return true
         } catch {
             errorMessage = "No se pudo preparar la restauración: \(error)"

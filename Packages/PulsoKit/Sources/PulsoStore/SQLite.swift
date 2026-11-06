@@ -129,6 +129,12 @@ public final class SQLiteConnection {
         return out
     }
 
+    /// Rows changed by every INSERT/UPDATE/DELETE since the connection opened (tells whether a merge did anything).
+    public var totalChanges: Int {
+        lock.lock(); defer { lock.unlock() }
+        return Int(sqlite3_total_changes(db))
+    }
+
     public func scalarInt(_ sql: String, _ params: [SQLValue] = []) throws -> Int64? {
         try query(sql, params) { $0.int(0) }.first ?? nil
     }

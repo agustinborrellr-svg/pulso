@@ -91,7 +91,7 @@ extension AppModel {
         let newest = origin + newestIndex * 60
         guard !likelyAsleep(Date(timeIntervalSince1970: TimeInterval(newest))) else { return }
         // A pulse raised by a workout (or the 90 min after it) isn't the stress this is about.
-        guard !workouts(for: today).contains(where: { $0.start <= newest && $0.end + 90 * 60 >= start }) else { return }
+        guard !workouts(for: today).contains(where: { $0.start <= newest && $0.end + StressSummary.afterActivity >= start }) else { return }
         UserDefaults.standard.set(start, forKey: Self.stressAlertRunKey)
         sendStressAlert(at: now, since: start)
     }
@@ -128,22 +128,38 @@ extension AppModel {
         return StressSummary.contains(window, clock: (c.hour ?? 0) * 60 + (c.minute ?? 0))
     }
 
-    /// The day's high-stress minutes split by what was going on.
-    func stressSplit(for day: DaySummary) -> StressSummary.Split? {
+    /// The day's stress from its minutes with the same sessions the analysis used: the numbers of
+    /// `DaySummary.stressAvg/stressHighMinutes/stressHourly`, plus time per level and where the high minutes were.
+    func stressDaily(for day: DaySummary) -> StressSummary.Daily? {
         guard let cs = day.cycleStart, !day.stressMinutes.isEmpty else { return nil }
-        return StressSummary.split(minutes: day.stressMinutes, origin: day.stressOrigin ?? cs - cs % 60, wake: cs,
+        return StressSummary.daily(minutes: day.stressMinutes, origin: day.stressOrigin ?? cs - cs % 60, wake: cs,
                                    workouts: workouts(for: day).filter { !Breathwork.activityNames.contains($0.sport) }.map { $0.start...$0.end },
                                    naps: daytimeSleeps(on: day.day).map { $0.start...$0.end })
     }
 
+    /// The day's high-stress minutes split by what was going on (`counted` is the day's «estrés alto»).
+    func stressSplit(for day: DaySummary) -> StressSummary.Split? {
+        stressDaily(for: day)?.split
+    }
+
+    /// Leads with the same number as Salud (high stress awake, outside workouts and the 90 min after them), then
+    /// says where it happened, and apart the high minutes in workouts or asleep.
     static func stressSummaryText(_ s: StressSummary.Split) -> String {
         guard s.total > 0 else { return "Hoy no has tenido ratos de estrés alto." }
-        var parts: [String] = []
-        if s.activity > 0 { parts.append("\(Fmt.hm(Double(s.activity))) en entrenos o justo después") }
-        if s.sleep > 0 { parts.append("\(Fmt.hm(Double(s.sleep))) al despertar o alrededor de una siesta") }
-        if s.other > 0 { parts.append("\(Fmt.hm(Double(s.other))) sin relación con tu actividad ni tu sueño") }
-        let list = parts.count > 1 ? parts.dropLast().joined(separator: ", ") + " y " + parts.last! : parts[0]
-        return "Hoy estuviste \(Fmt.hm(Double(s.total))) en estrés alto: \(list)."
+        var text: String
+        if s.counted == 0 {
+            text = "Hoy no has tenido estrés alto sin contar entrenos ni sueño."
+        } else {
+            let waking = "\(Fmt.hm(Double(s.waking))) al despertar o alrededor de una siesta"
+            let other = "\(Fmt.hm(Double(s.other))) sin relación con tu actividad ni tu sueño"
+            let detail = s.waking > 0 && s.other > 0 ? ": \(waking) y \(other)" : (s.waking > 0 ? ", todo al despertar o alrededor de una siesta" : "")
+            text = "Hoy estuviste \(Fmt.hm(Double(s.counted))) en estrés alto sin contar entrenos ni sueño\(detail)."
+        }
+        var apart: [String] = []
+        if s.activity > 0 { apart.append("\(Fmt.hm(Double(s.activity))) en entrenos o justo después") }
+        if s.asleep > 0 { apart.append("\(Fmt.hm(Double(s.asleep))) mientras dormías") }
+        if !apart.isEmpty { text += " Aparte, " + apart.joined(separator: " y ") + "." }
+        return text
     }
 
     /// The evening summary at 21:00, refreshed with every analysis so it carries the day's latest numbers.

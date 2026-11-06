@@ -166,7 +166,8 @@ struct StressMonitorView: View {
                         Text(AppModel.stressSummaryText(split)).font(.subheadline).foregroundStyle(.white)
                         GeometryReader { g in
                             HStack(spacing: 3) {
-                                ForEach(Array([(split.activity, Theme.strain), (split.sleep, Theme.sleep), (split.other, Theme.stressHigh)].enumerated()),
+                                ForEach(Array([(split.other, Theme.stressHigh), (split.waking, Theme.sleep.opacity(0.55)), (split.activity, Theme.strain),
+                                               (split.asleep, Theme.sleep)].enumerated()),
                                         id: \.offset) { _, part in
                                     if part.0 > 0 {
                                         Capsule().fill(part.1)
@@ -176,14 +177,15 @@ struct StressMonitorView: View {
                             }
                         }
                         .frame(height: 8)
-                        HStack(spacing: 12) {
-                            legend("Actividad", Theme.strain)
-                            legend("Sueño", Theme.sleep)
+                        HStack(spacing: 10) {
                             legend("Sin relación", Theme.stressHigh)
+                            legend("Al despertar", Theme.sleep.opacity(0.55))
+                            legend("Entreno", Theme.strain)
+                            legend("Dormido", Theme.sleep)
                         }
                     }
                 }
-                levels(day)
+                StressLevelsCard(day: day)
                 SectionHeading(text: "Tendencias")
                 WeeklyTrendCard(metric: .stress)
                 WeeklyTrendCard(metric: .stressHigh)
@@ -248,30 +250,35 @@ struct StressMonitorView: View {
         .frame(maxWidth: .infinity)
         .padding(.bottom, -100)
     }
+}
 
-    /// Hours of the day at each level, against the average of the same weekday in previous weeks.
-    private func levels(_ d: DaySummary) -> some View {
-        func split(_ h: [Double?]) -> [Double] {
-            let v = h.compactMap { $0 }
-            return [Double(v.filter { $0 < 1 }.count), Double(v.filter { $0 >= 1 && $0 < 2 }.count), Double(v.filter { $0 >= 2 }.count)]
-        }
-        let now = split(d.stressHourly)
-        let usualDays = (1...4).compactMap { model.day(DayKey.shift(d.day, days: -7 * $0)) }.filter { $0.stressHourly.contains { $0 != nil } }
-        let usual: [Double]? = usualDays.isEmpty ? nil : (0..<3).map { i in usualDays.map { split($0.stressHourly)[i] }.reduce(0, +) / Double(usualDays.count) }
+/// Time at each level of the minutes that count in the day's stress (awake, outside workouts and the 90 minutes after
+/// them), against the average of the same weekday in previous weeks. «Alto» is the day's high stress shown in Salud.
+/// Its own view so scrubbing the curve above doesn't recompute it.
+private struct StressLevelsCard: View {
+    @EnvironmentObject var model: AppModel
+    let day: DaySummary
+
+    var body: some View {
+        let now = model.stressDaily(for: day)?.levelMinutes.map(Double.init) ?? [0, 0, 0]
+        let usualDays = (1...4).compactMap { model.day(DayKey.shift(day.day, days: -7 * $0)) }.compactMap { model.stressDaily(for: $0) }
+            .filter { $0.counted > 0 }
+        let usual: [Double]? = usualDays.isEmpty ? nil : (0..<3).map { i in usualDays.map { Double($0.levelMinutes[i]) }.reduce(0, +) / Double(usualDays.count) }
         let colors = [Theme.stressLow, Theme.stressMid, Theme.stressHigh]
         let names = ["Bajo", "Medio", "Alto"]
-        return PCard {
+        PCard {
             HStack {
                 Image(systemName: "gauge.with.dots.needle.33percent").foregroundStyle(Theme.secondary)
                 Caps("Día total", size: 12)
             }
-            Caps("\(Fmt.dayTitle(d.day)): horas por nivel\(usual == nil ? "" : " vs. un día habitual")", size: 10, color: Theme.secondary, weight: .semibold)
+            Caps("\(Fmt.dayTitle(day.day)): tiempo por nivel\(usual == nil ? "" : " vs. un día habitual")", size: 10, color: Theme.secondary, weight: .semibold)
             levelBar(now, colors)
             if let usual { levelBar(usual, colors.map { $0.opacity(0.45) }).frame(height: 6) }
             HStack(alignment: .top) {
                 ForEach(0..<3, id: \.self) { i in
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("\(Int(now[i])) h").scaledFont(20, weight: .bold, relativeTo: .body).monospacedDigit().foregroundStyle(.white)
+                        Text(Fmt.hm(now[i])).scaledFont(20, weight: .bold, relativeTo: .body).monospacedDigit().foregroundStyle(.white)
+                            .lineLimit(1).minimumScaleFactor(0.7)
                         if let usual, usual[i] > 0 {
                             DeltaChip(text: "\(Int(abs(now[i] - usual[i]) / usual[i] * 100)) %",
                                       delta: Delta(now[i], usual[i], higherIsBetter: i == 0 ? true : false))
@@ -284,7 +291,7 @@ struct StressMonitorView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            Text("El estrés medido a lo largo del día, cuando estás quieto y despierto, fuera de entrenos.")
+            Text("Cada minuto despierto con la pulsera puesta, sin contar entrenos, la hora y media después ni el sueño. «Alto» es tu estrés alto del día.")
                 .font(.subheadline).foregroundStyle(Theme.secondary)
         }
     }

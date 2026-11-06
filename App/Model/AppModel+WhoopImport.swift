@@ -17,7 +17,8 @@ extension AppModel {
     func importWhoop(_ files: [WhoopExport.File]) -> WhoopImportSummary {
         let bundle = WhoopExport.read(files)
         var s = WhoopImportSummary(files: bundle.files)
-        guard safetyBackup(reason: "importar") else {
+        // Light: an import never touches the per-second data.
+        guard safetyBackup(reason: "importar", content: .light) else {
             s.error = "No se pudo hacer la copia de seguridad previa (¿falta espacio?). No se ha importado nada."
             return s
         }

@@ -46,7 +46,7 @@ struct HomeWidgetView: View {
                     let calibrated = model.days.filter { $0.source == "strap" && $0.calmHR != nil && $0.day < day.day }.count
                     Text(calibrated < Stress.minBaselineDays
                          ? "Calibrando: el estrés se compara con tu calma de varios días; empieza a medirse tras \(Stress.minBaselineDays) días con la pulsera (llevas \(calibrated))."
-                         : "Sin lecturas este día: se mide en los ratos quieto y despierto, fuera de entrenos y paseos.")
+                         : "Sin lecturas este día: se mide minuto a minuto con la pulsera puesta; la media cuenta los ratos despierto, fuera de entrenos.")
                         .font(.caption).foregroundStyle(Theme.secondary)
                 }
             }
