@@ -230,7 +230,8 @@ final class BackupArchiveTests: XCTestCase {
         // Nothing to archive: no failure, no file.
         try d.eraseAll()
         try d.archiveAllMonths(in: dir, now: dec3, calendar: utc)
-        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: dir).count, 3)
+        // Copies only (opening an archive above can leave its own -wal/-shm next to it).
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: dir).filter { $0.hasSuffix(".sqlite") }.count, 3)
     }
 
     func testRetentionNeverPrunesSecondsOfAMonthWithoutItsArchive() throws {

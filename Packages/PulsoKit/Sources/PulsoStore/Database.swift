@@ -494,6 +494,8 @@ public final class PulsoDatabase {
             clean()
             throw error
         }
+        // On Darwin closing a connection can leave the temp file's -shm behind; it belongs to nothing now.
+        clean()
     }
 
     /// Bytes on disk of the database and its write-ahead log.
