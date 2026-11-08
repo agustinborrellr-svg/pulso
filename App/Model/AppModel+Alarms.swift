@@ -82,7 +82,7 @@ extension AppModel {
                 alarmBackup.cancel()
                 UserDefaults.standard.removeObject(forKey: "pulso.backup.at")
             }
-            strap.setAlarm(nil)
+            if !wakeCallTestPending { strap.setAlarm(nil) }
             updateAlarmStatus()
             updateAlarmStream()
             return
@@ -126,7 +126,9 @@ extension AppModel {
     /// and iOS suspends Pulso soon after the screen locks. Nothing keeps it awake overnight: the strap's own alarm,
     /// armed silent a minute before the window (or the set time), sends a Bluetooth event that wakes the app.
     func armStrapAlarm() {
-        guard let s = wakeSession, s.state == .waiting else { return }
+        // The strap holds one alarm: re-arming now (locking the phone refreshes the schedule) would overwrite the
+        // test's. The test re-arms the real one when it ends.
+        guard !wakeCallTestPending, let s = wakeSession, s.state == .waiting else { return }
         let at = s.planned.earliest.addingTimeInterval(-Self.wakeCallLead)
         guard at > Date() else { return }
         strap.setAlarm(at, silent: true)
@@ -383,6 +385,15 @@ enum WakeCallTest: Equatable {
 
 extension AppModel {
     static let wakeCallVerifiedKey = "alarm.wakeCall.verified"
+
+    /// A test alarm is on the strap and hasn't fired yet. Bounded in time: if the app stays suspended and the
+    /// test's own timeout never runs, the next refresh still re-arms tonight's real alarm.
+    var wakeCallTestPending: Bool {
+        switch wakeCallTest {
+        case .armed(let at), .confirmed(let at): return Date() < at.addingTimeInterval(180)
+        default: return false
+        }
+    }
 
     /// Whether a strap alarm has ever reached the app (test or real night).
     var wakeCallVerified: Bool { UserDefaults.standard.bool(forKey: Self.wakeCallVerifiedKey) }
