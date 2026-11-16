@@ -21,7 +21,8 @@ final class ArousalTests: XCTestCase {
     }
 
     func testAPulseRiseKeepsTheWake() {
-        let e = night({ (20..<23).contains($0) ? 64 : 52 })
+        // REM and arousals lift the pulse 5-15 lpm without waking up; a real awakening lifts it more.
+        let e = night({ (20..<23).contains($0) ? 76 : 52 })
         let out = SleepStager.absorbArousals(stages(awake: 20..<23), epochs: e, stillThreshold: 0.02)
         XCTAssertEqual(out.filter { $0 == .awake }.count, 3)
     }

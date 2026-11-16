@@ -88,7 +88,10 @@ public enum SleepStager {
     /// Waking up raises the pulse; a minute scored awake on a pulse no higher than the half hour around it, with the
     /// wrist barely moving, is a micro-arousal or plain light sleep. Sleep scoring only calls an epoch wake when wake
     /// fills most of it, and arousals of a few seconds leave the stage alone.
-    static let wakeHRRise = 5.0
+    /// 16-nov, 10 nights against the reference band (sweep of `wakeBias` × `wakeHRRise` × `wakeMotionFactor`): REM and
+    /// arousals lift the pulse well over 5 lpm without waking up, so only a big rise (20) keeps a still run awake, with
+    /// `wakeBias` −3. Awake error over the nights 248 → 123 min (≈ +17 → 0 min a night), four stages 800 → 716.
+    static let wakeHRRise = 20.0
     static let wakeMotionFactor = 4.0
 
     /// Scores as light every wake run inside the night with neither a pulse rise of `wakeHRRise` lpm over the local
@@ -178,7 +181,7 @@ public enum SleepStager {
     /// Calibration of the stage priors (log scale) against the original band's own staging on the same nights
     /// (see `docs/CALCULOS-REFERENCIA-2026-11-02.md`): negative `wakeBias` scores fewer minutes awake. `deepBias` was
     /// refitted with the per-hour detrending on 5 nights (leaving each night out picks 0.55 every time).
-    static let wakeBias = -2.5
+    static let wakeBias = -3.0
     static let deepBias = 0.55
     static let remBias = 0.3
 

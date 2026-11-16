@@ -205,9 +205,14 @@ public enum PulsoAge {
         let age = Double(profile.age)
         var items: [Item] = []
         var total = 0.0, recentTotal = 0.0, measured = 0, measuredRecent = 0
-        for s in specs(age: profile.age, sex: profile.sex, zones: zones, strength: strength) {
-            // 6 months need three weeks of readings; 30 days, one.
-            let long = window(days, from: fromLong, to: end, aggregate: s.aggregate, value: s.value, minDays: 21)
+        let specs = specs(age: profile.age, sex: profile.sex, zones: zones, strength: strength)
+        // 6 months need three weeks of readings; 30 days, one.
+        let full = specs.map { window(days, from: fromLong, to: end, aggregate: $0.aggregate, value: $0.value, minDays: 21) }
+        // Once the age stands on enough habits, one measured only lately (steps: the imported history has none) uses the
+        // days it has rather than dropping out: left out, 10 700 steps a day took nothing off and the age read ~0.9 high.
+        let fillGaps = full.compactMap { $0 }.count >= 4
+        for (k, s) in specs.enumerated() {
+            let long = full[k] ?? (fillGaps ? window(days, from: fromLong, to: end, aggregate: s.aggregate, value: s.value, minDays: 7) : nil)
             let recent = window(days, from: fromRecent, to: end, aggregate: s.aggregate, value: s.value, minDays: 7)
             let y = s.years(long).map { $0 * adjustment }, ry = s.years(recent).map { $0 * adjustment }
             items.append(Item(key: s.key, label: s.label, group: s.group, unit: s.unit, recent: recent, longTerm: long,

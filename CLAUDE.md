@@ -347,3 +347,12 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
   (kv `migration.healthOtherSport`). La exportación CSV sale en un .zip (`ZipWriter`, DEFLATE de `NSData.compressed(.zlib)`),
   ~8 veces más pequeña; columna origen «importado» en vez del nombre de la marca.
 - Comparación reproducible: scratchpad `cmp.py`, `rec.py`, `kday.py` (exportación de la original + CSV de Pulso).
+- Con los segundos del 9 al 16-nov (10 noches contra la original): despertares — REM y microdespertares suben el pulso
+  5-15 lpm sin despertarte; `wakeHRRise` 5 → 20 y `wakeBias` −2,5 → −3 (despierto 248 → 123 min de error en 10 noches, sesgo
+  +17 → ~0 min/noche; 4 fases 800 → 716). 16-nov 283 → 329 min (original 347). `derivedVersion` 16.
+- Edad Pulso 29 vs 27,4 de la original: los pasos no entraban (la historia importada no trae pasos, 17 días < 21) y 10 700
+  pasos/día restan 0,9 años. Si ya hay ≥4 hábitos con 6 meses, un hábito con ≥7 días usa los que tiene. Ahora 28,0.
+  Resto del desglose (6 meses): regularidad 57 % +1,46; VO₂ 42,1 +1,33; fuerza +1,13; zonas 4-5 +0,97; sueño 6,5 h +0,5;
+  FC reposo −0,4; zonas 1-3 −1,07; pasos −0,9. Para cuadrar el 0,6 restante hace falta el desglose de la app original.
+- Replay: CSV de segundos → SQLite con `scratchpad/mkdb.py` (copia + INSERT OR IGNORE, rr uint16 LE) y
+  `TZ=Europe/Madrid PULSO_REAL_DB=… swift test --filter RealDataReplayTests` (reproduce la app exacto).

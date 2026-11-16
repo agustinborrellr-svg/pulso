@@ -101,6 +101,16 @@ final class PulsoAgeTests: XCTestCase {
         XCTAssertGreaterThan(sleep.longTerm ?? 0, 330)
     }
 
+    /// Imported history has no steps: two weeks of the strap's steps still count, instead of the habit dropping out.
+    func testAHabitMeasuredOnlyLatelyStillCounts() {
+        var list = days(120, sleep: 420, steps: 0, rhr: 60, vo2: 42, zones: [10, 10, 5, 0, 0], regularity: 70)
+        for i in list.indices { list[i].steps = i >= list.count - 14 ? 10700 : nil }
+        let r = PulsoAge.compute(days: list, profile: profile(age: 25), today: "2026-10-27")
+        let steps = r.items.first { $0.key == "steps" }!
+        XCTAssertEqual(steps.longTerm ?? 0, 10700, accuracy: 1e-9)
+        XCTAssertLessThan(steps.years ?? 0, -0.5)
+    }
+
     func testTooLittleDataGivesNoAge() {
         let r = PulsoAge.compute(days: days(10, sleep: 480, steps: 9000, rhr: 55, vo2: 45, zones: [10, 10, 5, 0, 0], regularity: 80),
                                  profile: profile(age: 30), today: "2026-10-27")
