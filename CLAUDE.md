@@ -360,7 +360,10 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
   zonas 4-5 0,09, fuerza 1,1, pasos 0,25, VO₂ 0,78, FC reposo 1,39) y la edad lleva decimales (cumpleaños a mitad de año;
   `decimalAge`). La mediana del white paper sigue en −1,6/−1,5. Con los datos de Gus: 27,5 vs 27,4 (VO₂ 42,1 vs 43 y pasos
   son diferencias de entrada). El ritmo (Pulso −1 vs 0,7x) NO cuadra: con sus propios valores de 30 días saldría ~1,2, así que
-  la fórmula del ritmo de la original es otra; hace falta más de una captura para ajustarla. Pasos de 30 días: original 6 630,
-  Pulso 10 700 → revisar si Pulso cuenta pasos de más.
+  la fórmula del ritmo de la original es otra; hace falta más de una captura para ajustarla.
+- Pasos: un día Pulso 11 400 vs original 8 900. El contador de la pulsera suma 6-7 de golpe cuando cree que empiezas a andar,
+  muchas veces sin nada detrás (un gesto del brazo). Ahora el día cuenta `MinuteEpoch.walkSteps` (`Epochs.countedSteps`: tramos
+  de ≥ 13 pasos con pausas ≤ 3 s; quita ~21 %); `stepsDelta` sigue crudo como señal de movimiento. Ajustado con UN día:
+  confirmar con más días (pedir a Gus pasos de las dos apps con fecha). `derivedVersion` 17.
 - Replay: CSV de segundos → SQLite con `scratchpad/mkdb.py` (copia + INSERT OR IGNORE, rr uint16 LE) y
   `TZ=Europe/Madrid PULSO_REAL_DB=… swift test --filter RealDataReplayTests` (reproduce la app exacto).

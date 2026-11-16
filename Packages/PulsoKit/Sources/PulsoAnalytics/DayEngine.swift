@@ -9,7 +9,7 @@ import PulsoStore
 public final class DayEngine {
     /// Version of the derived numbers (days, sleeps, workouts). Bump it whenever an algorithm changes: the app
     /// then recomputes every day from the raw seconds it still has.
-    public static let derivedVersion = 16
+    public static let derivedVersion = 17
 
     /// Daytime sleeps shorter than this are naps unless the user says otherwise.
     public static let napLimit = 3 * 3600
@@ -290,7 +290,7 @@ public final class DayEngine {
         let strain = Strain.compute(cycleEpochs, model: model)
         d.strain = worn.count >= 30 ? (strain.strain * 10).rounded() / 10 : nil
         d.zoneMinutes = strain.zoneMinutes
-        let stepTotal = cycleEpochs.reduce(0) { $0 + $1.stepsDelta }
+        let stepTotal = cycleEpochs.reduce(0) { $0 + $1.walkSteps }
         d.steps = stepTotal > 0 ? stepTotal : nil
 
         // Workouts: re-detect automatic ones, keep manual/live ones and refresh their metrics.

@@ -22,6 +22,9 @@ public struct MinuteEpoch: Equatable {
     public var secondsWithData: Int
     /// Highest median of 3 consecutive worn seconds (a single bad second can't set it). Nil: use `hr`.
     public var hrPeak: Double? = nil
+    /// Steps that count for the day: only those inside a walk (`Epochs.countedSteps`). `stepsDelta` keeps every
+    /// tick of the counter as a movement signal.
+    public var walkSteps: Int = 0
 
     public var worn: Bool { wornFraction >= 0.5 && hr != nil }
 
@@ -41,6 +44,39 @@ public struct MinuteEpoch: Equatable {
 public typealias RRRun = [Double]
 
 public enum Epochs {
+    /// A walk counts once it reaches `minWalkSteps` steps with pauses of at most `walkPause` s. The strap's counter
+    /// credits a bout of 6-7 at once when it thinks you started walking, often with nothing after (an arm movement):
+    /// counting every tick gave 11 400 steps on a day the original app showed 8 900. Fitted to that day: walks under
+    /// 13 steps are 21 % of the counter (9-16 nov), the gap between the two. Recheck with more days.
+    public static let minWalkSteps = 13
+    public static let walkPause = 3
+
+    /// The counter's increments, second by second, that belong to a walk. Across a gap in the data the counter keeps
+    /// counting: that jump is kept if a human could have walked it (≤ 3.5 steps/s); larger jumps are resets.
+    public static func countedSteps(_ samples: [Sample]) -> [(ts: Int, steps: Int)] {
+        var out: [(ts: Int, steps: Int)] = []
+        var walk: [(ts: Int, steps: Int)] = []
+        var walkTotal = 0
+        func close() {
+            if walkTotal >= minWalkSteps { out += walk }
+            walk = []; walkTotal = 0
+        }
+        var last: (ts: Int, steps: Int)?
+        for s in samples {
+            guard let st = s.steps else { continue }
+            defer { last = (s.ts, st) }
+            guard let l = last else { continue }
+            let d = (st - l.steps + 65536) % 65536
+            let gap = s.ts - l.ts
+            guard d > 0, d < 512 || gap > 2 && Double(d) <= Double(gap) * 3.5 && d < 20000 else { continue }
+            if gap > 2 { out.append((s.ts, d)); continue }
+            if let previous = walk.last, s.ts - previous.ts > walkPause { close() }
+            walk.append((s.ts, d)); walkTotal += d
+        }
+        close()
+        return out
+    }
+
     /// Aggregates per-second samples into minute epochs spanning [from, to) (minutes with no data are
     /// emitted with `secondsWithData == 0` so indices stay aligned with wall-clock minutes).
     public static func minutes(_ samples: [Sample], from: Int, to: Int) -> [MinuteEpoch] {
@@ -55,6 +91,8 @@ public enum Epochs {
         out.reserveCapacity(count)
         var lastSteps: Int?
         var lastStepsTs = 0
+        var walk = [Int](repeating: 0, count: count)
+        for (t, n) in countedSteps(buckets.flatMap { $0 }) { walk[(t - start) / 60] += n }
         for i in 0..<count {
             let b = buckets[i]
             let ts = start + i * 60
@@ -114,7 +152,8 @@ public enum Epochs {
                 stepsDelta: steps,
                 activityClass: actMode,
                 secondsWithData: b.count,
-                hrPeak: MinuteEpoch.peak(hrs)
+                hrPeak: MinuteEpoch.peak(hrs),
+                walkSteps: walk[i]
             ))
         }
         return out
