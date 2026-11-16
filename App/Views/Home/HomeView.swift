@@ -177,9 +177,9 @@ struct HomeTopBar: View {
                 Button {
                     withAnimation(.easeInOut(duration: 0.28)) { model.showDayPicker.toggle() }
                 } label: {
+                    // fixedSize: with tracking, lineLimit(1) measured the text short and «HOY» came out as «…».
                     Caps(model.cycleTitle(model.selectedDay), size: 12)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .fixedSize()
                         .padding(.horizontal, 22)
                         .padding(.vertical, 10)
                         .background(Theme.cardHighlight, in: Capsule())
