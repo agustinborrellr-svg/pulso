@@ -9,7 +9,7 @@ import PulsoStore
 public final class DayEngine {
     /// Version of the derived numbers (days, sleeps, workouts). Bump it whenever an algorithm changes: the app
     /// then recomputes every day from the raw seconds it still has.
-    public static let derivedVersion = 14
+    public static let derivedVersion = 15
 
     /// Daytime sleeps shorter than this are naps unless the user says otherwise.
     public static let napLimit = 3 * 3600
@@ -290,8 +290,6 @@ public final class DayEngine {
         let strain = Strain.compute(cycleEpochs, model: model)
         d.strain = worn.count >= 30 ? (strain.strain * 10).rounded() / 10 : nil
         d.zoneMinutes = strain.zoneMinutes
-        d.avgHR = strain.avgHR
-        d.maxHR = strain.maxHR
         let stepTotal = cycleEpochs.reduce(0) { $0 + $1.stepsDelta }
         d.steps = stepTotal > 0 ? stepTotal : nil
 
@@ -317,7 +315,7 @@ public final class DayEngine {
             workouts[i].zoneMinutes = ws.zoneMinutes
             workouts[i].avgHR = ws.avgHR ?? 0
             workouts[i].maxHR = ws.maxHR ?? 0
-            workouts[i].kcal = Calories.compute(we, profile: profile, model: model, activeWindows: [w.start...w.end], vo2max: fitnessVO2).total
+            workouts[i].kcal = Calories.compute(we, profile: profile, model: model, vo2max: fitnessVO2).total
             workouts[i].id = try db.save(workouts[i])
         }
         d.workoutCount = workouts.count
@@ -325,9 +323,14 @@ public final class DayEngine {
 
         let energyFrom = main?.start ?? cycleStart
         let energyEpochs = Epochs.minutes(Epochs.slice(samples, from: energyFrom, to: d.cycleEnd!), from: energyFrom, to: d.cycleEnd!)
-        let kcal = Calories.compute(energyEpochs, profile: profile, model: model, activeWindows: workoutWindows, vo2max: fitnessVO2)
+        let kcal = Calories.compute(energyEpochs, profile: profile, model: model, vo2max: fitnessVO2)
         d.kcal = kcal.total.rounded()
         d.activeKcal = kcal.active.rounded()
+        // The day's average and peak heart rate over the same span as the calories: from falling asleep to the next
+        // sleep, like the original strap (from waking up, the average came out ~9 lpm high).
+        let wholeDay = Strain.compute(energyEpochs, model: model)
+        d.avgHR = wholeDay.avgHR
+        d.maxHR = wholeDay.maxHR
 
         // Sleep metrics.
         let pastWithSleep = past.filter { $0.sleepMinutes != nil }

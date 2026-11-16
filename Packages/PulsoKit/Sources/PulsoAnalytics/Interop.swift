@@ -611,7 +611,7 @@ public enum Exporter {
             let cols: [String] = [
                 iso.string(from: Date(timeIntervalSince1970: TimeInterval(w.start))),
                 iso.string(from: Date(timeIntervalSince1970: TimeInterval(w.end))),
-                w.sport, w.source.rawValue, f(w.durationMinutes, 0), f(w.strain), f(w.avgHR, 0), f(w.maxHR, 0), f(w.kcal, 0),
+                w.sport, w.source == .whoop ? "importado" : w.source.rawValue, f(w.durationMinutes, 0), f(w.strain), f(w.avgHR, 0), f(w.maxHR, 0), f(w.kcal, 0),
             ] + w.zoneMinutes.map { f($0, 0) }
             lines.append(cols.map(CSV.escape).joined(separator: ","))
         }

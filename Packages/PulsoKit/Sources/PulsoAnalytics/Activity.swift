@@ -79,17 +79,20 @@ public enum Strain {
         var load = 0.0
         var zones = [Double](repeating: 0, count: 5)
         var hrs: [Double] = []
+        var peak: Double?
         for e in epochs where e.worn {
             guard let hr = e.hr else { continue }
             hrs.append(hr)
+            peak = max(peak ?? 0, e.hrPeak ?? hr)
             let p = model.reserveFraction(hr)
             load += weight(reserveFraction: p)
             let z = model.zone(hr)
             if z > 0 { zones[z - 1] += 1 }
         }
-        // Peak = best sustained minute (robust to single-second spikes).
+        // Peak = highest 3-second median (the original strap reports its per-second peak; a minute's mean
+        // flattened it by 10–15 lpm).
         return Result(load: load, strain: score(load: load), zoneMinutes: zones,
-                      avgHR: Stats.mean(hrs), maxHR: hrs.max())
+                      avgHR: Stats.mean(hrs), maxHR: peak)
     }
 }
 
@@ -121,32 +124,32 @@ public enum Calories {
         }
     }
 
-    /// Total and active kcal over the epochs; minutes with no data are billed at BMR.
+    /// Resting expenditure over BMR: digestion and small movements (fitted, see `keytelWeight`).
+    public static let restingFactor = 1.05
+
+    /// How much of Keytel's estimate above resting a minute at `p` of heart-rate reserve gets. Keytel was fitted on
+    /// exercise and overshoots at everyday heart rates: the original strap's own workouts (270, 2026 export) gave
+    /// 36 % of Keytel at ~92 lpm rising to ~88 % at ~140 lpm. The curve 1 − e^(−(p − 0.26)/0.3), applied minute by
+    /// minute with a resting floor of 1.05 × BMR, matched its day totals within ~60 kcal (was 100–980) and its
+    /// workouts within ~12 kcal (was ~80 over) on four days of per-second data. Same curve in and out of workouts.
+    public static func keytelWeight(reserveFraction p: Double) -> Double {
+        p <= 0.26 ? 0 : 1 - exp(-(p - 0.26) / 0.3)
+    }
+
+    /// Total and active kcal over the epochs; minutes with no data are billed at the resting rate.
     public static func compute(_ epochs: [MinuteEpoch], profile: Profile, model: HeartRateModel,
-                               activeWindows: [ClosedRange<Int>] = [], vo2max: Double? = nil) -> (total: Double, active: Double) {
-        let bmrMin = bmrPerDay(profile) / 1440
+                               vo2max: Double? = nil) -> (total: Double, active: Double) {
+        let restMin = bmrPerDay(profile) * restingFactor / 1440
         var total = 0.0, active = 0.0
         for e in epochs {
             guard e.worn, let hr = e.hr else {
-                total += bmrMin
+                total += restMin
                 continue
             }
-            let p = model.reserveFraction(hr)
-            let inWorkout = activeWindows.contains { $0.contains(e.ts) }
-            // Keytel's equation is only trusted from moderate intensity; below that it is blended towards
-            // BMR between 30 % and 50 % of heart-rate reserve so walking and chores count without a cliff.
-            if p >= 0.5 || (inWorkout && p >= 0.3) {
-                let k = max(bmrMin, keytelPerMinute(hr: hr, profile, vo2max: vo2max))
-                total += k
-                active += k - bmrMin
-            } else if p >= 0.3 {
-                let w = (p - 0.3) / 0.2
-                let k = bmrMin + w * max(0, keytelPerMinute(hr: hr, profile, vo2max: vo2max) - bmrMin)
-                total += k
-                active += k - bmrMin
-            } else {
-                total += bmrMin
-            }
+            let w = keytelWeight(reserveFraction: model.reserveFraction(hr))
+            let extra = w * max(0, keytelPerMinute(hr: hr, profile, vo2max: vo2max) - restMin)
+            total += restMin + extra
+            active += extra
         }
         return (total, active)
     }

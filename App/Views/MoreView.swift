@@ -310,7 +310,7 @@ struct MoreView: View {
             }
             if !exportURLs.isEmpty {
                 ShareLink(items: exportURLs) {
-                    Label("Compartir \(exportURLs.count) archivos", systemImage: "square.and.arrow.up")
+                    Label("Compartir exportación (.zip)", systemImage: "square.and.arrow.up")
                 }
             }
             Button {

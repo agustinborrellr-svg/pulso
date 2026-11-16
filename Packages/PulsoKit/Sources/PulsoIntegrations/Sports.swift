@@ -150,8 +150,10 @@ public enum SportCatalog {
         all.first { $0.strava.contains(type) } ?? named("Actividad")
     }
 
+    /// Health's generic "other" is shared by many sports (chores, driving, cooking…): it's an unnamed activity, not the
+    /// first of them ("Tareas de casa" is what every unnamed workout from other apps came in as).
     public static func fromHealth(_ key: String) -> Sport {
-        all.first { $0.health == key } ?? named("Actividad")
+        key == "other" ? named("Actividad") : all.first { $0.health == key } ?? named("Actividad")
     }
 
     /// Strava `sport_type` to report for a Pulso sport (first alias).

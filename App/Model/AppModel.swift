@@ -149,6 +149,7 @@ final class AppModel: ObservableObject {
         strap.persistUndecoded = { frames in try database.insertUndecoded(frames) }
         migrateLegacyAlarm()
         migrateRetentionDefault()
+        migrateHealthOtherSport()
         reload()
         // After a restore, the seconds the copy lacks come back first (queued before any recompute below).
         let mergingRestore = resumeRestoreMerge()
@@ -651,28 +652,27 @@ final class AppModel: ObservableObject {
 
     // MARK: - Import / export
 
-    /// Writes CSV exports to a temporary folder and returns their URLs (for the share sheet).
+    /// Writes the CSV exports into one .zip in a temporary folder and returns its URL (for the share sheet). The
+    /// per-second CSV is tens of MB as text and about an eighth of that compressed.
     func exportFiles(rawDays: Int = 7) -> [URL] {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("PulsoExport", isDirectory: true)
         try? FileManager.default.removeItem(at: dir)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        var urls: [URL] = []
         let stamp = DayKey.string(Date())
-        let daysURL = dir.appendingPathComponent("pulso_dias_\(stamp).csv")
-        if (try? Exporter.daysCSV((try? db.allDays()) ?? days).write(to: daysURL, atomically: true, encoding: .utf8)) != nil {
-            urls.append(daysURL)
+        func entry(_ name: String, _ csv: String) -> ZipWriter.Entry {
+            let data = Data(csv.utf8)
+            return .init(name: name, data: data, deflated: try? (data as NSData).compressed(using: .zlib) as Data)
         }
-        let wURL = dir.appendingPathComponent("pulso_entrenos_\(stamp).csv")
+        var entries = [entry("pulso_dias_\(stamp).csv", Exporter.daysCSV((try? db.allDays()) ?? days))]
         let workouts = (try? db.workouts(from: 0, to: Int(Date().timeIntervalSince1970) + 86400)) ?? []
-        if (try? Exporter.workoutsCSV(workouts).write(to: wURL, atomically: true, encoding: .utf8)) != nil {
-            urls.append(wURL)
-        }
-        let rawURL = dir.appendingPathComponent("pulso_segundos_\(rawDays)d_\(stamp).csv")
+        entries.append(entry("pulso_entrenos_\(stamp).csv", Exporter.workoutsCSV(workouts)))
         let raw = samples(from: Date().addingTimeInterval(-Double(rawDays) * 86400), to: Date())
-        if !raw.isEmpty, (try? Exporter.samplesCSV(raw).write(to: rawURL, atomically: true, encoding: .utf8)) != nil {
-            urls.append(rawURL)
+        if !raw.isEmpty {
+            entries.append(entry("pulso_segundos_\(rawDays)d_\(stamp).csv", Exporter.samplesCSV(raw)))
         }
-        return urls
+        let url = dir.appendingPathComponent("pulso_export_\(stamp).zip")
+        guard (try? ZipWriter.archive(entries).write(to: url, options: .atomic)) != nil else { return [] }
+        return [url]
     }
 
     func eraseEverything() {

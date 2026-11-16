@@ -129,6 +129,7 @@ final class IntegrationsTests: XCTestCase {
         XCTAssertEqual(SportCatalog.stravaType("Fuerza"), "WeightTraining")
         XCTAssertEqual(SportCatalog.named("Ciclismo").fitSport, 2)
         XCTAssertEqual(SportCatalog.fromHealth("yoga").name, "Yoga")
+        XCTAssertEqual(SportCatalog.fromHealth("other").name, "Actividad", "not the first sport sharing the key")
         XCTAssertEqual(Set(SportCatalog.names).count, SportCatalog.all.count, "unique names")
         XCTAssertGreaterThan(SportCatalog.all.count, 70)
         XCTAssertEqual(SportCatalog.named("Sauna").kind, .recovery)

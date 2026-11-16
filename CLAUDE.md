@@ -332,3 +332,18 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
   Las grandes, fuera de la copia de iCloud.
 - Estrés unificado (06-nov): solo la fórmula por minuto. «Estrés alto» = minutos ≥ 2 despierto, sin entrenos + 90 min ni
   sueño (la hora tras despertar cuenta); media y horas de esos mismos minutos (`StressSummary.daily`). `derivedVersion` 14.
+
+## Estado (2026-11-16, comparación día a día con la pulsera original, 31-oct a 16-nov)
+
+- Bien (error medio): FC reposo 1,3 lpm, VFC 6 ms (r 0,92), respiración 0,4, necesidad/deuda/constancia de sueño, sueño total
+  32 min sin sesgo. La fórmula de recuperación reproduce la original con SUS entradas (6 pts); con las de Pulso, 11,6: el error
+  viene de la VFC noche a noche y del sueño (Pulso cuenta ~17 min más despierto → 16-nov 283 vs 347 min). Pendiente: recalibrar
+  despertares/fases con los segundos de las noches nuevas (exportación .zip).
+- Arreglado: FC media del día desde que te duermes (como la original; desde que te levantas daba +9 lpm); FC máx = mayor mediana
+  de 3 s (`MinuteEpoch.hrPeak`; la media por minuto la bajaba 10-15 lpm). Calorías: `Calories.keytelWeight` = 1 − e^(−(p−0,26)/0,3)
+  de Keytel sobre reposo 1,05 × BMR, igual dentro y fuera de entrenos (ajustado a 270 entrenos de la original + 4 días por
+  segundo: días ±60 kcal, antes 100-980; entrenos ±12, antes ~80 de más). `derivedVersion` 15.
+- Apple Salud «other» entraba como «Tareas de casa» (primer deporte con esa clave): ahora «Actividad» + migración única
+  (kv `migration.healthOtherSport`). La exportación CSV sale en un .zip (`ZipWriter`, DEFLATE de `NSData.compressed(.zlib)`),
+  ~8 veces más pequeña; columna origen «importado» en vez del nombre de la marca.
+- Comparación reproducible: scratchpad `cmp.py`, `rec.py`, `kday.py` (exportación de la original + CSV de Pulso).

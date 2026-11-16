@@ -203,4 +203,17 @@ extension AppModel {
         }
         try? db.set(true, for: key)
     }
+
+    /// Unnamed workouts from other apps came in from Apple Health as «Tareas de casa» (Health's generic «other» matched
+    /// the first sport with that key). Rename them once to «Actividad»; the import now does that itself.
+    func migrateHealthOtherSport() {
+        let key = "migration.healthOtherSport"
+        guard db.get(Bool.self, for: key) != true else { return }
+        let all = (try? db.workouts(from: 0, to: Int(Date().timeIntervalSince1970) + 86400)) ?? []
+        for var w in all where w.source == .health && w.sport == "Tareas de casa" && w.externalID("health") != nil {
+            w.sport = "Actividad"
+            _ = try? db.save(w)
+        }
+        try? db.set(true, for: key)
+    }
 }

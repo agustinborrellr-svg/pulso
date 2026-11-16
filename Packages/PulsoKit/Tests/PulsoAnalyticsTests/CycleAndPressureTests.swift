@@ -216,4 +216,36 @@ final class FitnessFormulaTests: XCTestCase {
         let plain: Double = (-55.0969 + 94.635 + 14.91 + 6.051) / 4.184
         XCTAssertEqual(Calories.keytelPerMinute(hr: 150, p), plain, accuracy: 1e-9)
     }
+
+    /// The share of Keytel above resting follows the original strap's workouts: none at everyday heart rates, about a
+    /// third at ~100 lpm, most of it when hard.
+    func testCaloriesCurveAgainstTheOriginalStrapsWorkouts() {
+        var p = Profile()
+        p.birthYear = Calendar.current.component(.year, from: Date()) - 25
+        p.weightKg = 90
+        p.heightCm = 180
+        p.sex = .male
+        let model = HeartRateModel(restingHR: 50, maxHR: 190.5)
+        func perMinute(_ hr: Double) -> Double {
+            let e = MinuteEpoch(ts: 0, hr: hr, hrSD: nil, motion: nil, posture: 0, wornFraction: 1, poorFraction: 0,
+                                strapAsleepFraction: 0, strapWakeFraction: 0, temp: nil, spo2: [], stepsDelta: 0,
+                                activityClass: nil, secondsWithData: 60)
+            return Calories.compute([e], profile: p, model: model, vo2max: 43.5).total
+        }
+        let rest = Calories.bmrPerDay(p) * Calories.restingFactor / 1440
+        XCTAssertEqual(perMinute(75), rest, accuracy: 1e-9, "everyday heart rate: resting only")
+        // The original strap's mean kcal/min by average workout heart rate (270 workouts): 3.6 at ~102, 7.6 at ~122.
+        // Per minute it sits at or below those: a workout's harder minutes count for more than its average.
+        XCTAssertEqual(perMinute(102), 3.6, accuracy: 0.6)
+        XCTAssertGreaterThan(perMinute(122), 5.5)
+        XCTAssertLessThanOrEqual(perMinute(122), 7.6)
+        XCTAssertLessThan(perMinute(150), Calories.keytelPerMinute(hr: 150, p, vo2max: 43.5))
+    }
+
+    func testPeakIsTheHighestThreeSecondMedian() {
+        XCTAssertEqual(MinuteEpoch.peak([100, 101, 180, 102, 103, 104]), 103, "a lone spike is ignored")
+        XCTAssertEqual(MinuteEpoch.peak([100, 150, 151, 152, 120]), 151)
+        XCTAssertEqual(MinuteEpoch.peak([90, 95]), 95)
+        XCTAssertNil(MinuteEpoch.peak([]))
+    }
 }

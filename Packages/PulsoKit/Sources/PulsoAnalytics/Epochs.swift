@@ -20,8 +20,21 @@ public struct MinuteEpoch: Equatable {
     public var stepsDelta: Int
     public var activityClass: Int?
     public var secondsWithData: Int
+    /// Highest median of 3 consecutive worn seconds (a single bad second can't set it). Nil: use `hr`.
+    public var hrPeak: Double? = nil
 
     public var worn: Bool { wornFraction >= 0.5 && hr != nil }
+
+    /// Highest median of 3 consecutive values (the max when there are fewer than 3).
+    static func peak(_ hrs: [Double]) -> Double? {
+        guard hrs.count >= 3 else { return hrs.max() }
+        var best = -Double.infinity
+        for i in 1..<(hrs.count - 1) {
+            let a = hrs[i - 1], b = hrs[i], c = hrs[i + 1]
+            best = max(best, max(min(a, b), min(max(a, b), c)))
+        }
+        return best
+    }
 }
 
 /// A run of beat-to-beat intervals with no missing beats between them.
@@ -100,7 +113,8 @@ public enum Epochs {
                 spo2: worn.compactMap { $0.spo2 }.map(Double.init),
                 stepsDelta: steps,
                 activityClass: actMode,
-                secondsWithData: b.count
+                secondsWithData: b.count,
+                hrPeak: MinuteEpoch.peak(hrs)
             ))
         }
         return out
