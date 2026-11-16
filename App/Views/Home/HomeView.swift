@@ -86,6 +86,11 @@ struct HomeView: View {
             .scrollIndicators(.hidden)
             .scrollPosition(id: $scrolledTo, anchor: .top)
             .task {
+                if AppMode.screenshots, AppMode.screen == "dayPicker" {
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    model.showDayPicker = true
+                    return
+                }
                 // Screenshot run: show the dials collapsed into the pinned row.
                 guard AppMode.screenshots, AppMode.screen == "todayScrolled" else { return }
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
@@ -96,6 +101,20 @@ struct HomeView: View {
                 collapse = min(max(-y / HomeDialHeader.collapseDistance, 0), 1)
             }
             .overlay(alignment: .top) { HomeDialHeader(progress: collapse) }
+            .overlay(alignment: .top) {
+                ZStack(alignment: .top) {
+                    if model.showDayPicker {
+                        Color.black.opacity(0.6)
+                            .ignoresSafeArea()
+                            .onTapGesture { withAnimation(.easeInOut(duration: 0.28)) { model.showDayPicker = false } }
+                            .accessibilityLabel("Cerrar calendario")
+                            .accessibilityAddTraits(.isButton)
+                            .transition(.opacity)
+                        HomeDayPicker()
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
+            }
             .background(PulsoBackground())
             .refreshable {
                 model.syncNow()
@@ -148,17 +167,26 @@ struct HomeTopBar: View {
                     .foregroundStyle(.white)
             }
             Spacer(minLength: 0)
-            HStack(spacing: 4) {
+            HStack(spacing: 0) {
                 // With the plain style only the glyph itself is tappable: give each arrow a full 44 pt target.
                 Button { model.shiftSelectedDay(-1) } label: {
                     Image(systemName: "chevron.left").font(.subheadline.weight(.bold))
-                        .frame(width: 44, height: 44).contentShape(Rectangle())
+                        .frame(width: 40, height: 44).contentShape(Rectangle())
                 }
                 .accessibilityLabel("Día anterior")
-                Caps(model.cycleTitle(model.selectedDay), size: 12)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 9)
-                    .background(Theme.cardHighlight, in: Capsule())
+                Button {
+                    withAnimation(.easeInOut(duration: 0.28)) { model.showDayPicker.toggle() }
+                } label: {
+                    Caps(model.cycleTitle(model.selectedDay), size: 12)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 10)
+                        .background(Theme.cardHighlight, in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .accessibilityLabel("Elegir día, \(Fmt.dayTitle(model.selectedDay))")
+                .accessibilityHint("Abre el calendario por recuperación")
                 Button { model.shiftSelectedDay(1) } label: {
                     Image(systemName: "chevron.right").font(.subheadline.weight(.bold))
                         .frame(width: 44, height: 44).contentShape(Rectangle())
@@ -167,6 +195,8 @@ struct HomeTopBar: View {
                 .disabled(model.selectedDay >= model.currentDayKey)
                 .opacity(model.selectedDay >= model.currentDayKey ? 0.3 : 1)
             }
+            .padding(.horizontal, 2)
+            .background(Theme.card, in: Capsule())
             .buttonStyle(.plain)
             .foregroundStyle(.white)
             Spacer(minLength: 0)

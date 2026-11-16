@@ -62,6 +62,8 @@ final class AppModel: ObservableObject {
     @Published var selectedDay: String = DayKey.string(Date())
     /// The selected day follows the cycle in progress (it moves to the new day after you wake up).
     var followCurrent = true
+    /// Inicio's month calendar (opened by tapping the date) is showing.
+    @Published var showDayPicker = false
     @Published var profile: Profile
     @Published var analyzing = false
     @Published var analysisProgress: Double = 0
@@ -221,9 +223,15 @@ final class AppModel: ObservableObject {
     /// The current cycle's summary.
     var today: DaySummary? { days.last { $0.day == currentDayKey } }
 
-    /// "OCT. 26 A HOY" for the cycle in progress, "OCT. 25" for the others.
+    /// "HOY" for the cycle in progress, "DOM., NOV. 15" for the others.
     func cycleTitle(_ key: String) -> String {
-        key == currentDayKey ? "\(Fmt.shortDay(key)) A HOY" : Fmt.shortDay(key)
+        guard key != currentDayKey else { return "HOY" }
+        guard let d = DayKey.date(key) else { return Fmt.shortDay(key) }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es_ES")
+        f.dateFormat = "EEE"
+        let weekday = f.string(from: d).replacingOccurrences(of: ".", with: "").uppercased()
+        return "\(weekday)., \(Fmt.shortDay(key))"
     }
 
     var selected: DaySummary? { days.first { $0.day == selectedDay } }
@@ -266,6 +274,13 @@ final class AppModel: ObservableObject {
         guard let m = SleepPlanner.typicalWakeMinutes(days) else { return nil }
         return Calendar.current.nextDate(after: Date(), matching: DateComponents(hour: Int(m) / 60, minute: Int(m) % 60),
                                          matchingPolicy: .nextTime)
+    }
+
+    /// Jumps to a day (the calendar on Inicio); days after today are ignored.
+    func selectDay(_ key: String) {
+        guard key <= currentDayKey else { return }
+        followCurrent = key == currentDayKey
+        selectedDay = key
     }
 
     func shiftSelectedDay(_ delta: Int) {
