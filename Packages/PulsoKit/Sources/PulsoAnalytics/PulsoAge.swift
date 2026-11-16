@@ -6,10 +6,9 @@ import PulsoStore
 ///
 /// Each habit becomes an all-cause mortality hazard ratio against someone who just meets the guideline (the neutral
 /// point, 0 years). A hazard ratio becomes years with t = ln(HR) / 0.1 (Spiegelhalter's effective age: risk grows
-/// ~10 % per year of age). The years of the habits are summed and shrunk by `adjustment`, which stands in for the
-/// white paper's structural-equation correction for habits that overlap (RHR and VO₂ máx, steps and zone time);
-/// WHOOP does not publish those factors, so 0.85 is fitted so the white paper's median 30-year-old man and woman come
-/// out at −1.6 years, as published.
+/// ~10 % per year of age). Each habit's years are scaled by its weight in `weights`, which stands in for the white
+/// paper's structural-equation correction for habits that overlap (RHR and VO₂ máx, steps and zone time); WHOOP does
+/// not publish those factors, so they are fitted to its own per-habit breakdown, and the years are summed.
 ///
 /// Neutral points (white paper): sleep 7 h (7–9 h a small benefit, over 9 h nothing); sleep consistency 70 %;
 /// steps 8 000/day (5 600 from 60); zones 1-3 100 min/week (down to 70 with age), zones 4-5 10 min/week (down to 7);
@@ -26,8 +25,13 @@ import PulsoStore
 public enum PulsoAge {
     /// Years of age per unit of ln(hazard ratio): 1 / 0.1.
     public static let yearsPerLnHR = 10.0
-    /// Shared correction for overlapping habits (see above).
-    public static let adjustment = 0.85
+    /// Per-habit correction for overlapping habits (the white paper's structural equation). Fitted to the original app's
+    /// own breakdown for one member (16-nov-2026: 8 habits, years shown to 0.1, total +2.1): each weight is
+    /// shown years / 10·ln(HR) at the shown value. The single shared 0.85 used before put regularity, zones 4-5 and steps
+    /// far too high (+1.5, +1.0 and −0.3 against +0.9, +0.1 and −0.1) and RHR too low. Cross-check: with these weights
+    /// the white paper's median 30-year-old man and woman still come out at −1.6 and −1.5 years (published −1.6).
+    public static let weights: [String: Double] = ["sleepHours": 0.83, "regularity": 0.53, "zonesLight": 1.0, "zonesHard": 0.09,
+                                                   "strength": 1.1, "steps": 0.25, "vo2max": 0.78, "rhr": 1.39]
     /// Days of the long window (6 months) and of "ahora".
     public static let longDays = 182
     public static let recentDays = 30
@@ -107,11 +111,14 @@ public enum PulsoAge {
         let aggregate: TrendSeries.Aggregate
         let value: (DaySummary) -> Double?
 
-        /// Years vs meeting the guideline, before the shared adjustment: 10 · ln(HR(v) / HR(neutral)).
+        /// Years vs meeting the guideline, before the habit's weight: 10 · ln(HR(v) / HR(neutral)).
         func years(_ v: Double?) -> Double? {
             guard let v else { return nil }
             return PulsoAge.yearsPerLnHR * log(curve.rr(v) / curve.rr(neutral))
         }
+
+        /// Years this habit adds, with its weight.
+        func weightedYears(_ v: Double?) -> Double? { years(v).map { $0 * (PulsoAge.weights[key] ?? 1) } }
     }
 
     /// Sports that count as strength activity (white paper Table 1: weightlifting, functional fitness, HIIT, pilates,
@@ -173,6 +180,17 @@ public enum PulsoAge {
         ]
     }
 
+    /// Age with decimals, as the original app shows it (27.4 = 25.3 + 2.1). Only the birth year is known, so the birthday
+    /// is taken as mid-year: the whole-year age was up to a year off.
+    static func decimalAge(birthYear: Int, on day: String, calendar: Calendar) -> Double? {
+        guard let date = DayKey.date(day, calendar: calendar),
+              let year = calendar.dateComponents([.year], from: date).year,
+              let dayOfYear = calendar.ordinality(of: .day, in: .year, for: date),
+              let length = calendar.range(of: .day, in: .year, for: date)?.count else { return nil }
+        let now = Double(year) + Double(dayOfYear - 1) / Double(length)
+        return Stats.clamp(now - Double(birthYear) - 0.5, 12, 100)
+    }
+
     /// Average per day, or minutes per week for `.total`, of the days in [from, to] that have a value.
     static func window(_ days: [DaySummary], from: String, to: String, aggregate: TrendSeries.Aggregate,
                        value: (DaySummary) -> Double?, minDays: Int) -> Double? {
@@ -202,7 +220,7 @@ public enum PulsoAge {
             guard d.strain != nil else { return nil }
             return (byDay[d.day] ?? []).filter { strengthSports.contains($0.sport) }.reduce(0) { $0 + Double($1.end - $1.start) / 60 }
         }
-        let age = Double(profile.age)
+        let age = decimalAge(birthYear: profile.birthYear, on: today, calendar: calendar) ?? Double(profile.age)
         var items: [Item] = []
         var total = 0.0, recentTotal = 0.0, measured = 0, measuredRecent = 0
         let specs = specs(age: profile.age, sex: profile.sex, zones: zones, strength: strength)
@@ -214,7 +232,7 @@ public enum PulsoAge {
         for (k, s) in specs.enumerated() {
             let long = full[k] ?? (fillGaps ? window(days, from: fromLong, to: end, aggregate: s.aggregate, value: s.value, minDays: 7) : nil)
             let recent = window(days, from: fromRecent, to: end, aggregate: s.aggregate, value: s.value, minDays: 7)
-            let y = s.years(long).map { $0 * adjustment }, ry = s.years(recent).map { $0 * adjustment }
+            let y = s.weightedYears(long), ry = s.weightedYears(recent)
             items.append(Item(key: s.key, label: s.label, group: s.group, unit: s.unit, recent: recent, longTerm: long,
                               poor: s.poor, neutral: s.neutral, optimal: s.optimal, years: y, recentYears: ry,
                               counted: true, source: s.source))

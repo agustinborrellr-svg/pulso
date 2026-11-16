@@ -55,12 +55,30 @@ final class PulsoAgeTests: XCTestCase {
             let v: [String: Double] = ["sleepHours": sleep, "regularity": cons, "steps": steps, "zonesLight": light,
                                        "zonesHard": hard, "strength": strength, "vo2max": vo2, "rhr": rhr]
             return PulsoAge.specs(age: 30, sex: sex, zones: { _ in nil }, strength: { _ in nil })
-                .reduce(0) { $0 + ($1.years(v[$1.key]) ?? 0) * PulsoAge.adjustment }
+                .reduce(0) { $0 + ($1.weightedYears(v[$1.key]) ?? 0) }
         }
         XCTAssertEqual(total(sex: .male, sleep: 420, cons: 67, steps: 10900, light: 141, hard: 6, strength: 46, vo2: 46.8, rhr: 58),
                        -1.6, accuracy: 0.3)
         XCTAssertEqual(total(sex: .female, sleep: 438, cons: 68, steps: 11500, light: 124, hard: 7, strength: 56, vo2: 40, rhr: 63),
                        -1.6, accuracy: 0.3)
+    }
+
+    /// The original app's breakdown for a 25-year-old man (16-nov-2026), habit by habit to its 0.1 rounding: total +2.1.
+    func testTheOriginalAppsBreakdown() {
+        let shown: [(String, Double, Double)] = [("regularity", 57, 0.9), ("sleepHours", 388, 0.5), ("zonesLight", 234, -1.1),
+                                                 ("zonesHard", 2, 0.1), ("strength", 1, 1.5), ("steps", 8769, -0.1),
+                                                 ("vo2max", 43, 0.9), ("rhr", 55, -0.6)]
+        var total = 0.0
+        for (key, value, years) in shown {
+            let y = spec(key, age: 25).weightedYears(value)!
+            XCTAssertEqual(y, years, accuracy: 0.1, key)
+            total += y
+        }
+        XCTAssertEqual(total, 2.1, accuracy: 0.15)
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Madrid")!
+        XCTAssertEqual(PulsoAge.decimalAge(birthYear: 2001, on: "2026-11-16", calendar: cal)!, 25.4, accuracy: 0.05,
+                       "the original showed 27.4 − 2.1 = 25.3 with the real birthday")
     }
 
     func testHealthyHabitsMakeYouYounger() {
@@ -78,7 +96,7 @@ final class PulsoAgeTests: XCTestCase {
                                     workouts: workouts(goodDays, zones: [20, 10, 5, 3, 2], sport: "Fuerza"), calendar: cal)
         let bad = PulsoAge.compute(days: days(200, sleep: 5.5 * 60, steps: 3000, rhr: 74, vo2: 30, zones: [], regularity: 45),
                                    profile: p, today: "2026-10-27", calendar: cal)
-        XCTAssertEqual(good.age, 40)
+        XCTAssertEqual(good.age, 40, accuracy: 1, "decimal age, birthday taken as mid-year")
         XCTAssertLessThan(good.difference ?? 0, -2)
         XCTAssertGreaterThan(bad.difference ?? 0, 6)
         // Same habits for 6 months: steady age, pace 1x.
@@ -108,7 +126,7 @@ final class PulsoAgeTests: XCTestCase {
         let r = PulsoAge.compute(days: list, profile: profile(age: 25), today: "2026-10-27")
         let steps = r.items.first { $0.key == "steps" }!
         XCTAssertEqual(steps.longTerm ?? 0, 10700, accuracy: 1e-9)
-        XCTAssertLessThan(steps.years ?? 0, -0.5)
+        XCTAssertLessThan(steps.years ?? 0, -0.2)
     }
 
     func testTooLittleDataGivesNoAge() {

@@ -353,6 +353,14 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
 - Edad Pulso 29 vs 27,4 de la original: los pasos no entraban (la historia importada no trae pasos, 17 días < 21) y 10 700
   pasos/día restan 0,9 años. Si ya hay ≥4 hábitos con 6 meses, un hábito con ≥7 días usa los que tiene. Ahora 28,0.
   Resto del desglose (6 meses): regularidad 57 % +1,46; VO₂ 42,1 +1,33; fuerza +1,13; zonas 4-5 +0,97; sueño 6,5 h +0,5;
-  FC reposo −0,4; zonas 1-3 −1,07; pasos −0,9. Para cuadrar el 0,6 restante hace falta el desglose de la app original.
+  FC reposo −0,4; zonas 1-3 −1,07; pasos −0,9.
+- Con el desglose de la app original (capturas 16-nov: regularidad 57 % +0,9, sueño 6:28 +0,5, zonas 1-3 3:54 −1,1, zonas 4-5
+  0:02 +0,1, fuerza 0:01 +1,5, pasos 8 769 −0,1, VO₂ 43 +0,9, FC reposo 55 −0,6; total +2,1, suma simple, edad 25,3 con
+  decimales): el 0,85 común se cambia por un peso por hábito (`PulsoAge.weights`: sueño 0,83, regularidad 0,53, zonas 1-3 1,0,
+  zonas 4-5 0,09, fuerza 1,1, pasos 0,25, VO₂ 0,78, FC reposo 1,39) y la edad lleva decimales (cumpleaños a mitad de año;
+  `decimalAge`). La mediana del white paper sigue en −1,6/−1,5. Con los datos de Gus: 27,5 vs 27,4 (VO₂ 42,1 vs 43 y pasos
+  son diferencias de entrada). El ritmo (Pulso −1 vs 0,7x) NO cuadra: con sus propios valores de 30 días saldría ~1,2, así que
+  la fórmula del ritmo de la original es otra; hace falta más de una captura para ajustarla. Pasos de 30 días: original 6 630,
+  Pulso 10 700 → revisar si Pulso cuenta pasos de más.
 - Replay: CSV de segundos → SQLite con `scratchpad/mkdb.py` (copia + INSERT OR IGNORE, rr uint16 LE) y
   `TZ=Europe/Madrid PULSO_REAL_DB=… swift test --filter RealDataReplayTests` (reproduce la app exacto).
