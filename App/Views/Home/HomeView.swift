@@ -5,102 +5,70 @@ import PulsoAnalytics
 import PulsoFeatures
 import PulsoIntelligence
 
-/// Inicio: the three pillars, the week, the stress monitor and a dashboard you arrange yourself.
+/// Hoy: the fixed top (date and day pill, the three scores with the folded health monitor, «Ahora») and below it
+/// the blocks you choose and order yourself («Personalizar Hoy»).
 struct HomeView: View {
     @EnvironmentObject var model: AppModel
-    @State private var customizing = false
-    @State private var showCoach = false
-    @AppStorage(HomeLayout.key) private var homeRaw = ""
-    @State private var collapse: CGFloat = 0
+    @AppStorage(HoyLayout.key) private var blocksRaw = ""
+    @State private var editing = false
+    @State private var editingAdds = false
+    @State private var recentPulse: [(ts: Int, hr: Int)] = []
     @State private var scrolledTo: String?
+    /// Screenshot runs only: blocks shown without saving them.
+    @State private var shotBlocks: [HoyBlock]?
 
-    private var widgets: [HomeWidget] { HomeLayout.decode(homeRaw) }
+    private var blocks: [HoyBlock] { shotBlocks ?? HoyLayout.decode(blocksRaw) }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    // Room for the header floating above; where this sits drives its collapse.
-                    Color.clear
-                        .frame(height: HomeDialHeader.expandedHeight - 14)
-                        .background(GeometryReader { g in
-                            Color.clear.preference(key: HomeScrollOffset.self, value: g.frame(in: .named("home")).minY)
-                        })
-                    if let day = model.selected {
-                        if day.recovery == nil && day.calibrating {
-                            Text("Calibrando tus líneas base: la recuperación aparece tras 4 noches.")
-                                .font(.caption).foregroundStyle(Theme.secondary)
-                        }
-                        if day.nightImported {
-                            Label("Sueño y recuperación de la noche importados: la pulsera no estaba conectada a Pulso esa noche.",
-                                  systemImage: "square.and.arrow.down")
-                                .font(.caption).foregroundStyle(Theme.secondary)
-                        }
-                    }
-                    if !model.days.isEmpty {
-                        // Half and half: your vitals of last night and your stress now.
-                        HStack(alignment: .top, spacing: 10) {
-                            HomeHealthMonitorTile()
-                            HomeStressStatusTile()
-                        }
-                        .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if let day = model.selected {
-                        TodayActivitiesCard(day: day).id("homeActivities")
-                    }
-                    if let q = model.pendingSleepQuestions.first {
-                        SleepQuestionCard(session: q)
-                    }
-                    AlarmBanner()
-                    if model.selectedDay == model.currentDayKey, model.nightStatus != .ok {
-                        NightPendingCard(status: model.nightStatus)
-                    }
-                    if model.isEvening && model.selectedDay == model.currentDayKey {
-                        BedtimeCard()
-                    }
-                    if let day = model.selected {
-                        ForEach(Array(HomeLayout.lines(widgets.filter { $0.kind != .hero }).enumerated()), id: \.offset) { _, line in
-                            HomeWidgetLine(items: line, day: day)
-                        }
-                        Button { customizing = true } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "square.grid.2x2")
-                                Caps("Personalizar Inicio", size: 11, color: Theme.secondary, weight: .semibold)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(Theme.secondary)
-                    } else if model.days.isEmpty {
+                    HoyHeader()
+                    if model.days.isEmpty {
                         firstRun
                     } else {
-                        EmptyState(icon: "calendar.badge.exclamationmark", title: "Sin datos este día",
-                                   message: "No hay datos de la pulsera para esta fecha.")
+                        let day = model.selected
+                        HoyScoresCard(day: day)
+                        notes(day)
+                        if model.selectedDay == model.currentDayKey {
+                            HoyAhora(recent: recentPulse)
+                        }
+                        alerts(day)
+                        if let day {
+                            ForEach(blocks) { b in
+                                block(b, day: day).id(b.rawValue)
+                            }
+                            .simultaneousGesture(LongPressGesture(minimumDuration: 0.6).onEnded { _ in open() })
+                        } else {
+                            EmptyState(icon: "calendar.badge.exclamationmark", title: "Sin datos este día",
+                                       message: "No hay datos de la pulsera para esta fecha.")
+                        }
+                        Button { open() } label: {
+                            Label("Personalizar Hoy", systemImage: "slider.horizontal.3")
+                                .hoyFont(15, .semibold)
+                                .foregroundStyle(Hoy.t2)
+                                .padding(.horizontal, 18)
+                                .frame(height: 40)
+                                .background(Hoy.fill, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 14)
                     }
                 }
                 .scrollTargetLayout()
                 .padding(.horizontal, 16)
-                .padding(.bottom, 90)
+                .padding(.bottom, 40)
             }
             .scrollIndicators(.hidden)
             .scrollPosition(id: $scrolledTo, anchor: .top)
+            .task { await screenshotSetup() }
             .task {
-                if AppMode.screenshots, AppMode.screen == "dayPicker" {
-                    try? await Task.sleep(nanoseconds: 1_500_000_000)
-                    model.showDayPicker = true
-                    return
+                while !Task.isCancelled {
+                    recentPulse = model.recentPulse()
+                    try? await Task.sleep(nanoseconds: 30_000_000_000)
                 }
-                // Screenshot run: show the dials collapsed into the pinned row.
-                guard AppMode.screenshots, AppMode.screen == "todayScrolled" else { return }
-                try? await Task.sleep(nanoseconds: 1_500_000_000)
-                scrolledTo = "homeActivities"
             }
-            .coordinateSpace(name: "home")
-            .onPreferenceChange(HomeScrollOffset.self) { y in
-                collapse = min(max(-y / HomeDialHeader.collapseDistance, 0), 1)
-            }
-            .overlay(alignment: .top) { HomeDialHeader(progress: collapse) }
             .overlay(alignment: .top) {
                 ZStack(alignment: .top) {
                     if model.showDayPicker {
@@ -115,25 +83,70 @@ struct HomeView: View {
                     }
                 }
             }
-            .background(PulsoBackground())
+            .background(Hoy.bg.ignoresSafeArea())
             .refreshable {
                 model.syncNow()
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
             }
             .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .bottom) {
-                if let day = model.selected {
-                    CoachBanner(day: day) { showCoach = true }
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 6)
-                }
+            .fullScreenCover(isPresented: $editing) {
+                HoyEditor(raw: $blocksRaw, startAdding: editingAdds).environmentObject(model)
             }
-            .sheet(isPresented: $customizing) {
-                HomeEditor(raw: $homeRaw)
+        }
+    }
+
+    private func open() {
+        editingAdds = false
+        editing = true
+    }
+
+    @ViewBuilder
+    private func block(_ b: HoyBlock, day: DaySummary) -> some View {
+        if model.hoyHasData(b, day: day) {
+            switch b {
+            case .actividades: HoyActivitiesBlock(day: day)
+            case .anoche: HoyAnocheBlock(day: day)
+            case .estres: HoyStressBlock(day: day)
+            case .tendencias: HoyTrendsBlock()
+            case .edadPulso: HoyAgeBlock()
+            case .estaNoche: HoyTonightBlock()
+            case .tuSemana: HoyWeekBlock(day: day)
+            case .cargaSemana: HoyLoadBlock()
+            case .pasos: HoyStepsBlock(day: day)
+            case .racha: HoyStreakBlock(day: day)
+            case .meVoyADormir: HoyBedtimeBlock(day: day)
+            case .constantes: HoyVitalsBlock()
             }
-            .sheet(isPresented: $showCoach) {
-                if let day = model.selected { CoachSheet(day: day) }
+        }
+    }
+
+    /// Short notes about how the day was measured (calibrating, night imported).
+    @ViewBuilder
+    private func notes(_ day: DaySummary?) -> some View {
+        if let day {
+            if day.recovery == nil && day.calibrating {
+                Text("Calibrando tus líneas base: la recarga aparece tras 4 noches.")
+                    .hoyFont(13, relativeTo: .footnote).foregroundStyle(Hoy.t2)
             }
+            if day.nightImported {
+                Label("Noche importada: la pulsera no estaba conectada a Pulso esa noche.", systemImage: "square.and.arrow.down")
+                    .hoyFont(13, relativeTo: .footnote).foregroundStyle(Hoy.t2)
+            }
+        }
+    }
+
+    /// Cards that appear on their own when they matter: a nap to confirm, the alarm, a missing night, bedtime.
+    @ViewBuilder
+    private func alerts(_ day: DaySummary?) -> some View {
+        if let q = model.pendingSleepQuestions.first {
+            SleepQuestionCard(session: q)
+        }
+        AlarmBanner()
+        if model.selectedDay == model.currentDayKey, model.nightStatus != .ok {
+            NightPendingCard(status: model.nightStatus)
+        }
+        if model.isEvening && model.selectedDay == model.currentDayKey && !blocks.contains(.estaNoche) && !blocks.contains(.meVoyADormir) {
+            BedtimeCard()
         }
     }
 
@@ -142,89 +155,34 @@ struct HomeView: View {
             EmptyState(icon: "sensor.tag.radiowaves.forward",
                        title: model.strapState.isConnected ? "Recopilando datos" : "Conecta tu pulsera",
                        message: model.strapState.isConnected
-                           ? "Tu primera recuperación aparece tras la primera noche. Las líneas base se calibran en 4 noches."
-                           : "Toca el icono de la pulsera arriba a la derecha para emparejar tu Pulse Band.")
+                           ? "Tu primera recarga aparece tras la primera noche. Las líneas base se calibran en 4 noches."
+                           : "Toca la pulsera arriba a la derecha para emparejar tu Pulse Band.")
             if model.rawSampleCount > 0 {
                 Button("Analizar datos descargados") { model.recompute(fromDay: nil) }
                     .buttonStyle(PrimaryCapsuleStyle())
             }
         }
-    }
-}
-
-// MARK: - Top bar
-
-struct HomeTopBar: View {
-    @EnvironmentObject var model: AppModel
-
-    var body: some View {
-        HStack(spacing: 10) {
-            NavigationLink {
-                ProfileEditor(profile: model.profile)
-            } label: {
-                Image(systemName: "person.crop.circle")
-                    .scaledFont(26, weight: .light, relativeTo: .title1)
-                    .foregroundStyle(.white)
-            }
-            Spacer(minLength: 0)
-            HStack(spacing: 0) {
-                // With the plain style only the glyph itself is tappable: give each arrow a full 44 pt target.
-                Button { model.shiftSelectedDay(-1) } label: {
-                    Image(systemName: "chevron.left").font(.subheadline.weight(.bold))
-                        .frame(width: 40, height: 44).contentShape(Rectangle())
-                }
-                .accessibilityLabel("Día anterior")
-                Button {
-                    withAnimation(.easeInOut(duration: 0.28)) { model.showDayPicker.toggle() }
-                } label: {
-                    // fixedSize: with tracking, lineLimit(1) measured the text short and «HOY» came out as «…».
-                    Caps(model.cycleTitle(model.selectedDay), size: 12)
-                        .fixedSize()
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 10)
-                        .background(Theme.cardHighlight, in: Capsule())
-                        .contentShape(Capsule())
-                }
-                .accessibilityLabel("Elegir día, \(Fmt.dayTitle(model.selectedDay))")
-                .accessibilityHint("Abre el calendario por recuperación")
-                Button { model.shiftSelectedDay(1) } label: {
-                    Image(systemName: "chevron.right").font(.subheadline.weight(.bold))
-                        .frame(width: 44, height: 44).contentShape(Rectangle())
-                }
-                .accessibilityLabel("Día siguiente")
-                .disabled(model.selectedDay >= model.currentDayKey)
-                .opacity(model.selectedDay >= model.currentDayKey ? 0.3 : 1)
-            }
-            .padding(.horizontal, 2)
-            .background(Theme.card, in: Capsule())
-            .buttonStyle(.plain)
-            .foregroundStyle(.white)
-            Spacer(minLength: 0)
-            NavigationLink {
-                DeviceView()
-            } label: {
-                HStack(spacing: 5) {
-                    Text(model.battery.map { "\(Int($0)) %" } ?? "")
-                        .scaledFont(13, weight: .semibold, relativeTo: .caption1)
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.secondary)
-                    ZStack(alignment: .topTrailing) {
-                        Image(systemName: "applewatch.side.right")
-                            .scaledFont(24, weight: .light, relativeTo: .title1)
-                            .foregroundStyle(.white)
-                        Circle().fill(statusColor).frame(width: 8, height: 8).offset(x: 3, y: -2)
-                    }
-                }
-            }
-        }
-        .padding(.top, 6)
+        .padding(.top, 40)
     }
 
-    private var statusColor: Color {
-        switch model.strapState {
-        case .ready, .syncing: return Theme.green
-        case .connecting, .scanning, .pairing: return Theme.yellow
-        default: return Theme.red
+    /// CI screenshots of Hoy's states.
+    private func screenshotSetup() async {
+        guard AppMode.screenshots, let screen = AppMode.screen else { return }
+        switch screen {
+        case "dayPicker":
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            model.showDayPicker = true
+        case "todayScrolled":
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            scrolledTo = HoyBlock.actividades.rawValue
+        case "todayEdit", "todayAdd":
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            editingAdds = screen == "todayAdd"
+            editing = true
+        case "todayMin":
+            shotBlocks = [.actividades, .edadPulso]
+        default:
+            break
         }
     }
 }
@@ -536,63 +494,5 @@ struct DashboardRow: View {
     var body: some View {
         let c = HomeComparison(metric, day: day, period: period, model: model)
         MetricRow(icon: metric.icon, title: HomeLayout.title(metric), value: c.value, baseline: c.caption, delta: c.delta)
-    }
-}
-
-// MARK: - Coach
-
-/// Floating one-liner with today's advice; tap for the whole plan.
-struct CoachBanner: View {
-    @EnvironmentObject var model: AppModel
-    let day: DaySummary
-    let open: () -> Void
-
-    var body: some View {
-        let advice = model.coachAdvice(for: day)
-        let name = model.profile.name.isEmpty ? "" : ", \(model.profile.name.uppercased())"
-        Button(action: open) {
-            HStack(spacing: 12) {
-                Image("Logo")
-                    .resizable()
-                    .frame(width: 34, height: 34)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Theme.link.opacity(0.6), lineWidth: 1.5))
-                Text("\(advice.headline)\(name)")
-                    .scaledFont(15, weight: .medium, relativeTo: .body)
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                Spacer(minLength: 4)
-                Image(systemName: "chevron.up").font(.subheadline.weight(.bold)).foregroundStyle(.white)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.link.opacity(0.35), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-struct CoachSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    let day: DaySummary
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 14) {
-                    CoachCard(day: day)
-                    RecoveryBreakdown(day: day)
-                }
-                .padding(16)
-            }
-            .background(PulsoBackground())
-            .navigationTitle("Tu plan de hoy")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Cerrar") { dismiss() } } }
-        }
-        .presentationDetents([.medium, .large])
-        .preferredColorScheme(.dark)
     }
 }

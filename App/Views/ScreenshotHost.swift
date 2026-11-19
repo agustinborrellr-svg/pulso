@@ -15,13 +15,13 @@ enum ShotScreen: String, Identifiable {
     case behaviors, cycle, pressure, doubleTap, trendHRV6M, trendsList
     case liveIdle, vitals, vitalDetail, startActivity, intelToday, intelLoad, intelSleep, intelHabits, intelMore
     case breathDetail, breathPrep, breathSession, breathResult
-    case ageBars, todayScrolled, dayPicker, healthMonitor, panelHRV, panelTemp, panelSpO2, activityPicker, dayActivities, report1, report2, report3, report4
+    case ageBars, todayScrolled, todayEdit, todayAdd, todayMin, dayPicker, healthMonitor, panelHRV, panelTemp, panelSpO2, activityPicker, dayActivities, report1, report2, report3, report4
 
     var id: String { rawValue }
 
     var tab: Int? {
         switch self {
-        case .today, .todayScrolled, .dayPicker: return 0
+        case .today, .todayScrolled, .todayEdit, .todayAdd, .todayMin, .dayPicker: return 0
         case .health: return 1
         case .trends: return 2
         case .live, .liveIdle: return 3
