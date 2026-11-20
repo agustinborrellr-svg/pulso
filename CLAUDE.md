@@ -367,3 +367,16 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
   confirmar con más días (pedir a Gus pasos de las dos apps con fecha). `derivedVersion` 17.
 - Replay: CSV de segundos → SQLite con `scratchpad/mkdb.py` (copia + INSERT OR IGNORE, rr uint16 LE) y
   `TZ=Europe/Madrid PULSO_REAL_DB=… swift test --filter RealDataReplayTests` (reproduce la app exacto).
+
+## Estado (2026-11-20, rama release-2026-11-19-hoy: Hoy rediseñada, SIN fusionar)
+
+- Inicio = «Hoy» con el diseño aprobado (studio HOY-FINAL): cabecera fecha / ‹ Hoy › / batería, tarjeta Recarga-Sueño-Esfuerzo
+  (arcos abiertos, 4 niveles Baja/Justa/Buena/Excelente, «ayer», objetivo del coach como rango) con el monitor de salud plegado
+  (5 segmentos + estrés), «Ahora» (directo o últimos 15 min descargados) y bloques personalizables. Código en `App/Views/Home/Hoy/`,
+  paleta FINAL solo para Hoy en `App/Design/HoyStyle.swift` (`Hoy`, `HoyLevel`, `hoyFont`, `hoyCard`); el resto de pantallas sigue con `Theme`.
+- Bloques (`HoyBlock`, kv/AppStorage `pulso.hoy.blocks`, lista JSON de ids; vacío = por defecto): Actividades, Anoche, Estrés del día,
+  Tendencias de tu cuerpo, Edad Pulso, Esta noche + extra Tu semana, Carga de la semana, Pasos y movimiento, Racha, Me voy a dormir,
+  Constantes vitales. Un bloque sin datos reales no se pinta ni se ofrece en «Añadir a Hoy» (`AppModel.hoyHasData`).
+- Editor `HoyEditor` (pantalla completa, List en modo edición) + `HoyAddSheet`. Capturas CI: `today todayEdit todayAdd todayMin todayScrolled`.
+- Quitado: cabecera de diales que se encogía (`HomeDialHeader`) y el banner flotante del coach (`CoachBanner`/`CoachSheet`). `pulso.home`
+  (panel antiguo) no se borra, solo deja de usarse.
