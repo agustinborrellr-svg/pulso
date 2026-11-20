@@ -11,7 +11,6 @@ struct HomeView: View {
     @EnvironmentObject var model: AppModel
     @AppStorage(HoyLayout.key) private var blocksRaw = ""
     @State private var editing = false
-    @State private var editingAdds = false
     @State private var recentPulse: [(ts: Int, hr: Int)] = []
     @State private var scrolledTo: String?
     /// Screenshot runs only: blocks shown without saving them.
@@ -91,15 +90,12 @@ struct HomeView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .fullScreenCover(isPresented: $editing) {
-                HoyEditor(raw: $blocksRaw, startAdding: editingAdds).environmentObject(model)
+                HoyEditor(raw: $blocksRaw).environmentObject(model)
             }
         }
     }
 
-    private func open() {
-        editingAdds = false
-        editing = true
-    }
+    private func open() { editing = true }
 
     @ViewBuilder
     private func block(_ b: HoyBlock, day: DaySummary) -> some View {
@@ -186,9 +182,8 @@ struct HomeView: View {
         case "todayScrolled":
             try? await Task.sleep(nanoseconds: 1_500_000_000)
             scrolledTo = HoyBlock.actividades.rawValue
-        case "todayEdit", "todayAdd":
+        case "todayEdit":
             try? await Task.sleep(nanoseconds: 1_500_000_000)
-            editingAdds = screen == "todayAdd"
             editing = true
         case "todayMin":
             shotBlocks = [.actividades, .edadPulso]

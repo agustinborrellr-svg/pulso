@@ -8,7 +8,6 @@ struct HoyEditor: View {
     @Binding var raw: String
     @State private var items: [HoyBlock] = []
     @State private var adding = false
-    var startAdding = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -91,12 +90,6 @@ struct HoyEditor: View {
         }
         .background(Hoy.bg.ignoresSafeArea())
         .onAppear { items = HoyLayout.decode(raw) }
-        .task {
-            // A sheet can't open while the editor itself is still sliding in.
-            guard startAdding else { return }
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
-            adding = true
-        }
         .sheet(isPresented: $adding) {
             HoyAddSheet(items: $items)
         }

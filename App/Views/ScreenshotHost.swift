@@ -21,7 +21,7 @@ enum ShotScreen: String, Identifiable {
 
     var tab: Int? {
         switch self {
-        case .today, .todayScrolled, .todayEdit, .todayAdd, .todayMin, .dayPicker: return 0
+        case .today, .todayScrolled, .todayEdit, .todayMin, .dayPicker: return 0
         case .health: return 1
         case .trends: return 2
         case .live, .liveIdle: return 3
@@ -217,6 +217,7 @@ struct ShotDestination: View {
                 case .ageBars: ShotAgeBars()
                 case .plan: WeeklyPlanView()
                 case .addActivity: AddActivitySheet()
+                case .todayAdd: HoyAddSheet(items: .constant(HoyBlock.defaults))
                 case .sleepQuestion:
                     let now = Int(Date().timeIntervalSince1970)
                     DetailScreen(title: "Inicio") {
