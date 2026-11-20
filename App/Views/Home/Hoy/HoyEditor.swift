@@ -90,9 +90,12 @@ struct HoyEditor: View {
             .environment(\.editMode, .constant(.active))
         }
         .background(Hoy.bg.ignoresSafeArea())
-        .onAppear {
-            items = HoyLayout.decode(raw)
-            if startAdding { adding = true }
+        .onAppear { items = HoyLayout.decode(raw) }
+        .task {
+            // A sheet can't open while the editor itself is still sliding in.
+            guard startAdding else { return }
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            adding = true
         }
         .sheet(isPresented: $adding) {
             HoyAddSheet(items: $items)
@@ -222,7 +225,7 @@ struct BlockThumb: View {
         for i in 0...40 {
             let x = 6 + (size.width - 12) * CGFloat(i) / 40
             let y = mid + amp * sin(CGFloat(i) / 40 * .pi * 2 * freq)
-            i == 0 ? p.move(to: CGPoint(x: x, y: y)) : p.addLine(to: CGPoint(x: x, y: y))
+            if i == 0 { p.move(to: CGPoint(x: x, y: y)) } else { p.addLine(to: CGPoint(x: x, y: y)) }
         }
         return p
     }
@@ -265,7 +268,7 @@ struct BlockThumb: View {
                 let ys: [CGFloat] = [27, 27, 26, 12, 20, 24, 22, 26, 25]
                 for (i, y) in ys.enumerated() {
                     let pt = CGPoint(x: 7 + CGFloat(i) * 4.3, y: y)
-                    i == 0 ? p.move(to: pt) : p.addLine(to: pt)
+                    if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
                 }
                 ctx.stroke(p, with: .color(HoyLevel.buena.mark), style: stroke)
             case .tendencias:

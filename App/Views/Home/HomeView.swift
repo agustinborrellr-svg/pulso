@@ -16,6 +16,7 @@ struct HomeView: View {
     @State private var scrolledTo: String?
     /// Screenshot runs only: blocks shown without saving them.
     @State private var shotBlocks: [HoyBlock]?
+    @State private var bedtimeOpen = false
 
     private var blocks: [HoyBlock] { shotBlocks ?? HoyLayout.decode(blocksRaw) }
 
@@ -141,12 +142,22 @@ struct HomeView: View {
         if let q = model.pendingSleepQuestions.first {
             SleepQuestionCard(session: q)
         }
-        AlarmBanner()
+        if model.alarmRinging {
+            AlarmBanner()
+        } else if let status = model.alarmStatus, !blocks.contains(.estaNoche) {
+            HoyNotice(icon: "alarm.fill", title: "Despertador", subtitle: status)
+        }
         if model.selectedDay == model.currentDayKey, model.nightStatus != .ok {
             NightPendingCard(status: model.nightStatus)
         }
         if model.isEvening && model.selectedDay == model.currentDayKey && !blocks.contains(.estaNoche) && !blocks.contains(.meVoyADormir) {
-            BedtimeCard()
+            Button { bedtimeOpen = true } label: {
+                HoyNotice(icon: "moon.zzz.fill", title: "Me voy a dormir",
+                          subtitle: model.tonightPlan.map { "Lo ideal: acostarte a las \(Fmt.clock($0.bedtime))" } ?? "Prepara la alarma y apunta tu día",
+                          chevron: true)
+            }
+            .buttonStyle(.plain)
+            .sheet(isPresented: $bedtimeOpen) { BedtimeView().environmentObject(model) }
         }
     }
 

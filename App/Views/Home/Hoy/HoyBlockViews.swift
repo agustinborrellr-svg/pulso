@@ -154,7 +154,7 @@ struct StageCurve: View {
         var id: Date { t }
     }
 
-    /// 5-minute means of the depth, so the curve reads as a wave and not as steps.
+    /// 10-minute means of the depth, smoothed over the neighbours, so the curve reads as a wave and not as steps.
     private var points: [P] {
         let depth: (SleepStage) -> Double = { s in
             switch s {
@@ -164,12 +164,30 @@ struct StageCurve: View {
             case .deep: return 0
             }
         }
-        let step = 5
-        return stride(from: 0, to: session.stages.count, by: step).map { i in
+        let step = 10
+        let raw: [P] = stride(from: 0, to: session.stages.count, by: step).map { i in
             let chunk = session.stages[i..<min(i + step, session.stages.count)]
             let v = chunk.map(depth).reduce(0, +) / Double(chunk.count)
             return P(t: Date(timeIntervalSince1970: TimeInterval(session.start + (i + step / 2) * 60)), v: v)
         }
+        return raw.indices.map { i in
+            let w = raw[max(0, i - 1)...min(raw.count - 1, i + 1)]
+            return P(t: raw[i].t, v: w.map(\.v).reduce(0, +) / Double(w.count))
+        }
+    }
+
+    /// Even hours inside the night, away from its edges (a label at the very end gets cut).
+    private var hourMarks: [Date] {
+        let cal = Calendar.current
+        let a = Date(timeIntervalSince1970: TimeInterval(session.start + 1800))
+        let b = Date(timeIntervalSince1970: TimeInterval(session.end - 1800))
+        guard var t = cal.nextDate(after: a, matching: DateComponents(minute: 0), matchingPolicy: .nextTime) else { return [] }
+        var out: [Date] = []
+        while t < b {
+            if cal.component(.hour, from: t) % 2 == 0 { out.append(t) }
+            t = t.addingTimeInterval(3600)
+        }
+        return out
     }
 
     var body: some View {
@@ -189,7 +207,7 @@ struct StageCurve: View {
         .chartYScale(domain: -0.3...3.2)
         .chartYAxis(.hidden)
         .chartXAxis {
-            AxisMarks(values: .stride(by: .hour, count: 2)) { v in
+            AxisMarks(values: hourMarks) { v in
                 AxisValueLabel {
                     if let d = v.as(Date.self) {
                         Text(HoyFmt.hour(Int(d.timeIntervalSince1970))).hoyFont(12, .medium, relativeTo: .caption1).foregroundStyle(Hoy.t3)
@@ -363,7 +381,10 @@ struct HoyStressBlock: View {
             AxisMarks(values: xLabels) { v in
                 AxisValueLabel {
                     let x = v.as(Int.self) ?? 0
-                    if x == nowX {
+                    if x == nowX, x > 1300 {
+                        Text("Ahora").hoyFont(12, .bold, relativeTo: .caption1).foregroundStyle(Hoy.t1).fixedSize()
+                            .offset(x: -18)
+                    } else if x == nowX {
                         Text("Ahora").hoyFont(12, .bold, relativeTo: .caption1).foregroundStyle(Hoy.t1)
                     } else {
                         Text(String(format: "%02d", x / 60)).hoyFont(12, .medium, relativeTo: .caption1).foregroundStyle(Hoy.t3)
@@ -546,7 +567,7 @@ struct HoyTrendsBlock: View {
             ForEach(pts, id: \.date) { p in
                 LineMark(x: .value("Día", p.date), y: .value("Valor", p.value))
                     .foregroundStyle(c)
-                    .interpolationMethod(.catmullRom)
+                    .interpolationMethod(.monotone)
                     .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
             }
             if let p = shown {
@@ -632,7 +653,7 @@ struct HoyAgeBlock: View {
                 if let p = pts.last {
                     PointMark(x: .value("Semana", p.date), y: .value("Edad", p.age))
                         .symbol { Circle().fill(Hoy.bien).frame(width: 7, height: 7) }
-                        .annotation(position: p.age < (real.last?.age ?? p.age) ? .bottom : .top, alignment: .trailing, spacing: 2) {
+                        .annotation(position: .top, alignment: .trailing, spacing: 2) {
                             Text("Pulso").hoyFont(11, .medium, relativeTo: .caption2).foregroundStyle(Hoy.t2)
                         }
                 }
@@ -648,9 +669,11 @@ struct HoyAgeBlock: View {
             .chartYAxis(.hidden)
             .frame(height: 54)
             HStack {
-                Text(HoyFmt.month(model.ageTrend.first?.day ?? ""))
+                let a = model.ageTrend.first?.day ?? "", b = model.ageTrend.last?.day ?? ""
+                let sameMonth = a.prefix(7) == b.prefix(7)
+                Text(sameMonth ? HoyFmt.dayMonth(a) : HoyFmt.month(a))
                 Spacer()
-                Text(HoyFmt.month(model.ageTrend.last?.day ?? "")).fontWeight(.semibold).foregroundStyle(Hoy.t1)
+                Text(sameMonth ? HoyFmt.dayMonth(b) : HoyFmt.month(b)).fontWeight(.semibold).foregroundStyle(Hoy.t1)
             }
             .hoyFont(11, .medium, relativeTo: .caption2).foregroundStyle(Hoy.t3)
         }

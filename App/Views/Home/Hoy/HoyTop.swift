@@ -289,16 +289,15 @@ struct HoyMonitor: View {
         let bad = r.level == .orange || r.level == .red
         return VStack(spacing: 7) {
             Capsule().fill(lv?.mark ?? Hoy.fill2).frame(height: 6)
-            HStack(spacing: 4) {
-                Image(systemName: Self.icons[r.id] ?? r.icon).font(.system(size: 12))
-                    .foregroundStyle(bad ? (lv?.ink ?? Hoy.t3) : Hoy.t3)
-                if bad {
-                    Text(r.asDeviation ? "\(r.monitorValue)°" : "\(r.value)\(r.unit == "%" ? " %" : "")")
-                        .hoyFont(12, .semibold, relativeTo: .caption1).foregroundStyle(lv?.ink ?? Hoy.t2)
-                        .lineLimit(1).minimumScaleFactor(0.7)
-                }
+            Image(systemName: Self.icons[r.id] ?? r.icon).font(.system(size: 12))
+                .foregroundStyle(bad ? (lv?.ink ?? Hoy.t3) : Hoy.t3)
+                .frame(height: 14)
+            if bad {
+                Text(r.asDeviation ? "\(r.monitorValue)°" : "\(r.value)\(r.unit == "%" ? " %" : "")")
+                    .hoyFont(12, .semibold, relativeTo: .caption1).foregroundStyle(lv?.ink ?? Hoy.t2)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                    .padding(.top, -3)
             }
-            .frame(height: 14)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
@@ -313,11 +312,11 @@ struct HoyMonitor: View {
             HStack(spacing: 4) {
                 Image(systemName: "wind").font(.system(size: 12)).foregroundStyle(Hoy.t3)
                 Text(Fmt.dec(v)).hoyFont(12.5, .semibold, relativeTo: .caption1).foregroundStyle(lv.ink)
+                    .fixedSize()
             }
             .frame(height: 14)
         }
         .frame(maxWidth: .infinity)
-        .layoutPriority(1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Estrés")
         .accessibilityValue(Fmt.dec(v))
@@ -468,5 +467,29 @@ extension AppModel {
             buckets[b] = (v.0 + hr, v.1 + 1)
         }
         return buckets.keys.sorted().map { (ts: $0 * 30, hr: buckets[$0]!.0 / max(buckets[$0]!.1, 1)) }
+    }
+}
+
+/// A one-line notice in Hoy's style (the alarm that is set, bedtime in the evening).
+struct HoyNotice: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    var chevron = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon).font(.system(size: 17)).foregroundStyle(Hoy.sueno).frame(width: 24)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).hoyFont(17, .semibold).foregroundStyle(Hoy.t1)
+                Text(subtitle).hoyFont(14).foregroundStyle(Hoy.t2).lineLimit(2)
+            }
+            Spacer(minLength: 0)
+            if chevron {
+                Image(systemName: "chevron.right").font(.system(size: 13, weight: .bold)).foregroundStyle(Hoy.t3)
+            }
+        }
+        .hoyCard(padding: 14)
+        .accessibilityElement(children: .combine)
     }
 }

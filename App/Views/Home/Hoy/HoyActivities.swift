@@ -163,13 +163,16 @@ struct DayStrip: View {
     let day: DaySummary
     let items: [DayActivity]
 
-    /// 22:00 the evening before (or the hour before falling asleep, if earlier), for 24 hours.
+    /// 24 hours from 22:00 the evening before (or the hour you fell asleep, if earlier); if the day runs past
+    /// that (an open cycle late at night), the window slides so it ends at the next hour.
     private var window: (start: Int, end: Int) {
         let cal = Calendar.current
         let base = DayKey.date(day.day).map { cal.startOfDay(for: $0) } ?? Date()
         var start = Int(base.timeIntervalSince1970) - 2 * 3600
         if let s = day.sleepStart, s < start { start = s - s % 3600 }
-        return (start, start + 86_400)
+        let last = model.isOpenCycle(day) ? Int(Date().timeIntervalSince1970) : (day.cycleEnd ?? start)
+        let end = max(start + 86_400, last - last % 3600 + 3600)
+        return (end - 86_400, end)
     }
 
     var body: some View {
