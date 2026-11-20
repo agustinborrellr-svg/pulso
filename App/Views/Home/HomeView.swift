@@ -193,7 +193,11 @@ struct HomeView: View {
         case "todayMin":
             shotBlocks = [.actividades, .edadPulso]
         default:
-            break
+            // "today-<block>": Hoy scrolled to that block (e.g. today-estres).
+            if screen.hasPrefix("today-") {
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                scrolledTo = String(screen.dropFirst(6))
+            }
         }
     }
 }

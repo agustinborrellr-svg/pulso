@@ -94,7 +94,7 @@ struct HoyEditor: View {
         .task {
             // A sheet can't open while the editor itself is still sliding in.
             guard startAdding else { return }
-            try? await Task.sleep(nanoseconds: 700_000_000)
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
             adding = true
         }
         .sheet(isPresented: $adding) {
