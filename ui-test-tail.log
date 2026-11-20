@@ -1,0 +1,200 @@
+2026-11-20 05:07:23.732 appintentsnltrainingprocessor[13689:41323] Training 'Apunta ${HabitOption} en ${+applicationName}|Apunta un hábito en ${+applicationName}' for es
+2026-11-20 05:07:23.732 appintentsnltrainingprocessor[13689:41323] Training Negative Phrases '' for es
+2026-11-20 05:07:23.732 appintentsnltrainingprocessor[13689:41323] Application name 'Pulso' for es
+2026-11-20 05:07:23.755 appintentsnltrainingprocessor[13689:41323] Generated AppIntents SSU YAML files in file:///Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/Pulso.build/ssu/
+2026-11-20 05:07:23.755 appintentsnltrainingprocessor[13689:41323] Copied AppIntents SSU YAML files to file:///Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app/Metadata.appintents/
+Archiving all locales.
+[------------------------------------------------------------] 0% archiving es[🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢] 100% archived es[🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢🁢] 100% archived 1 locales/Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app/Metadata.appintents/nlu
+/Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app/Metadata.appintents/nlu/84b5524909d9030267937c2248bfb91f.version
+
+
+CodeSign /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app/Pulso.debug.dylib (in target 'Pulso' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app/Pulso.debug.dylib
+
+CodeSign /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app/__preview.dylib (in target 'Pulso' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app/__preview.dylib
+
+CodeSign /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app (in target 'Pulso' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --entitlements /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/Pulso.build/Pulso.app.xcent --timestamp\=none --generate-entitlement-der /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app
+
+ValidateEmbeddedBinary /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app/PlugIns/PulsoWidgets.appex (in target 'Pulso' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    /Applications/Xcode_26.3.app/Contents/Developer/usr/bin/embeddedBinaryValidationUtility /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app/PlugIns/PulsoWidgets.appex -signing-cert - -info-plist-path /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app/Info.plist
+
+RegisterExecutionPolicyException /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app (in target 'Pulso' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-RegisterExecutionPolicyException /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app
+
+Validate /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app (in target 'Pulso' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-validationUtility /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app -shallow-bundle -infoplist-subpath Info.plist
+
+Touch /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app (in target 'Pulso' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    /usr/bin/touch -c /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/Pulso.app
+
+ProcessInfoPlistFile /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest/Info.plist /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/empty-PulsoUITests.plist (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-infoPlistUtility /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/empty-PulsoUITests.plist -producttype com.apple.product-type.bundle.ui-testing -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/ProductTypeInfoPlistAdditions.plist -o /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest/Info.plist
+
+Ld /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest/PulsoUITests normal (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    /Applications/Xcode_26.3.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -bundle -isysroot /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -O0 -L/Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator -L/Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F/Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator -iframework /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -iframework /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/Developer/Library/Frameworks -filelist /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/Objects-normal/arm64/PulsoUITests.LinkFileList -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @loader_path/Frameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -dead_strip -Xlinker -object_path_lto -Xlinker /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/Objects-normal/arm64/PulsoUITests_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/Objects-normal/arm64/PulsoUITests_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode_26.3.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/Objects-normal/arm64/PulsoUITests.swiftmodule @/Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/Objects-normal/arm64/PulsoUITests-linker-args.resp -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/PulsoUITests.xctest-Simulated.xcent -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __ents_der -Xlinker /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/PulsoUITests.xctest-Simulated.xcent.der -Xlinker -no_adhoc_codesign -o /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest/PulsoUITests
+
+CopySwiftLibs /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest/PulsoUITests --scan-folder /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest/Frameworks --scan-folder /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest/PlugIns --scan-folder /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest/SystemExtensions --scan-folder /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest/Extensions --platform iphonesimulator --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.3.7003.10.Dy8MZf/Metal.xctoolchain --toolchain /Applications/Xcode_26.3.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode_26.3.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    /Applications/Xcode_26.3.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.3.7003.10.Dy8MZf/Metal.xctoolchain --module-name PulsoUITests --sdk-root /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk --xcode-version 17C529 --platform-family iOS --deployment-target 17.0 --bundle-identifier es.gusborrell.pulso.uitests --output /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest --target-triple arm64-apple-ios17.0-simulator --binary-file /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest/PulsoUITests --dependency-file /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/Objects-normal/arm64/PulsoUITests_dependency_info.dat --stringsdata-file /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/Objects-normal/arm64/PulsoUITests.SwiftFileList --metadata-file-list /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/PulsoUITests.DependencyMetadataFileList --static-metadata-file-list /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/PulsoUITests.DependencyStaticMetadataFileList --swift-const-vals-list /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/Objects-normal/arm64/PulsoUITests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-11-20 05:07:33.615 appintentsmetadataprocessor[14269:42681] Starting appintentsmetadataprocessor export
+2026-11-20 05:07:33.622 appintentsmetadataprocessor[14269:42681] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+AppIntentsSSUTraining (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    /Applications/Xcode_26.3.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsnltrainingprocessor --infoplist-path /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest/Info.plist --temp-dir-path /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/ssu --bundle-id es.gusborrell.pulso.uitests --product-path /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest --extracted-metadata-path /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest/Metadata.appintents --metadata-file-list /Users/runner/work/pulso/pulso/build-ui/Build/Intermediates.noindex/Pulso.build/Debug-iphonesimulator/PulsoUITests.build/PulsoUITests.DependencyMetadataFileList --archive-ssu-assets
+2026-11-20 05:07:33.650 appintentsnltrainingprocessor[14270:42682] Parsing options for appintentsnltrainingprocessor
+2026-11-20 05:07:33.651 appintentsnltrainingprocessor[14270:42682] No AppShortcuts found - Skipping.
+
+MkDir /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    /bin/mkdir -p /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app
+
+CopyAndPreserveArchs /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PulsoUITests-Runner (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    /Applications/Xcode_26.3.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/XCTRunner -output /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PulsoUITests-Runner -extract arm64
+
+CopyPlistFile /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Info.plist /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/Info.plist (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-copyPlist --validate --convert xml1 --macro-expansion WRAPPEDPRODUCTNAME PulsoUITests-Runner --macro-expansion WRAPPEDPRODUCTBUNDLEIDENTIFIER es.gusborrell.pulso.uitests.xctrunner --macro-expansion TESTPRODUCTNAME PulsoUITests --macro-expansion TESTPRODUCTBUNDLEIDENTIFIER es.gusborrell.pulso.uitests --copy-value UIDeviceFamily /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest/Info.plist --outdir /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app -- /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/Info.plist
+
+Copy /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PkgInfo /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/PkgInfo (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Xcode/Agents/XCTRunner.app/PkgInfo /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app
+
+Copy /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks/libXCTestSwiftSupport.dylib /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks
+
+Copy /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks/XCUnit.framework /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCUnit.framework (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCUnit.framework /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks
+
+Copy /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks/XCUIAutomation.framework /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks/XCUIAutomation.framework (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks/XCUIAutomation.framework /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks
+
+Copy /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks/XCTestSupport.framework /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCTestSupport.framework (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCTestSupport.framework /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks
+
+Copy /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks/XCTestCore.framework /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCTestCore.framework (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCTestCore.framework /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks
+
+Copy /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks/XCTest.framework /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks/XCTest.framework (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks/XCTest.framework /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks
+
+Copy /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks/XCTAutomationSupport.framework /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCTAutomationSupport.framework (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/PrivateFrameworks/XCTAutomationSupport.framework /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks
+
+Copy /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks/Testing.framework /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks/Testing.framework (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode_26.3.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks/Testing.framework /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/Frameworks
+
+CodeSign /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest
+
+CodeSign /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app
+/Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app: replacing existing signature
+
+RegisterExecutionPolicyException /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    builtin-RegisterExecutionPolicyException /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest
+
+Touch /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest (in target 'PulsoUITests' from project 'Pulso')
+    cd /Users/runner/work/pulso/pulso
+    /usr/bin/touch -c /Users/runner/work/pulso/pulso/build-ui/Build/Products/Debug-iphonesimulator/PulsoUITests-Runner.app/PlugIns/PulsoUITests.xctest
+
+2026-11-20 05:08:09.646659+0000 PulsoUITests-Runner[15081:45076] [Default] Running tests...
+    t =      nans Interface orientation changed to Portrait
+Test Suite 'All tests' started at 2026-11-20 05:08:18.427.
+Test Suite 'PulsoUITests.xctest' started at 2026-11-20 05:08:18.428.
+Test Suite 'PageCaptureTests' started at 2026-11-20 05:08:18.428.
+Test Case '-[PulsoUITests.PageCaptureTests testCaptureAllPages]' started.
+    t =     0.00s Start Test at 2026-11-20 05:08:18.429
+    t =     0.81s Set Up
+    t =     0.84s Open es.gusborrell.pulso
+    t =     0.84s     Launch es.gusborrell.pulso
+    t =    15.05s         Setting up automation session
+    t =    18.61s         Wait for es.gusborrell.pulso to idle
+    t =   423.28s Terminate es.gusborrell.pulso:15941
+    t =   426.40s Open es.gusborrell.pulso
+    t =   426.40s     Launch es.gusborrell.pulso
+    t =   430.87s         Setting up automation session
+    t =   437.28s         Wait for es.gusborrell.pulso to idle
+    t =   468.65s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   468.66s     Wait for es.gusborrell.pulso to idle
+    t =   468.66s     Find the Window (First Match)
+    t =   468.74s     Check for interrupting elements affecting Window
+    t =   469.10s     Synthesize event
+    t =   469.10s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   469.17s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   469.22s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   469.25s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   469.27s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   471.51s     Wait for es.gusborrell.pulso to idle
+    t =   473.10s Press Window (First Match)[0.03, 0.72] for 0.1 seconds, then drag to Window (First Match)[0.03, 0.32] with velocity of 250.00 pixels per second, and then hold for 0.4 seconds 
+    t =   473.10s     Wait for es.gusborrell.pulso to idle
+    t =   473.10s     Find the Window (First Match)
+    t =   473.12s     Check for interrupting elements affecting Window
+    t =   473.18s     Synthesize event
+    t =   473.18s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   473.19s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   473.21s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   473.22s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   473.24s         Find the Window at {{0.0, 0.0}, {402.0, 874.0}}
+    t =   475.34s     Wait for es.gusborrell.pulso to idle
+    t =   477.01s Terminate es.gusborrell.pulso:39826
+    t =   478.06s Tear Down
+Test Case '-[PulsoUITests.PageCaptureTests testCaptureAllPages]' passed (478.301 seconds).
+Test Suite 'PageCaptureTests' passed at 2026-11-20 05:16:16.730.
+	 Executed 1 test, with 0 failures (0 unexpected) in 478.301 (478.302) seconds
+Test Suite 'PulsoUITests.xctest' passed at 2026-11-20 05:16:16.731.
+	 Executed 1 test, with 0 failures (0 unexpected) in 478.301 (478.304) seconds
+Test Suite 'All tests' passed at 2026-11-20 05:16:16.732.
+	 Executed 1 test, with 0 failures (0 unexpected) in 478.301 (478.305) seconds
+2026-11-20 05:16:18.052 xcodebuild[3873:16732] [MT] IDETestOperationsObserverDebug: 523.716 elapsed -- Testing started completed.
+2026-11-20 05:16:18.053 xcodebuild[3873:16732] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-11-20 05:16:18.053 xcodebuild[3873:16732] [MT] IDETestOperationsObserverDebug: 523.716 sec, +523.716 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/runner/work/pulso/pulso/build-ui/Logs/Test/Test-Pulso-2026.11.20_05-04-32-+0000.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started
