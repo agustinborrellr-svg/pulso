@@ -82,6 +82,10 @@ final class AppModel: ObservableObject {
     var lastLiveAt: Date?
     /// Last ~6 minutes of beats (time + R-R) for the scan, Poincaré, coherence and tests.
     var liveBeats: [LiveMetrics.Beat] = []
+    /// Silent sleep-onset test running (AppModel+SleepOnset) and all its beats since it started.
+    @Published var onsetTrial: SleepOnsetWatch.Trial?
+    var onsetBeats: [LiveMetrics.Beat] = []
+    var onsetLastCheck: Double = 0
     /// Load added by the live stream since the last download (live day strain).
     var liveExtraLoad = 0.0
     var zoneGuard: LiveMetrics.ZoneGuard?
@@ -857,6 +861,7 @@ extension AppModel: StrapManagerDelegate {
             livePoints.removeFirst(firstKeep)
         }
         appendLiveBeats(rr: rr, at: date)
+        checkOnsetTrial(at: date)
         trackLive(heartRate: heartRate, dt: min(5, lastLiveAt.map { date.timeIntervalSince($0) } ?? 1))
         liveRR += rr.map(Double.init)
         if liveRR.count > 120 { liveRR.removeFirst(liveRR.count - 120) }

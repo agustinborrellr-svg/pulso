@@ -368,7 +368,7 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
 - Replay: CSV de segundos → SQLite con `scratchpad/mkdb.py` (copia + INSERT OR IGNORE, rr uint16 LE) y
   `TZ=Europe/Madrid PULSO_REAL_DB=… swift test --filter RealDataReplayTests` (reproduce la app exacto).
 
-## Estado (2026-11-20, rama release-2026-11-19-hoy: Hoy rediseñada, SIN fusionar)
+## Estado (2026-11-20, Hoy rediseñada; fusionada en main el 21-nov)
 
 - Inicio = «Hoy» con el diseño aprobado (studio HOY-FINAL): cabecera fecha / ‹ Hoy › / batería, tarjeta Recarga-Sueño-Esfuerzo
   (arcos abiertos, 4 niveles Baja/Justa/Buena/Excelente, «ayer», objetivo del coach como rango) con el monitor de salud plegado
@@ -380,3 +380,14 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
 - Editor `HoyEditor` (pantalla completa, List en modo edición) + `HoyAddSheet`. Capturas CI: `today todayEdit todayAdd todayMin todayScrolled`.
 - Quitado: cabecera de diales que se encogía (`HomeDialHeader`) y el banner flotante del coach (`CoachBanner`/`CoachSheet`). `pulso.home`
   (panel antiguo) no se borra, solo deja de usarse.
+
+## Estado (2026-11-22, dormirse en silencio)
+
+- `SleepOnsetWatch` (PulsoAnalytics, 7 tests): tras «Respiración para dormir» (4-7-8, si `sleepOnset.afterBreathing`, por defecto sí)
+  o con una siesta de prueba, el directo sigue encendido (cliente `onsetWatch`, no es solo de pantalla) y se estima la hora de
+  dormirse con épocas de 30 s: línea base de los primeros 3 min, época «adormilada» si FC ≤ base − 3, sin salto de +8 lpm y RMSSD
+  ≥ 90 % de la base; inicio = primeros 5 min seguidos. Se suelta 10 min después de dormirse (siesta: a la hora de despertar = inicio +
+  minutos), máx. 45/90 min. NO vibra ni avisa. Pruebas en kv `sleepOnset.trials`; `AppModel+SleepOnset`.
+- Laboratorio → Dormirse (prueba en silencio) (`SleepOnsetLabView`): directo vs primer minuto dormido de la sesión descargada,
+  error medio y sesgo. Cuando haya pruebas suficientes, ajustar `hrDrop`/`sustainMinutes` y después dejar que la siesta despierte.
+- Tests del núcleo en este contenedor: Swift 6.2 en Docker (`swift:6.2-noble` + libsqlite3-dev); download.swift.org está bloqueado. 274 tests.

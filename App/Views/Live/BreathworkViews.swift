@@ -546,6 +546,7 @@ struct BreathworkSessionView: View {
         let summary = Breathwork.summarize(kind: kind, start: Int(sessionStart.timeIntervalSince1970), end: Int(Date().timeIntervalSince1970),
                                            done: done, hr: hrLog, beats: beatLog, baseline: model.liveBaseline)
         model.saveBreathwork(summary)
+        model.breathingFinished(kind)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { saved = BreathworkRecord(summary: summary) }
     }
 }

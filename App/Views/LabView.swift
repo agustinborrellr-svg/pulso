@@ -17,6 +17,11 @@ struct LabView: View {
         Form {
             Group {
             Section {
+                NavigationLink("Dormirse (prueba en silencio)") { SleepOnsetLabView() }
+            } footer: {
+                Text("Estima con el pulso en directo cuándo te duermes tras «Respiración para dormir» o en una siesta de prueba, y lo compara con lo que dice la noche descargada. No vibra ni avisa.")
+            }
+            Section {
                 Toggle("Grabar tramas", isOn: $capturing)
                     .onChange(of: capturing) { _, on in model.strap.setCapture(on, all: captureAll) }
                 Toggle("Grabar también las conocidas", isOn: $captureAll)
