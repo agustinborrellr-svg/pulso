@@ -323,8 +323,8 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
   éxito; enums tolerantes al decodificar alarmas/ajustes; fechas fuera de 2020–2039 → sin decodificar; copias escritas en
   .tmp + rename y verificadas; release solo con tests verdes y sin borrar «ultima»; Strava con `state` y SIN secreto en la
   IPA (repo público); textos de metodología reales; sin «whoop:» en Comportamientos.
-- `TodayView.swift`/`SleepView.swift` casi muertos (solo se usan AlarmBanner, CoachCard, FlowChips, JournalCard,
-  RecoveryBreakdown, SleepEditSheet); `StartActivityCard` ya no se usa. La pestaña es «Live», no «En vivo».
+- (22-nov) `TodayView.swift`/`SleepView.swift` y `StartActivityCard` borrados; lo que se usaba está en `SharedCards.swift`
+  (AlarmBanner, FlowChips, JournalCard, RecoveryBreakdown, ImpactBar) y `SleepEditSheet.swift`. La pestaña es «Live», no «En vivo».
 - Copias (opción A, 06-nov): ligera diaria ×14; archivo por mes cerrado `Pulso-segundos-YYYY-MM.sqlite` (segundos, nunca
   se borra; se reescribe si llegan datos tardíos; `SecondsArchive`); semanal = todo + mes en curso ×2; seguridad ×5 (ligera
   antes de importar, ligera+mes antes de restaurar, completa antes de borrar; borrar archiva antes todos los meses).
