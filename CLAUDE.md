@@ -391,3 +391,24 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
 - Laboratorio → Dormirse (prueba en silencio) (`SleepOnsetLabView`): directo vs primer minuto dormido de la sesión descargada,
   error medio y sesgo. Cuando haya pruebas suficientes, ajustar `hrDrop`/`sustainMinutes` y después dejar que la siesta despierte.
 - Tests del núcleo en este contenedor: Swift 6.2 en Docker (`swift:6.2-noble` + libsqlite3-dev); download.swift.org está bloqueado. 274 tests.
+
+## Estado (2026-11-22, auditoría con 5 agentes: BLE, datos, fórmulas, iOS, lo que falta)
+
+- Arreglado: la respiración suelta el directo al acabar (con el móvil bloqueado seguía toda la noche); la prueba de dormirse
+  acaba por el ticker y al desconectar, con `end` acotado (`SleepOnsetWatch.latestEnd`); alarma de la pulsera solo con
+  `clockChecked`; descarga cortada por pérdida de bond / Bluetooth apagado llama a `finishOffload`; `toggleRealtimeHR(wantsLive)`
+  siempre al conectar; base en tmp (`dbIsTemporary`) → sin `persist` (no se confirma nada), sin copias automáticas y aviso.
+- `SQLiteConnection.transaction` reentrante (SAVEPOINT dentro); `DayEngine.recompute` escribe cada día en una transacción, mete
+  los días importados sin datos de pulsera en `past` y, con retención, no recalcula el primer día recortado.
+- Fusión de restauración: tras 3 arranques fallando, la base apartada pasa a `-revisar` y el recálculo sigue.
+- Edad Pulso: ritmo solo con hábitos que tienen valor de 6 meses y de 30 días; umbrales con la edad del día calculado; la
+  reserva de la UI ya no calcula sin entrenos (salía ~+3,8 años).
+- SpO₂ fuera del veredicto Bien/Regular/Mal y del aviso de enfermedad (byte sin confirmar). Despertador de la pulsera marcado
+  «sin comprobar» hasta que la prueba salga bien. Permiso de notificaciones al abrir la app (y en la bienvenida).
+  Interruptor «Apuntar cuándo me duermo» en la pantalla de la 4-7-8. `MonitorView` enlazado en Live → Mídete.
+- Código muerto borrado (HomeEditor, HomeWidgetLine, VitalsCard, BedtimeCard, ScoreRing…); `HomeWidgetView` queda huérfana.
+- Pendiente de la auditoría: kv con listas que se pierden si un elemento no decodifica (instalar una IPA más vieja);
+  topes `suffix(400)` de decisiones/rechazados; refresco del archivo mensual por recuentos (`hasMoreThan`); Hoy recalcula
+  `vitalReadings`/`tonightPlan`/coach en cada redibujado (memorizar por versión de `days`); bloques sin datos ocultos sin aviso;
+  ignorar errores de escrituras anteriores a un reset de bond; backoff en `didFailToConnect`; `countedSteps` tras huecos ≥ 3 s;
+  progreso de la primera descarga en Hoy; importar historial / Apple Salud en la bienvenida; marcar «en ajuste» ritmo y pasos.
