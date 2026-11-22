@@ -137,12 +137,14 @@ final class AppModel: ObservableObject {
 
     init() {
         AppModel.applyPendingRestore()
-        let path = (try? PulsoDatabase.defaultPath()) ?? NSTemporaryDirectory() + "pulso.sqlite"
+        let defaultPath = try? PulsoDatabase.defaultPath()
+        var temporary = defaultPath == nil
         do {
-            db = try PulsoDatabase(path: path)
+            db = try PulsoDatabase(path: defaultPath ?? NSTemporaryDirectory() + "pulso.sqlite")
         } catch {
             // Last resort: an in-temp database so the app still opens.
             db = try! PulsoDatabase(path: NSTemporaryDirectory() + "pulso-fallback.sqlite")
+            temporary = true
         }
         profile = db.profile
         settings = db.get(FeatureSettings.self, for: "settings") ?? FeatureSettings()
@@ -151,8 +153,11 @@ final class AppModel: ObservableObject {
         lastSync = db.get(Date.self, for: "lastSync")
         strap.delegate = self
         let database = db
-        strap.persist = { samples in try database.insert(samples) }
-        strap.persistUndecoded = { frames in try database.insertUndecoded(frames) }
+        // iOS may purge a database in tmp: with one, nothing is confirmed to the strap, which keeps its copy.
+        if !temporary {
+            strap.persist = { samples in try database.insert(samples) }
+            strap.persistUndecoded = { frames in try database.insertUndecoded(frames) }
+        }
         migrateLegacyAlarm()
         migrateRetentionDefault()
         migrateHealthOtherSport()

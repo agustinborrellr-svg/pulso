@@ -547,6 +547,8 @@ struct BreathworkSessionView: View {
                                            done: done, hr: hrLog, beats: beatLog, baseline: model.liveBaseline)
         model.saveBreathwork(summary)
         model.breathingFinished(kind)
+        // Ended with the phone locked, onDisappear won't come until morning: let the stream go now.
+        model.setLive(false, client: "breathwork")
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { saved = BreathworkRecord(summary: summary) }
     }
 }

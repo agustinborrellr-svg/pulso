@@ -368,7 +368,8 @@ final class StrapManager: NSObject {
         guard active else { return }
         queue.async {
             self.desiredAlarm = date.map { (date: $0, silent: silent) }
-            guard self.bonded else { return }
+            // Before the clock check the strap may run on a wrong clock; ensureClock arms it right after.
+            guard self.bonded, self.clockChecked else { return }
             self.applyDesiredAlarm()
         }
     }
@@ -627,7 +628,8 @@ final class StrapManager: NSObject {
         // The strap's alarm is one-shot and the app may be suspended by now: re-arm it here, once the clock is right.
         applyDesiredAlarm()
         if mode == .sequential { send(commands.getAdvertisingName()) }
-        if wantsLive { send(commands.toggleRealtimeHR(true)) }
+        // Always say it: a strap still streaming for a previous app process would otherwise go on all night.
+        send(commands.toggleRealtimeHR(wantsLive))
         queue.asyncAfter(deadline: .now() + 1.2) { [weak self] in self?.startOffload(force: true) }
     }
 
@@ -854,7 +856,9 @@ extension StrapManager: CBCentralManagerDelegate {
         case .unauthorized:
             state = .unauthorized
         case .poweredOff, .resetting:
+            let wasSyncing = offload != nil
             resetSession()
+            if wasSyncing { finishOffload(completed: false) }
             state = .bluetoothOff
         default:
             state = .bluetoothOff
@@ -983,7 +987,9 @@ extension StrapManager: CBPeripheralDelegate {
             log("Escritura rechazada tras el emparejamiento: \(error.localizedDescription)")
             if insufficient, let p = self.peripheral {
                 // The bond was lost mid-session: start over from discovery so the hello write re-bonds.
+                let wasSyncing = offload != nil
                 resetSession()
+                if wasSyncing { finishOffload(completed: false) }
                 state = .pairing
                 p.discoverServices([StrapUUID.service, StrapUUID.heartRateService, StrapUUID.batteryService, StrapUUID.deviceInfoService])
             }
