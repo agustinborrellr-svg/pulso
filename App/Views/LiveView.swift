@@ -381,37 +381,6 @@ struct StartActivityPreview: View {
     var body: some View { StartActivitySheet(isPresented: $open) }
 }
 
-/// En vivo without an activity: one big «+» to start one. The live chart appears only once it runs.
-struct StartActivityCard: View {
-    @EnvironmentObject var model: AppModel
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 16) {
-                Image(systemName: "plus")
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(.black)
-                    .frame(width: 60, height: 60)
-                    .background(Color.white, in: Circle())
-                VStack(alignment: .leading, spacing: 4) {
-                    Caps("Registrar actividad", size: 14)
-                    Text(model.liveHR.map { "Ahora \($0) lpm · verás tu pulso, zonas y esfuerzo en directo" }
-                         ?? (model.strapState.isConnected ? "Verás tu pulso, zonas y esfuerzo en directo" : "Conecta la pulsera para empezar"))
-                        .font(.caption).foregroundStyle(Theme.secondary)
-                        .multilineTextAlignment(.leading)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Theme.hairline))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 struct WorkoutDetailView: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
