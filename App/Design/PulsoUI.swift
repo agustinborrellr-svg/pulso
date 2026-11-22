@@ -476,21 +476,6 @@ struct Dial: View {
     }
 }
 
-/// Small arc + caps label used as a pillar tab ("◔ RECUPERACIÓN").
-struct PillarTab: View {
-    let label: String
-    let progress: Double
-    let color: Color
-
-    var body: some View {
-        HStack(spacing: 7) {
-            Dial(progress: progress, color: color, lineWidth: 3).frame(width: 22, height: 22)
-            Caps(label, size: 12)
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
 // MARK: - Formatting
 
 extension Fmt {

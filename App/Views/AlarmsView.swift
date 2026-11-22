@@ -336,7 +336,8 @@ struct WakeCallTestSection: View {
         } header: {
             Text("Despertador de la pulsera")
         } footer: {
-            Text("Antes de cada alarma, la pulsera hace saltar una alarma propia sin vibración que despierta a Pulso aunque el iPhone esté bloqueado. Así Pulso solo lee tu pulso en directo durante la ventana y mientras suena. Para probarlo: pulsa, bloquea el iPhone y espera un minuto. Si funciona, te llega una notificación. Fíjate también en si la pulsera vibra: no debería.")
+            Text((model.wakeCallVerified ? "" : "Sin comprobar todavía en tu pulsera: hasta que la prueba salga bien, cuenta con el aviso del iPhone. ") +
+                 "Antes de cada alarma, la pulsera hace saltar una alarma propia sin vibración que debería despertar a Pulso aunque el iPhone esté bloqueado. Así Pulso solo lee tu pulso en directo durante la ventana y mientras suena. Para probarlo: pulsa, bloquea el iPhone y espera un minuto. Si funciona, te llega una notificación. Fíjate también en si la pulsera vibra: no debería.")
         }
     }
 }

@@ -71,10 +71,13 @@ public final class DayEngine {
         defer { chunks.removeAll() }
         let firstDay = DayKey.string(ts: bounds.first, calendar: calendar)
         let today = DayKey.string(now, calendar: calendar)
+        let profile = db.profile
         var day = max(fromDay ?? firstDay, firstDay)
+        // With a retention limit the oldest day left has been cut at an arbitrary hour: recomputing it would replace
+        // its saved night and workouts with partial ones. It keeps its summary and feeds the history as saved.
+        if profile.rawRetentionDays > 0, day == firstDay, firstDay < today { day = DayKey.shift(day, days: 1, calendar: calendar) }
         guard day <= today else { return [] }
 
-        let profile = db.profile
         var past = try history(before: day)
         let importedByDay = Dictionary(try db.importedDays().map { ($0.day, $0) }, uniquingKeysWith: { a, _ in a })
         var results: [DaySummary] = []
@@ -82,13 +85,23 @@ public final class DayEngine {
         var done = 0
 
         while day <= today {
-            if let summary = try computeDay(day, profile: profile, past: past, now: now) {
-                try db.save(summary)
+            // One transaction per day: killed midway, a day never ends up with its sleeps deleted and not rewritten.
+            let current = day
+            let summary = try db.sql.transaction { () -> DaySummary? in
+                let s = try computeDay(current, profile: profile, past: past, now: now)
+                if let s { try db.save(s) } else if current == today {
+                    // Before tonight's sleep, today has no cycle of its own: drop one saved earlier.
+                    try db.deleteDay(current)
+                }
+                return s
+            }
+            if let summary {
                 past.append(Self.withImportedNight(summary, importedByDay[day]))
                 results.append(summary)
-            } else if day == today {
-                // Before tonight's sleep, today has no cycle of its own: drop one saved earlier.
-                try db.deleteDay(day)
+            } else if let imported = importedByDay[day] {
+                // No strap data that day but an imported one: it still carries the debt and baselines forward,
+                // as the incremental path does (history(before:)).
+                past.append(imported)
             }
             done += 1
             progress?(Double(done) / Double(totalDays))

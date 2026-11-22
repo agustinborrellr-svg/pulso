@@ -3,24 +3,6 @@ import Charts
 import PulsoStore
 import PulsoAnalytics
 
-/// One line of the Inicio grid: a large card, or one or two small tiles.
-struct HomeWidgetLine: View {
-    let items: [HomeWidget]
-    let day: DaySummary
-
-    var body: some View {
-        if items.count == 1, items[0].size == .large {
-            HomeWidgetView(widget: items[0], day: day)
-        } else {
-            HStack(alignment: .top, spacing: 10) {
-                ForEach(items) { HomeWidgetView(widget: $0, day: day).frame(maxWidth: .infinity, maxHeight: .infinity) }
-                if items.count == 1 { Color.clear.frame(maxWidth: .infinity) }
-            }
-            .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-}
-
 struct HomeWidgetView: View {
     @EnvironmentObject var model: AppModel
     let widget: HomeWidget
@@ -266,7 +248,7 @@ struct HomePulsoAgeCard: View {
     let small: Bool
 
     var body: some View {
-        let r = model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: AppModel.weekStart(model.currentDayKey), workouts: [])
+        let r = model.pulsoAge ?? PulsoAge.compute(days: [], profile: model.profile, today: AppModel.weekStart(model.currentDayKey))
         let diff = r.difference.map { abs($0) < 0.05 ? "Como tu edad real" : "\(Fmt.dec(abs($0))) años \($0 > 0 ? "mayor" : "menor")" }
         let color = r.difference.map { $0 > 0 ? Theme.worse : Theme.better } ?? Theme.secondary
         if small {
@@ -291,7 +273,7 @@ struct PulsoAgeDetailView: View {
 
     var body: some View {
         DetailScreen(title: "Edad Pulso") {
-            AgeOrbHero(result: model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: AppModel.weekStart(model.currentDayKey), workouts: []))
+            AgeOrbHero(result: model.pulsoAge ?? PulsoAge.compute(days: [], profile: model.profile, today: AppModel.weekStart(model.currentDayKey)))
             AgeTrendCard()
             Text("Estimación orientativa calculada en tu iPhone, no una medida biológica. El detalle de cada hábito está en Salud.")
                 .font(.caption).foregroundStyle(Theme.secondary)
@@ -366,96 +348,3 @@ struct HomeSparkCard: View {
 }
 
 // MARK: - Editor
-
-/// Add, remove, reorder and size the cards of Inicio.
-struct HomeEditor: View {
-    @Environment(\.dismiss) private var dismiss
-    @Binding var raw: String
-    @State private var items: [HomeWidget] = []
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    ForEach($items) { $w in
-                        HStack(spacing: 10) {
-                            Label(w.title, systemImage: w.icon).lineLimit(1)
-                            Spacer(minLength: 4)
-                            if w.allowsSmall || w.allowsPeriod {
-                                Menu {
-                                    if w.allowsSmall {
-                                        Picker("Tamaño", selection: $w.size) {
-                                            Text("Grande").tag(HomeWidget.Size.large)
-                                            Text("Pequeño (media fila)").tag(HomeWidget.Size.small)
-                                        }
-                                    }
-                                    if w.allowsPeriod {
-                                        Picker("Comparar con", selection: $w.period) {
-                                            Text("Últimos 7 días").tag(7)
-                                            Text("Últimos 30 días").tag(30)
-                                        }
-                                    }
-                                } label: {
-                                    Text(optionsText(w)).font(.caption).foregroundStyle(Theme.secondary)
-                                }
-                            }
-                        }
-                    }
-                    .onMove { items.move(fromOffsets: $0, toOffset: $1) }
-                    .onDelete { items.remove(atOffsets: $0) }
-                } header: {
-                    Text("En Inicio")
-                } footer: {
-                    Text("Arrastra para ordenar, desliza para quitar y toca las opciones para cambiar tamaño o periodo. Los avisos (noche pendiente, siestas, alarma) salen solos cuando hace falta.")
-                }
-                let addable = HomeLayout.addable(to: items)
-                let full = items.count >= HomeLayout.maxItems
-                if !addable.isEmpty {
-                    Section {
-                        ForEach(addable) { w in
-                            Button {
-                                withAnimation { items.append(w) }
-                            } label: {
-                                HStack {
-                                    Label(w.title, systemImage: w.icon)
-                                    Spacer()
-                                    Image(systemName: "plus.circle.fill").foregroundStyle(full ? Theme.secondary : Theme.green)
-                                }
-                            }
-                            .foregroundStyle(.white)
-                            .disabled(full)
-                        }
-                    } header: {
-                        Text("Añadir")
-                    } footer: {
-                        if full { Text("Máximo \(HomeLayout.maxItems) tarjetas: quita alguna para añadir otra.") }
-                    }
-                }
-                Section {
-                    Button("Restablecer Inicio") { items = HomeLayout.defaults() }
-                }
-            }
-            .environment(\.editMode, .constant(.active))
-            .navigationTitle("Personalizar Inicio")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar") {
-                        raw = HomeLayout.encode(items)
-                        dismiss()
-                    }
-                }
-            }
-            .onAppear { items = HomeLayout.decode(raw) }
-        }
-        .preferredColorScheme(.dark)
-    }
-
-    private func optionsText(_ w: HomeWidget) -> String {
-        var parts: [String] = []
-        if w.allowsSmall { parts.append(w.size == .small ? "Pequeño" : "Grande") }
-        if w.allowsPeriod { parts.append("\(w.period) d") }
-        return parts.joined(separator: " · ")
-    }
-}

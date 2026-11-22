@@ -155,6 +155,7 @@ struct LiveView: View {
                 test("Recuperación FC", "arrow.down.heart", Theme.green, "Cuánto baja en 1 min") { RecoveryTestView() }
                 test("FC máxima", "bolt.heart", Theme.red, "Tu techo real") { MaxHRTestView() }
                 test("Poincaré", "circle.grid.cross", Theme.sleep, "Tu VFC dibujada") { PoincareView() }
+                test("Todo lo que mide", "waveform.path.ecg", Theme.link, "Cada dato de la pulsera, con su hora") { MonitorView() }
             }
         }
     }

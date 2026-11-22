@@ -69,6 +69,9 @@ final class AppModel: ObservableObject {
     @Published var analysisProgress: Double = 0
     @Published var insights: [Insight] = []
     @Published var errorMessage: String?
+    /// The real database couldn't open and the app runs on one in tmp: nothing is confirmed to the strap and no
+    /// automatic copy is made (it would rotate the good ones out).
+    private(set) var dbIsTemporary = false
     @Published var rawSampleCount = 0
     @Published var trainingLoad: [TrainingLoad.Point] = []
 
@@ -154,6 +157,7 @@ final class AppModel: ObservableObject {
         strap.delegate = self
         let database = db
         // iOS may purge a database in tmp: with one, nothing is confirmed to the strap, which keeps its copy.
+        dbIsTemporary = temporary
         if !temporary {
             strap.persist = { samples in try database.insert(samples) }
             strap.persistUndecoded = { frames in try database.insertUndecoded(frames) }
@@ -516,6 +520,12 @@ final class AppModel: ObservableObject {
     private var lastRecompute: Date?
 
     func appBecameActive() {
+        // Asked in the foreground, once (iOS shows the prompt only the first time): otherwise the first alert asks
+        // for it from the background, where the prompt can't appear, and the morning report never arrives.
+        if hasOnboarded { NotificationService.shared.requestAuthorization() }
+        if dbIsTemporary {
+            errorMessage = "No se ha podido abrir tu base de datos (¿iPhone sin espacio?). Pulso no confirmará nada a la pulsera ni hará copias hasta que se pueda abrir: tus datos siguen en la pulsera y en las copias de seguridad. Libera espacio y vuelve a abrir la app."
+        }
         autoBackupIfDue()
         strap.connect()
         // Opening the app always brings the latest seconds (sleep, stress and health monitor recompute after it).

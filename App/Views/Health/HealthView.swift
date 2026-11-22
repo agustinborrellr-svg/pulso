@@ -8,7 +8,7 @@ struct HealthView: View {
     @State private var expanded: Set<String> = []
 
     var body: some View {
-        let result = model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: AppModel.weekStart(model.currentDayKey), workouts: [])
+        let result = model.pulsoAge ?? PulsoAge.compute(days: [], profile: model.profile, today: AppModel.weekStart(model.currentDayKey))
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {

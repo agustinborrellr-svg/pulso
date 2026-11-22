@@ -181,9 +181,8 @@ public enum HealthMonitor {
             let pct = (h / exp(bh.center) - 1) * 100
             signals.append(Signal(key: "hrv", label: "VFC", detail: String(format: "VFC %.0f %%", pct), weight: 1))
         }
-        if let s = day.spo2, let bs = b.spo2, bs.isUsable, s <= bs.center - 2 {
-            signals.append(Signal(key: "spo2", label: "SpO₂", detail: String(format: "SpO₂ %.0f %%", s), weight: 1))
-        }
+        // SpO₂ doesn't count until its byte in the strap's records is confirmed: an unverified number mustn't
+        // raise an illness warning.
         let score = signals.reduce(0) { $0 + $1.weight }
         let core = signals.contains { $0.key == "temp" || $0.key == "resp" }
         let level: Level = score >= 3 && core ? .alert : (score >= 2 ? .watch : .normal)

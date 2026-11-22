@@ -92,6 +92,8 @@ struct HomeView: View {
             .fullScreenCover(isPresented: $editing) {
                 HoyEditor(raw: $blocksRaw).environmentObject(model)
             }
+            // Here, not on the evening card: that card comes and goes and would close the sheet with it.
+            .sheet(isPresented: $bedtimeOpen) { BedtimeView().environmentObject(model) }
         }
     }
 
@@ -153,7 +155,6 @@ struct HomeView: View {
                           chevron: true)
             }
             .buttonStyle(.plain)
-            .sheet(isPresented: $bedtimeOpen) { BedtimeView().environmentObject(model) }
         }
     }
 

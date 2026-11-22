@@ -223,7 +223,11 @@ public enum PulsoAge {
         let age = decimalAge(birthYear: profile.birthYear, on: today, calendar: calendar) ?? Double(profile.age)
         var items: [Item] = []
         var total = 0.0, recentTotal = 0.0, measured = 0, measuredRecent = 0
-        let specs = specs(age: profile.age, sex: profile.sex, zones: zones, strength: strength)
+        // Pace compares like with like: only habits with both a 6-month and a 30-day value (one missing lately used
+        // to shift the pace by twice its years).
+        var pairedDiff = 0.0, paired = 0
+        // Thresholds by the age on the day computed, not this year's (past weeks of the trend, New Year).
+        let specs = specs(age: Int(age), sex: profile.sex, zones: zones, strength: strength)
         // 6 months need three weeks of readings; 30 days, one.
         let full = specs.map { window(days, from: fromLong, to: end, aggregate: $0.aggregate, value: $0.value, minDays: 21) }
         // Once the age stands on enough habits, one measured only lately (steps: the imported history has none) uses the
@@ -238,13 +242,14 @@ public enum PulsoAge {
                               counted: true, source: s.source))
             if let y { total += y; measured += 1 }
             if let ry { recentTotal += ry; measuredRecent += 1 }
+            if let y, let ry { pairedDiff += ry - y; paired += 1 }
         }
         guard measured >= 4 else {
             return Result(age: age, pulsoAge: nil, difference: nil, recentAge: nil, pace: nil, items: items, measured: measured)
         }
         let recentAge = measuredRecent >= 4 ? age + recentTotal : nil
         // Projected age in 6 months with the last 30 days held = age + 0.5 + recent years; pace = (projected − now) / 0.5.
-        let pace = recentAge.map { Stats.clamp(1 + 2 * ($0 - (age + total)), -1, 3) }
+        let pace = recentAge != nil && paired >= 4 ? Stats.clamp(1 + 2 * pairedDiff, -1, 3) : nil
         return Result(age: age, pulsoAge: age + total, difference: total, recentAge: recentAge, pace: pace, items: items, measured: measured)
     }
 }

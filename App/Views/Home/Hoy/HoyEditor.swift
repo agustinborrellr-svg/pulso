@@ -49,6 +49,7 @@ struct HoyEditor: View {
                             } label: {
                                 Image(systemName: "minus.circle.fill").font(.system(size: 22))
                                     .symbolRenderingMode(.palette).foregroundStyle(.white, HoyLevel.baja.mark)
+                                    .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
                             }
                             .buttonStyle(.borderless)
                             .accessibilityLabel("Quitar \(b.title)")
@@ -129,6 +130,7 @@ struct HoyAddSheet: View {
                     Button { dismiss() } label: {
                         Image(systemName: "xmark").font(.system(size: 14, weight: .bold)).foregroundStyle(Hoy.t2)
                             .frame(width: 32, height: 32).background(Hoy.fill, in: Circle())
+                            .frame(width: 44, height: 44).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Cerrar")
@@ -181,9 +183,11 @@ struct HoyAddSheet: View {
                 if added {
                     Image(systemName: "checkmark").font(.system(size: 13, weight: .bold)).foregroundStyle(Hoy.t3)
                         .frame(width: 30, height: 30).background(Hoy.fill2.opacity(0.6), in: Circle())
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
                 } else {
                     Image(systemName: "plus").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
                         .frame(width: 30, height: 30).background(HoyLevel.buena.mark, in: Circle())
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
                 }
             }
             .buttonStyle(.plain)

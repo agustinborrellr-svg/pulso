@@ -275,7 +275,7 @@ struct ShotAgeBars: View {
     @EnvironmentObject var model: AppModel
 
     var body: some View {
-        let result = model.pulsoAge ?? PulsoAge.compute(days: model.days, profile: model.profile, today: AppModel.weekStart(model.currentDayKey), workouts: [])
+        let result = model.pulsoAge ?? PulsoAge.compute(days: [], profile: model.profile, today: AppModel.weekStart(model.currentDayKey))
         ScrollView {
             PCard(padding: 0, spacing: 0) {
                 ForEach(result.items) { item in

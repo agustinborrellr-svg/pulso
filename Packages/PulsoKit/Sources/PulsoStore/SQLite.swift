@@ -71,16 +71,29 @@ public final class SQLiteConnection {
         }
     }
 
-    /// Runs `body` inside a transaction; rolls back if it throws.
+    /// Nesting depth of `transaction` (guarded by `lock`).
+    private var transactionDepth = 0
+
+    /// Runs `body` inside a transaction; rolls back if it throws. Reentrant: a transaction inside another becomes
+    /// a savepoint, so a whole-day write can wrap helpers that open their own.
     public func transaction<T>(_ body: () throws -> T) throws -> T {
         lock.lock(); defer { lock.unlock() }
-        try execute("BEGIN IMMEDIATE;")
+        let depth = transactionDepth
+        let savepoint = "sp\(depth)"
+        try execute(depth == 0 ? "BEGIN IMMEDIATE;" : "SAVEPOINT \(savepoint);")
+        transactionDepth += 1
+        defer { transactionDepth -= 1 }
         do {
             let r = try body()
-            try execute("COMMIT;")
+            try execute(depth == 0 ? "COMMIT;" : "RELEASE \(savepoint);")
             return r
         } catch {
-            try? execute("ROLLBACK;")
+            if depth == 0 {
+                try? execute("ROLLBACK;")
+            } else {
+                try? execute("ROLLBACK TO \(savepoint);")
+                try? execute("RELEASE \(savepoint);")
+            }
             throw error
         }
     }

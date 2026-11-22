@@ -522,7 +522,7 @@ struct MethodologyView: View {
             item("Necesidad de sueño", "Tu base (8 h por defecto) + extra por el esfuerzo del día (1,7 / (1 + e^((17 − esfuerzo)/3,5)) horas: unos 12 min con 10, 51 con 17, 77 con 21) + parte de la deuda reciente − siestas.")
             item("VO₂máx", "Modelo de Jurca 2005: sexo, edad, IMC, FC en reposo y minutos de ejercicio aeróbico; con 3+ carreras, desde ellas. Orientativo.")
             item("Carga de entrenamiento", "La carga de cada día son los minutos en cada zona de FC por el número de la zona (en los días importados, sin zonas, se estima desde el esfuerzo). La carga aguda es la media de los últimos 7 días (fatiga) y la crónica la de los últimos 28 (forma). Su cociente indica si subes carga a buen ritmo (1,0–1,3) o demasiado deprisa (1,5 o más).")
-            item("Posible enfermedad", "Se avisa cuando varias constantes de la noche se salen a la vez de tu línea base: temperatura +0,5 °C o más, FC en reposo +4 lpm o más, respiración +0,8 rpm, VFC muy baja o SpO₂ 2 puntos por debajo. Suele adelantarse 1–2 días a los síntomas.")
+            item("Posible enfermedad", "Se avisa cuando varias constantes de la noche se salen a la vez de tu línea base: temperatura +0,5 °C o más, FC en reposo +4 lpm o más, respiración +0,8 rpm o VFC muy baja (la SpO₂ no cuenta hasta confirmar su lectura). Suele adelantarse 1–2 días a los síntomas.")
             item("Alarma inteligente", "En la ventana elegida, Pulso descarga cada 2–3 minutos lo último de la pulsera y despierta cuando detecta sueño ligero: movimiento, la pulsera te marca despierto, el pulso sube sobre el mínimo de la noche o se vuelve irregular (REM).")
             item("Hora de acostarse", "Tu necesidad de esta noche dividida entre tu eficiencia de sueño habitual, más 15 minutos para dormirte, contada hacia atrás desde tu próxima alarma (o tu hora habitual de despertar).")
             item("ECG", "Detección de latidos tipo Pan-Tompkins, latido medio para medir la calidad de la señal y buscar la onda P, e irregularidad de los intervalos R-R. Ritmo irregular = intervalos caóticos y sin onda P. Es orientativo y no sustituye a un médico.")
@@ -564,6 +564,7 @@ struct OnboardingView: View {
                     } else {
                         model.saveProfile(profile)
                         model.hasOnboarded = true
+                        NotificationService.shared.requestAuthorization()
                         onDone()
                     }
                 } label: {

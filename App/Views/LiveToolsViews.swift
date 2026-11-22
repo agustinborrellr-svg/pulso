@@ -27,38 +27,6 @@ struct BeatingHeart: View {
     }
 }
 
-/// Heart rate over the zone bands (target band highlighted).
-struct ZoneBandsChart: View {
-    let model: HeartRateModel
-    let points: [LivePoint]
-    let target: Int?
-
-    var body: some View {
-        let lo = model.zoneFloor(1) - 15
-        let t1 = max(points.last?.date ?? Date(), Date())
-        let t0 = min(points.first?.date ?? t1.addingTimeInterval(-60), t1.addingTimeInterval(-60))
-        Chart {
-            ForEach(1...5, id: \.self) { z in
-                RectangleMark(xStart: .value("t0", t0), xEnd: .value("t1", t1),
-                              yStart: .value("de", model.zoneFloor(z)), yEnd: .value("a", z >= 5 ? model.maxHR : model.zoneFloor(z + 1)))
-                    .foregroundStyle(Theme.zoneColor(z).opacity(target == z ? 0.32 : 0.10))
-            }
-            ForEach(points) { p in
-                LineMark(x: .value("t", p.date), y: .value("FC", p.hr))
-                    .foregroundStyle(.white)
-                    .interpolationMethod(.catmullRom)
-            }
-        }
-        .chartYScale(domain: lo...model.maxHR)
-        .chartXAxis(.hidden)
-        .chartYAxis {
-            AxisMarks(position: .trailing, values: (1...5).map { model.zoneFloor($0) }) { v in
-                AxisValueLabel { Text("\(Int(v.as(Double.self) ?? 0))").scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.tertiary) }
-            }
-        }
-    }
-}
-
 /// Big round score.
 struct LiveRing: View {
     let value: Double

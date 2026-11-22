@@ -125,43 +125,6 @@ struct EmptyState: View {
     }
 }
 
-/// Something failed: says what, and offers a retry when there is one.
-struct ErrorState: View {
-    var title = "Algo ha fallado"
-    let message: String
-    var retryTitle = "Reintentar"
-    var retry: (() -> Void)?
-
-    var body: some View {
-        StateCard(icon: "exclamationmark.triangle", tint: Theme.red, title: title, message: message,
-                  actionTitle: retry == nil ? nil : retryTitle, action: retry)
-    }
-}
-
-/// Work in progress: the pulse trace, a title and optional progress (0…1).
-struct LoadingState: View {
-    let title: String
-    var message: String?
-    var progress: Double?
-
-    var body: some View {
-        VStack(spacing: 14) {
-            PulseLoader(phase: .running(progress: progress))
-                .frame(width: 168, height: 56)
-            Text(title).font(.headline).foregroundStyle(.white).multilineTextAlignment(.center)
-            if let message {
-                Text(message).font(.subheadline).foregroundStyle(Theme.secondary).multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(28)
-        .frame(maxWidth: .infinity)
-        .cardSurface()
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.updatesFrequently)
-    }
-}
-
 private struct StateCard: View {
     let icon: String
     let tint: Color

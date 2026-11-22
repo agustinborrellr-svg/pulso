@@ -111,30 +111,3 @@ struct BedtimeView: View {
         .preferredColorScheme(.dark)
     }
 }
-
-/// Evening card on Today that opens the bedtime sheet.
-struct BedtimeCard: View {
-    @EnvironmentObject var model: AppModel
-    @State private var open = false
-
-    var body: some View {
-        Button {
-            open = true
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "moon.zzz.fill").font(.title2).foregroundStyle(Theme.sleep)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Me voy a dormir").font(.headline).foregroundStyle(.white)
-                    Text(model.tonightPlan.map { "Lo ideal: acostarte a las \(Fmt.clock($0.bedtime))" } ?? "Prepara la alarma y apunta tu día")
-                        .font(.caption).foregroundStyle(Theme.secondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").foregroundStyle(Theme.tertiary)
-            }
-            .padding(16)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .sheet(isPresented: $open) { BedtimeView().environmentObject(model) }
-    }
-}

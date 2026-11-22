@@ -54,7 +54,8 @@ struct VitalReading: Identifiable {
 struct VitalsSummary {
     let readings: [VitalReading]
 
-    var judged: [VitalReading] { readings.filter { $0.level != .none } }
+    /// SpO₂ stays out of the verdict: its byte in the strap's records isn't confirmed yet (shown as experimental).
+    var judged: [VitalReading] { readings.filter { $0.level != .none && $0.id != "spo2" } }
     var inRange: Int { judged.filter { $0.level == .green }.count }
     var worst: VitalReading.Level { judged.map(\.level).max() ?? .none }
     var off: [VitalReading] { judged.filter { $0.level != .green } }
@@ -211,97 +212,7 @@ struct VitalRangeBar: View {
 
 // MARK: - Inicio: stress
 
-/// Inicio's stress tile under the health monitor: the latest level.
-struct HomeStressStatusTile: View {
-    @EnvironmentObject var model: AppModel
-
-    var body: some View {
-        let day = model.selected ?? model.today
-        let last = day?.stressPoints.last
-        let current = last?.v
-        NavigationLink { StressMonitorView() } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Caps("Estrés", size: 10.5, weight: .semibold)
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.caption2.weight(.bold)).foregroundStyle(Theme.tertiary)
-                }
-                // One row, no scale bar: the tile stays as short as the health monitor's icons beside it.
-                HStack(spacing: 8) {
-                    Text(current.map { Fmt.dec($0) } ?? "–")
-                        .scaledFont(14, weight: .bold, relativeTo: .body).monospacedDigit()
-                        .foregroundStyle(Theme.stressColor(current))
-                        .frame(width: 32, height: 32)
-                        .background(Theme.stressColor(current).opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
-                    VStack(alignment: .leading, spacing: 1) {
-                        Caps(current == nil ? "Sin lecturas" : Theme.stressLevel(current), size: 13, color: Theme.stressColor(current))
-                            .lineLimit(1).minimumScaleFactor(0.8)
-                        Text(last.flatMap { p in day.map { "a las \($0.stressClock(p.x))" } } ?? "aún sin lecturas hoy")
-                            .scaledFont(11, relativeTo: .caption1).foregroundStyle(Theme.secondary).lineLimit(1)
-                    }
-                }
-            }
-            .padding(12)
-            // Fills the row's height: side by side on Inicio, both tiles are always the size of the taller one.
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 // MARK: - En vivo: one visual card
-
-/// «Tus constantes» in one card: the verdict, then each vital with its value and where it sits in your range.
-/// Tap for the page with every vital and its last 30 nights.
-struct VitalsCard: View {
-    @EnvironmentObject var model: AppModel
-
-    var body: some View {
-        let s = model.vitalsSummary
-        NavigationLink { VitalsView() } label: {
-            PCard {
-                HStack(alignment: .center) {
-                    Caps("Tus constantes")
-                    Spacer()
-                    HStack(spacing: 5) {
-                        Image(systemName: s.icon)
-                        Caps(s.word, size: 12, color: s.color)
-                    }
-                    .foregroundStyle(s.color)
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(s.color.opacity(0.14), in: Capsule())
-                    Image(systemName: "chevron.right").font(.caption.weight(.bold)).foregroundStyle(Theme.tertiary)
-                }
-                Text(s.sentence).font(.caption).foregroundStyle(Theme.secondary)
-                if s.readings.isEmpty {
-                    EmptyView()
-                } else {
-                    VStack(spacing: 14) {
-                        ForEach(s.readings) { r in
-                            VStack(spacing: 6) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: r.icon).font(.footnote).foregroundStyle(r.color).frame(width: 18)
-                                    Text(r.short).font(.subheadline).foregroundStyle(.white)
-                                    Spacer()
-                                    HStack(alignment: .firstTextBaseline, spacing: 2) {
-                                        Text(r.value).scaledFont(17, weight: .bold, design: .rounded, relativeTo: .body).monospacedDigit().foregroundStyle(.white)
-                                        Text(r.unit).font(.caption2).foregroundStyle(Theme.secondary)
-                                    }
-                                }
-                                VitalRangeBar(reading: r, height: 6)
-                            }
-                        }
-                    }
-                    if let when = s.readings.first?.when {
-                        Text("\(when) · comparado con tus 30 noches anteriores").font(.caption2).foregroundStyle(Theme.tertiary)
-                    }
-                }
-            }
-        }
-        .buttonStyle(.plain)
-    }
-}
 
 // MARK: - Page: every vital with its nights
 

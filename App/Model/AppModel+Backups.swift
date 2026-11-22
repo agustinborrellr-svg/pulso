@@ -16,7 +16,7 @@ extension AppModel {
 
     /// Runs at launch and when the app comes back; does nothing if the copies are recent.
     func autoBackupIfDue() {
-        guard !AppMode.screenshots, let dir = Self.backupsFolder else { return }
+        guard !AppMode.screenshots, !dbIsTemporary, let dir = Self.backupsFolder else { return }
         let db = self.db
         analysisQueue.async {
             let fm = FileManager.default
@@ -102,6 +102,9 @@ extension AppModel {
 
     private static let restoreMergeDayKey = "restore.mergeFromDay"
     private static let restoreMergeEarliestKey = "restore.mergeEarliest"
+    private static let restoreMergeAttemptsKey = "restore.mergeAttempts"
+    /// Launches a failing source is retried before the merge gives up on it (and the recompute runs anyway).
+    private static let restoreMergeMaxAttempts = 3
 
     /// Databases a restore set aside (`applyPendingRestore`), oldest first.
     static func setAsideDatabases() -> [String] {
@@ -110,7 +113,9 @@ extension AppModel {
         let dir = url.deletingLastPathComponent()
         let prefix = url.lastPathComponent + ".before-restore"
         let names = (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []
-        return names.filter { name in name.hasPrefix(prefix) && !["-wal", "-shm", "-journal"].contains { name.hasSuffix($0) } }
+        return names.filter { name in
+            name.hasPrefix(prefix) && !["-wal", "-shm", "-journal", "-revisar"].contains { name.hasSuffix($0) }
+        }
             .sorted()
             .map { dir.appendingPathComponent($0).path }
     }
@@ -136,6 +141,7 @@ extension AppModel {
                     .map { (path: dir.appendingPathComponent($0).path, isAside: false) }
             }
             var complete = true
+            var failed: [(path: String, isAside: Bool)] = []
             for source in sources {
                 do {
                     if let changed = try db.mergeSeconds(from: source.path) {
@@ -147,12 +153,22 @@ extension AppModel {
                     }
                 } catch {
                     complete = false // kept and retried at the next launch; nothing is deleted meanwhile
+                    failed.append(source)
                 }
             }
-            guard complete else { return }
+            if !complete {
+                // A source that never reads (corrupt, foreign) mustn't re-run gigabytes of merges at every launch
+                // and block the recompute forever: after a few tries it is left aside, untouched, and the rest goes on.
+                let attempts = (db.get(Int.self, for: Self.restoreMergeAttemptsKey) ?? 0) + 1
+                try? db.set(attempts, for: Self.restoreMergeAttemptsKey)
+                guard attempts >= Self.restoreMergeMaxAttempts else { return }
+                for source in failed where source.isAside {
+                    try? FileManager.default.moveItem(atPath: source.path, toPath: source.path + "-revisar")
+                }
+            }
             let copyLastDay = db.get(String.self, for: Self.restoreMergeDayKey) ?? ""
             let earliest = db.get(Int.self, for: Self.restoreMergeEarliestKey)
-            for key in [Self.restoreMergeDayKey, Self.restoreMergeEarliestKey] {
+            for key in [Self.restoreMergeDayKey, Self.restoreMergeEarliestKey, Self.restoreMergeAttemptsKey] {
                 try? db.sql.run("DELETE FROM kv WHERE key = ?", [.text(key)])
             }
             guard let earliest else { return }

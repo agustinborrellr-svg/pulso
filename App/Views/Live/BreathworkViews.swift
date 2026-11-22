@@ -208,6 +208,18 @@ struct BreathworkDetailView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                if kind == .sleep {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle(isOn: Binding(get: { model.onsetAfterBreathing }, set: { model.onsetAfterBreathing = $0 })) {
+                            Text("Apuntar cuándo me duermo").font(.subheadline).foregroundStyle(.white)
+                        }
+                        .tint(info.color)
+                        Text("En prueba: al acabar, el pulso en directo sigue hasta 45 min para estimar la hora a la que te duermes. No vibra ni avisa; gasta algo de batería de la pulsera.")
+                            .font(.caption).foregroundStyle(Theme.secondary)
+                    }
+                    .padding(14)
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
                 Text(info.benefitsTitle).font(.headline).foregroundStyle(.white).padding(.top, 6)
                 Text(info.benefits).font(.body).foregroundStyle(Theme.secondary)
                 NavigationLink { BreathworkPrepView(kind: kind, settings: settings) } label: {
