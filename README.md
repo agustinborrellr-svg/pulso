@@ -1,10 +1,10 @@
 # Pulso
 
-App de iPhone que se conecta **directamente** a una pulsera **WHOOP 5.0 / MG** por Bluetooth,
-descarga sus datos y calcula todo en el propio iPhone. No usa la app ni la nube de WHOOP, no
+App de iPhone que se conecta **directamente** a una pulsera digital o smart band por Bluetooth,
+descarga sus datos y calcula todo en el propio iPhone. No usa la nube, mantienes tus datos, no
 tiene cuentas ni servidores, y nunca envía nada fuera del teléfono.
 
-> Proyecto personal no afiliado a WHOOP, Inc. No es un dispositivo médico: todas las métricas
+> Proyecto personal. No es un dispositivo médico: todas las métricas
 > son estimaciones de bienestar.
 
 ## Qué hace
@@ -160,14 +160,9 @@ Todos los cálculos se explican en la app (*Más → Cómo se calcula cada métr
 
 - ECG de la MG hasta que se conozca su protocolo (todo lo demás está hecho), tensión arterial y los modelos propietarios de WHOOP.
 - Vibrar con las notificaciones de otras apps (WhatsApp, llamadas…): iOS no lo permite a apps de terceros.
-- WHOOP 4.0: tiene otro protocolo y no está soportada.
 - Widgets y Live Activity con un Apple ID gratuito (Sideloadly): necesitan App Groups, que sólo da la cuenta de desarrollador de pago.
 - Que el pulsómetro Bluetooth lo vean equipos no Apple con Pulso en segundo plano.
 
 Revisión de código y lista de pendientes: [`docs/REVISION-2026-10-26.md`](docs/REVISION-2026-10-26.md).
 
-## Créditos
 
-El protocolo Bluetooth de la WHOOP 5.0 lo han documentado por ingeniería inversa proyectos open
-source como `whoop-rs`, `noop`, `OpenStrap`, `goose` y el análisis de Alec Jude Wilson. El código de
-Pulso es original, pero se apoya en sus hallazgos. Uso personal.
