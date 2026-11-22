@@ -108,6 +108,15 @@ public enum SleepOnsetWatch {
         return false
     }
 
+    /// The latest the trial should have ended: if the app only notices later (suspended, strap out of range), the
+    /// saved end is capped here so the trial doesn't claim hours it never watched.
+    public static func latestEnd(_ trial: Trial) -> Int {
+        var end = trial.start + Int((maxMinutes[trial.kind] ?? 45) * 60)
+        if let w = trial.wouldWakeAt { end = min(end, w) }
+        if let o = trial.liveOnset, trial.kind == .breathing { end = min(end, o + Int(afterOnsetMinutes * 60)) }
+        return end
+    }
+
     /// Onset from the downloaded sleep: the first asleep minute of the first sleep that ends after the trial began
     /// and starts within 3 h of it.
     public static func downloadedOnset(_ trial: Trial, sleeps: [(start: Int, stages: [Int])]) -> Int? {

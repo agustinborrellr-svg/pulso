@@ -6,10 +6,10 @@ import PulsoAnalytics
 struct SleepOnsetLabView: View {
     @EnvironmentObject var model: AppModel
     @State private var napMinutes = 20
+    /// Read on appear and after each download or trial, not on every redraw (the live pulse redraws once a second).
+    @State private var pairs: [OnsetPair] = []
 
     var body: some View {
-        let trials = Array(model.onsetTrials.reversed())
-        let pairs = trials.map { OnsetPair(trial: $0, downloaded: model.downloadedOnset($0)) }
         let errors = pairs.compactMap { SleepOnsetWatch.errorMinutes(live: $0.trial.liveOnset, downloaded: $0.downloaded) }
         Form {
             Section {
@@ -17,7 +17,11 @@ struct SleepOnsetLabView: View {
                     LabeledContent(t.kind == .nap ? "Siesta de prueba" : "Tras 4-7-8", value: "desde las \(Fmt.time(t.start))")
                     LabeledContent("Dormido según el directo", value: t.liveOnset.map { Fmt.time($0) } ?? "aún no")
                     if let w = t.wouldWakeAt { LabeledContent("Te habría despertado", value: Fmt.time(w)) }
-                    Button("Terminar", role: .destructive) { model.finishOnsetTrial() }
+                    if Int(Date().timeIntervalSince1970) - t.start < 4 * 60 {
+                        Button("Cancelar (menos de 4 min: no se guarda)", role: .destructive) { model.finishOnsetTrial() }
+                    } else {
+                        Button("Terminar y guardar", role: .destructive) { model.finishOnsetTrial() }
+                    }
                 } else {
                     Stepper("Dormir \(napMinutes) min", value: $napMinutes, in: 10...90, step: 5)
                     Button("Empezar siesta de prueba") { model.startOnsetTrial(.nap, napMinutes: napMinutes) }
@@ -69,6 +73,13 @@ struct SleepOnsetLabView: View {
         }
         .pulsoList()
         .pulsoTitle("Dormirse (prueba)")
+        .onAppear(perform: refresh)
+        .onChange(of: model.lastSync) { _, _ in refresh() }
+        .onChange(of: model.onsetTrial == nil) { _, _ in refresh() }
+    }
+
+    private func refresh() {
+        pairs = model.onsetTrials.reversed().map { OnsetPair(trial: $0, downloaded: model.downloadedOnset($0)) }
     }
 
     private struct OnsetPair: Identifiable {
@@ -77,10 +88,14 @@ struct SleepOnsetLabView: View {
         var id: Int { trial.id }
     }
 
-    private static func date(_ ts: Int) -> String {
+    private static let dayFormat: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "es_ES")
         f.dateFormat = "d MMM"
-        return f.string(from: Date(timeIntervalSince1970: TimeInterval(ts)))
+        return f
+    }()
+
+    private static func date(_ ts: Int) -> String {
+        dayFormat.string(from: Date(timeIntervalSince1970: TimeInterval(ts)))
     }
 }

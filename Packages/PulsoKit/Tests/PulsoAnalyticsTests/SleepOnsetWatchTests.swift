@@ -73,6 +73,15 @@ final class SleepOnsetWatchTests: XCTestCase {
         XCTAssertTrue(SleepOnsetWatch.shouldStop(SleepOnsetWatch.Trial(kind: .nap, start: 0, end: 0), now: 90 * 60))
     }
 
+    func testALateFinishIsCappedAtWhenItShouldHaveEnded() {
+        var t = SleepOnsetWatch.Trial(kind: .breathing, start: 0, end: 0)
+        XCTAssertEqual(SleepOnsetWatch.latestEnd(t), 45 * 60)
+        t.liveOnset = 600
+        XCTAssertEqual(SleepOnsetWatch.latestEnd(t), 1200)
+        let nap = SleepOnsetWatch.Trial(kind: .nap, start: 0, end: 0, liveOnset: 300, napMinutes: 20, wouldWakeAt: 1500)
+        XCTAssertEqual(SleepOnsetWatch.latestEnd(nap), 1500)
+    }
+
     func testDownloadedOnsetIsTheFirstAsleepMinuteOfTheMatchingSleep() {
         let trial = SleepOnsetWatch.Trial(kind: .breathing, start: 10_000, end: 12_000, liveOnset: 10_900)
         let sleeps: [(start: Int, stages: [Int])] = [

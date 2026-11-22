@@ -30,7 +30,8 @@ extension AppModel {
 
     /// Called when a guided breathing session ends.
     func breathingFinished(_ kind: Breathwork.Kind) {
-        guard kind == .sleep, onsetAfterBreathing, liveWorkout == nil, onsetTrial?.kind != .nap else { return }
+        guard kind == .sleep, onsetAfterBreathing, liveWorkout == nil, onsetTrial?.kind != .nap,
+              strapState.isConnected else { return }
         startOnsetTrial(.breathing)
     }
 
@@ -50,10 +51,16 @@ extension AppModel {
         if SleepOnsetWatch.shouldStop(trial, now: now) { finishOnsetTrial() }
     }
 
+    /// From the 1-Hz ticker: ends the trial on time even when no live beat arrives (strap out of range).
+    func onsetTimeoutTick(now: Date) {
+        guard let trial = onsetTrial, SleepOnsetWatch.shouldStop(trial, now: now.timeIntervalSince1970) else { return }
+        finishOnsetTrial()
+    }
+
     /// Saves the trial and lets the live stream go.
     func finishOnsetTrial() {
         guard var trial = onsetTrial else { return }
-        trial.end = Int(Date().timeIntervalSince1970)
+        trial.end = min(Int(Date().timeIntervalSince1970), SleepOnsetWatch.latestEnd(trial))
         onsetTrial = nil
         onsetBeats = []
         setLive(false, client: Self.onsetClient)

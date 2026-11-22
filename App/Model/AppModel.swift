@@ -548,6 +548,7 @@ final class AppModel: ObservableObject {
         intervalTick(now: now)
         drainHaptics(now: now)
         ecgTick(now: now)
+        onsetTimeoutTick(now: now)
     }
 
     // MARK: - Live workouts
@@ -768,6 +769,8 @@ extension AppModel: StrapManagerDelegate {
             if !state.isConnected && state != .pairing && state != .pairingRefused {
                 // No link: the last beat must not keep "beating" on screen.
                 self.liveHR = nil
+                // A sleep-onset trial can't go on without beats: save what it saw and free the stream.
+                self.finishOnsetTrial()
             }
             if state == .ready && !wasReady {
                 // The strap's own alarm is one-shot: re-arm it on every new session, once the clock
