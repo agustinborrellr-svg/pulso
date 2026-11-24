@@ -2,36 +2,42 @@ import SwiftUI
 import PulsoStore
 import PulsoAnalytics
 
-/// "¿Te acabas de echar una siesta?" with one button per answer.
+/// "¿Te acabas de echar una siesta?" with one button per answer (studio B-sueno 10).
 struct SleepQuestionCard: View {
     @EnvironmentObject var model: AppModel
     let session: SleepSession
 
     var body: some View {
-        PCard {
-            HStack(spacing: 10) {
-                Image(systemName: "powersleep").font(.title2).foregroundStyle(Theme.sleep)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "moon.fill").font(.system(size: 18)).foregroundStyle(DS.sueno).padding(.top, 2)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(session.isNap ? "¿Te acabas de echar una siesta?" : "¿Has dormido durante el día?")
-                        .font(.headline).foregroundStyle(.white)
-                    Text("\(Fmt.time(session.start))–\(Fmt.time(session.end)) · \(Fmt.hm(session.asleepMinutes)) dormido. Lo he contado como \(session.isNap ? "siesta" : "sueño").")
-                        .font(.caption).foregroundStyle(Theme.secondary)
+                        .dsFont(18, .semibold).foregroundStyle(DS.t1).fixedSize(horizontal: false, vertical: true)
+                    Text("\(ended) · contada como \(session.isNap ? "siesta" : "sueño")")
+                        .dsFont(14).foregroundStyle(DS.t2)
                 }
             }
-            Text("Una siesta reduce lo que necesitas dormir esta noche; si era tu sueño (por turnos o porque no dormiste de noche), cuenta entero en tus horas.")
-                .font(.caption).foregroundStyle(Theme.secondary)
             HStack(spacing: 10) {
-                Button("Fue una siesta") { model.answerSleepQuestion(session, isNap: true) }
-                    .buttonStyle(PrimaryCapsuleStyle())
-                Button("Era mi sueño") { model.answerSleepQuestion(session, isNap: false) }
-                    .buttonStyle(SecondaryCapsuleStyle())
+                Button { model.answerSleepQuestion(session, isNap: true) } label: { Text("Fue una siesta").frame(maxWidth: .infinity) }
+                    .buttonStyle(DSButtonStyle(tint: DS.sueno, size: .small, fullWidth: true))
+                Button { model.answerSleepQuestion(session, isNap: false) } label: { Text("Era mi sueño").frame(maxWidth: .infinity) }
+                    .buttonStyle(DSButtonStyle(size: .small, gray: true, fullWidth: true))
             }
-            .font(.caption)
             Button("No dormí: estaba descansando") { model.answerSleepQuestion(session, kind: .notSleep) }
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Theme.secondary)
+                .dsFont(15, .semibold)
+                .foregroundStyle(DS.t2)
                 .frame(maxWidth: .infinity)
+                .buttonStyle(.plain)
         }
+        .dsCard(padding: 16)
+    }
+
+    /// "terminó hace 1 h 33" (or its times when it was long ago).
+    private var ended: String {
+        let ago = Date().timeIntervalSince1970 - TimeInterval(session.end)
+        if ago >= 60, ago < 12 * 3600 { return "terminó hace \(DSFmt.duration(ago / 60))" }
+        return "\(Fmt.time(session.start))–\(Fmt.time(session.end))"
     }
 }
 
@@ -46,55 +52,47 @@ struct StageConfidenceRow: View {
                 withAnimation(.easeInOut(duration: 0.2)) { open.toggle() }
             } label: {
                 HStack {
-                    Image(systemName: "checkmark.seal").foregroundStyle(color)
-                    Caps("Confianza de las fases", size: 12)
+                    Text("Confianza de las fases").dsFont(16).foregroundStyle(DS.t1)
                     Spacer()
-                    Text(confidence.level.label).font(.subheadline.bold()).foregroundStyle(color)
-                    Image(systemName: open ? "chevron.up" : "chevron.down").font(.caption.bold()).foregroundStyle(Theme.secondary)
+                    Text(confidence.level.label).dsFont(16, .semibold).foregroundStyle(color)
+                    Image(systemName: open ? "chevron.up" : "chevron.down").font(.system(size: 12, weight: .bold)).foregroundStyle(DS.t3)
                 }
+                .frame(minHeight: 30)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             if open {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 14) {
-                        stat("Lectura", confidence.coverage)
-                        stat("Latido a latido", confidence.beatCoverage)
-                        stat("Claridad", confidence.decisiveness)
-                    }
+                VStack(alignment: .leading, spacing: 10) {
+                    DSStatStrip(stats: [DSStat(label: "Lectura", value: pct(confidence.coverage)),
+                                        DSStat(label: "Latido a latido", value: pct(confidence.beatCoverage)),
+                                        DSStat(label: "Claridad", value: pct(confidence.decisiveness))])
                     if confidence.reasons.isEmpty {
-                        Text("Señal limpia y fases claras esta noche.").font(.subheadline).foregroundStyle(.white)
+                        Text("Señal limpia y fases claras esta noche.").dsFont(15).foregroundStyle(DS.t1)
                     } else {
                         Text(confidence.level == .high ? "Lo que la ha bajado un poco:" : "Por qué no es alta:")
-                            .font(.subheadline.bold()).foregroundStyle(.white)
+                            .dsFont(15, .semibold).foregroundStyle(DS.t1)
                         ForEach(confidence.reasons, id: \.self) { r in
-                            Label(r, systemImage: "exclamationmark.circle").font(.subheadline).foregroundStyle(Color(white: 0.85))
+                            Label(r, systemImage: "exclamationmark.circle").dsFont(14).foregroundStyle(DS.t2)
                         }
                     }
                     Text("Ninguna pulsera puede tener confianza total en las fases: se miden de verdad con la actividad del cerebro (EEG) en un laboratorio del sueño. La pulsera las deduce del pulso, la VFC y el movimiento, y en los estudios acierta la fase de cada minuto alrededor de 6-7 de cada 10 veces. «Alta» significa que esta noche las señales fueron limpias y claras, no que sea una medida de laboratorio. El total dormido es mucho más fiable que el reparto entre fases.")
-                        .font(.caption)
-                        .foregroundStyle(Theme.secondary)
+                        .dsFont(13)
+                        .foregroundStyle(DS.t3)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(12)
-                .background(Color.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 8))
             }
         }
     }
 
     private var color: Color {
         switch confidence.level {
-        case .high: return Theme.better
-        case .medium: return Theme.yellow
-        case .low: return Theme.worse
+        case .high: return DSLevel.buena.ink
+        case .medium: return DSLevel.justa.ink
+        case .low: return DSLevel.baja.ink
         }
     }
 
-    private func stat(_ k: String, _ v: Double) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("\(Int((v * 100).rounded())) %").font(.headline.monospacedDigit()).foregroundStyle(.white)
-            Caps(k, size: 9, color: Theme.secondary, weight: .semibold)
-        }
-    }
+    private func pct(_ v: Double) -> String { "\(Int((v * 100).rounded())) %" }
 }
 
 /// Shown in the morning while last night is missing, so yesterday's cycle is never read as today's.
@@ -104,34 +102,35 @@ struct NightPendingCard: View {
     @State private var adding = false
 
     var body: some View {
-        PCard {
-            HStack(spacing: 10) {
-                Image(systemName: status == .awaitingData ? "arrow.triangle.2.circlepath" : "moon.zzz")
-                    .font(.title2).foregroundStyle(Theme.sleep)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: status == .awaitingData ? "arrow.triangle.2.circlepath" : "moon.fill")
+                    .font(.system(size: 18)).foregroundStyle(DS.sueno).padding(.top, 2)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(status == .awaitingData ? "Tu noche aún no está descargada" : "No encuentro tu noche")
-                        .font(.headline).foregroundStyle(.white)
+                        .dsFont(18, .semibold).foregroundStyle(DS.t1)
                     Text("Lo que ves abajo es el ciclo del \(Fmt.shortDay(model.currentDayKey).lowercased()). La recuperación de hoy saldrá de la noche que acaba esta mañana.")
-                        .font(.caption).foregroundStyle(Theme.secondary)
+                        .dsFont(14).foregroundStyle(DS.t2).fixedSize(horizontal: false, vertical: true)
                 }
             }
             if status == .awaitingData {
                 Button("Sincronizar ahora") { model.syncNow() }
-                    .buttonStyle(PrimaryCapsuleStyle())
+                    .buttonStyle(DSButtonStyle(tint: DS.sueno, size: .small))
                     .disabled(!model.strapState.isConnected)
                 if !model.strapState.isConnected {
                     Text("La pulsera no está conectada: acércala al iPhone y abre la app.")
-                        .font(.caption).foregroundStyle(Theme.secondary)
+                        .dsFont(13).foregroundStyle(DS.t2)
                 }
             } else {
                 Text("Hay datos de esta mañana pero ningún sueño principal. Si dormiste, añade las horas y se calcula todo con ellas.")
-                    .font(.caption).foregroundStyle(Theme.secondary)
-                Button("Añadir sueño") { adding = true }
-                    .buttonStyle(PrimaryCapsuleStyle())
+                    .dsFont(13).foregroundStyle(DS.t2).fixedSize(horizontal: false, vertical: true)
+                Button { adding = true } label: { Label("Añadir sueño", systemImage: "plus") }
+                    .buttonStyle(DSButtonStyle(tint: DS.sueno, size: .small))
             }
         }
+        .dsCard(padding: 16)
         .sheet(isPresented: $adding) {
-            SleepEditSheet(session: nil, forDay: DayKey.string(Date()))
+            SleepEditSheet(session: nil, forDay: DayKey.string(Date())).environmentObject(model)
         }
     }
 }

@@ -23,6 +23,8 @@ enum SuenoRoute: AreaRoute {
     case alarmaInteligente
     /// 19 Tus noches.
     case historial
+    /// Screenshot states: 11 nap menu open, 16 band test running, 17 alarm ringing, 20 morning without a night.
+    case demo(SuenoDemo)
 
     var presentation: RoutePresentation {
         switch self {
@@ -32,10 +34,16 @@ enum SuenoRoute: AreaRoute {
     }
 
     static let shots: [(String, SuenoRoute)] = [
-        ("noche", .noche(day: nil)), ("siestas", .siestas), ("ajustarSueno", .ajustarSueno), ("meVoyADormir", .meVoyADormir),
-        ("alarmas", .alarmas), ("alarmaEditar", .alarmaEditar(id: nil)), ("alarmaInteligente", .alarmaInteligente),
-        ("historial", .historial),
+        ("noche", .noche(day: nil)), ("siestas", .siestas), ("siestaMenu", .demo(.napMenu)), ("ajustarSueno", .ajustarSueno),
+        ("meVoyADormir", .meVoyADormir), ("alarmas", .alarmas), ("alarmaEditar", .alarmaEditar(id: "shot-1")),
+        ("alarmaNueva", .alarmaEditar(id: nil)), ("pruebaPulsera", .demo(.bandTest)), ("alarmaSonando", .demo(.ringing)),
+        ("alarmaInteligente", .alarmaInteligente), ("historial", .historial), ("sinNoche", .demo(.noNight)),
     ]
+}
+
+/// UI states the screenshot run shows without touching the model (nothing is sent to the band).
+enum SuenoDemo: Hashable {
+    case napMenu, bandTest, ringing, noNight
 }
 
 struct SuenoDestination: View {
@@ -44,8 +52,10 @@ struct SuenoDestination: View {
 
     var body: some View {
         switch route {
-        case .noche, .siestas:
-            SleepDetailView()
+        case .noche(let day):
+            SleepDetailView(day: day, back: "Sueño")
+        case .siestas:
+            SuenoNapsView()
         case .ajustarSueno:
             SleepEditSheet(session: model.selected.flatMap { model.sleep(for: $0) }, forDay: model.selectedDay)
         case .meVoyADormir:
@@ -54,12 +64,19 @@ struct SuenoDestination: View {
             AlarmsView()
         case .alarmaEditar(let id):
             NavigationStack {
-                AlarmEditor(alarm: (id.flatMap { i in model.alarms.first { $0.id == i } }) ?? model.alarms.first ?? AlarmConfig())
+                AlarmEditor(alarm: id.flatMap { i in model.alarms.first { $0.id == i } } ?? AlarmConfig())
             }
         case .alarmaInteligente:
             SmartAlarmHelp()
         case .historial:
-            TrendDetailView(metric: .sleepPerformance)
+            SuenoHistoryView()
+        case .demo(let d):
+            switch d {
+            case .napMenu: SuenoNapsView(demoMenu: true)
+            case .bandTest: AlarmsView(demo: .bandTest)
+            case .ringing: AlarmsView(demo: .ringing)
+            case .noNight: SleepTab(previewEmpty: true)
+            }
         }
     }
 }
@@ -69,21 +86,14 @@ struct SuenoMetricDestination: View {
 
     var body: some View {
         switch kind {
-        case .calificacion:
-            DSTrendMetricDetail(metric: .sleepPerformance, title: "Calificación", back: "Sueño", color: DS.sueno, score: true,
-                                night: true, yDomain: 0...100)
-        case .necesidadSueno:
-            DSTrendMetricDetail(metric: .hoursVsNeed, title: "Horas vs. lo necesario", back: "Sueño", color: DS.sueno, night: true)
-        case .regularidad:
-            DSTrendMetricDetail(metric: .regularity, title: "Regularidad", back: "Sueño", color: DS.sueno, night: true)
-        case .eficiencia:
-            DSTrendMetricDetail(metric: .efficiency, title: "Eficiencia", back: "Sueño", color: DS.sueno, night: true)
-        case .reparador:
-            DSTrendMetricDetail(metric: .restorativeHours, title: "Sueño reparador", back: "Sueño", color: DS.sueno, night: true)
-        case .latencia, .fase:
-            SleepDetailView()
-        default:
-            EmptyView()
+        case .calificacion: SuenoScoreDetail()
+        case .necesidadSueno: SuenoNeedDetail()
+        case .regularidad: SuenoRegularityDetail()
+        case .eficiencia: SuenoEfficiencyDetail()
+        case .reparador: SuenoRestorativeDetail()
+        case .latencia: SuenoLatencyDetail()
+        case .fase(let st): SuenoPhaseDetail(stage: st)
+        default: EmptyView()
         }
     }
 }
