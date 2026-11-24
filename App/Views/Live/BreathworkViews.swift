@@ -29,7 +29,7 @@ struct BreathworkInfo {
             return BreathworkInfo(
                 kind: kind, title: Breathwork.activityName(kind), goal: "Actívate",
                 short: "Respiración rápida con retenciones: más energía y foco en 5 minutos.",
-                icon: "gauge.with.dots.needle.67percent", color: Theme.stressHigh,
+                icon: "gauge.with.dots.needle.67percent", color: ActBreath.color(kind),
                 about: "Series de respiraciones rápidas y profundas, una retención con los pulmones vacíos y una inspiración final que aguantas arriba. Activa tu sistema nervioso simpático: sube el pulso, libera adrenalina y te deja despierto y con energía.",
                 benefitsTitle: "Beneficios de la hiperventilación cíclica",
                 benefits: "Una dosis corta y controlada de estrés entrena tu tolerancia a otras formas de estrés (hormesis). Va bien antes de entrenar, de estudiar o cuando te falta energía. Pulso cronometra cada retención y te enseña cómo baja tu pulso mientras aguantas.",
@@ -39,7 +39,7 @@ struct BreathworkInfo {
             return BreathworkInfo(
                 kind: kind, title: Breathwork.activityName(kind), goal: "Cálmate",
                 short: "Doble inspiración y espiración larga: la forma más rápida de bajar pulsaciones.",
-                icon: "wind", color: Theme.link,
+                icon: "wind", color: ActBreath.color(kind),
                 about: "Dos inspiraciones por la nariz, una larga y otra corta para llenar del todo, y una espiración lenta y larga por la boca. Vacía el aire viejo de los pulmones y frena el corazón en cada espiración.",
                 benefitsTitle: "Por qué funciona",
                 benefits: "En un estudio de Stanford (Balban y cols., Cell Reports Medicine 2023), 5 minutos al día de suspiro cíclico mejoraron el ánimo y bajaron la respiración en reposo más que la meditación. Pulso te enseña cuánto bajan tu pulso y tu estrés.",
@@ -48,7 +48,7 @@ struct BreathworkInfo {
             return BreathworkInfo(
                 kind: kind, title: Breathwork.activityName(kind), goal: "Cálmate",
                 short: "Unas 6 respiraciones por minuto: tu pulso y tu respiración se sincronizan.",
-                icon: "waveform.path.ecg", color: Theme.hrv,
+                icon: "waveform.path.ecg", color: ActBreath.color(kind),
                 about: "Respiras despacio a un ritmo fijo, unas 6 veces por minuto. A ese ritmo el pulso sube al inspirar y baja al espirar con la máxima amplitud (frecuencia de resonancia) y tu VFC se dispara.",
                 benefitsTitle: "Por qué funciona",
                 benefits: "La respiración a frecuencia de resonancia (Lehrer) se usa en biofeedback para la ansiedad, la tensión arterial y la recuperación. Pulso compara tu VFC y tu estrés antes y después.",
@@ -57,7 +57,7 @@ struct BreathworkInfo {
             return BreathworkInfo(
                 kind: kind, title: Breathwork.activityName(kind), goal: "Cálmate",
                 short: "4-4-4-4: la cabeza fría antes de algo importante.",
-                icon: "square", color: Theme.sleep,
+                icon: "square", color: ActBreath.color(kind),
                 about: "Cuatro tiempos iguales: inhalar, aguantar, exhalar y aguantar. Un ritmo lento y predecible que calma sin adormecer.",
                 benefitsTitle: "Cuándo usarla",
                 benefits: "Para mantener la calma bajo presión: un examen, una competición, hablar en público. Pulso mide cuánto baja tu estrés.",
@@ -66,7 +66,7 @@ struct BreathworkInfo {
             return BreathworkInfo(
                 kind: kind, title: Breathwork.activityName(kind), goal: "Duerme",
                 short: "4-7-8 en la cama: suelta el día y baja pulsaciones.",
-                icon: "moon.stars", color: Theme.sleep,
+                icon: "moon.stars", color: ActBreath.color(kind),
                 about: "Inhala 4 segundos, aguanta 7 y exhala 8. La espiración larga activa el sistema parasimpático y ayuda a soltar el día.",
                 benefitsTitle: "Cómo sacarle partido",
                 benefits: "Hazlo ya en la cama con la luz apagada: la pulsera marca cada fase con una vibración para que no tengas que mirar la pantalla. Con el tiempo, el impacto en tu recuperación te dirá si duermes mejor los días que la haces.",
@@ -77,7 +77,7 @@ struct BreathworkInfo {
 
     /// What to do in each phase, with the colour of its bullet.
     func instructions(_ step: Breathwork.Step, afterRetention: Bool) -> [(String, Color)] {
-        let inC = Theme.stressHigh, outC = Theme.link
+        let inC = DS.act, outC = DS.recarga
         switch (kind, step.phase) {
         case (.alert, .inhale):
             return afterRetention ? [("Inhala hondo y aguanta arriba.", inC)]
@@ -120,52 +120,112 @@ struct BreathworkInfo {
     }
 }
 
-// MARK: - Live hub card
+// MARK: - One breath, drawn
 
-/// A session on the Live page: colour, icon, what it does and how the last one went.
-struct BreathworkCard: View {
-    @EnvironmentObject var model: AppModel
+/// The session's breathing pattern as a smooth wave (up while you breathe in, flat while you hold, down while you
+/// breathe out), three cycles, with the seconds of each phase underneath.
+struct BreathPatternView: View {
     let kind: Breathwork.Kind
+    let settings: Breathwork.Settings
+    let color: Color
 
-    var body: some View {
-        let info = BreathworkInfo.of(kind)
-        let last = model.breathworkRecords.last { $0.summary.kind == kind }?.summary
-        NavigationLink { BreathworkDetailView(kind: kind) } label: {
-            HStack(spacing: 14) {
-                Image(systemName: info.icon).font(.title2).foregroundStyle(info.color)
-                    .frame(width: 52, height: 52)
-                    .background(info.color.opacity(0.16), in: Circle())
-                VStack(alignment: .leading, spacing: 4) {
-                    Caps(info.title, size: 12)
-                    Text(info.short).font(.caption).foregroundStyle(Theme.secondary).multilineTextAlignment(.leading)
-                    if let last {
-                        Text(lastLine(last)).font(.caption2.weight(.semibold)).foregroundStyle(info.color)
-                    }
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right").font(.caption.weight(.bold)).foregroundStyle(Theme.tertiary)
-            }
-            .padding(14)
-            .background(
-                LinearGradient(colors: [info.color.opacity(0.14), Theme.card], startPoint: .topLeading, endPoint: .bottomTrailing),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    /// One cycle: the steps from the first one until its phase comes back.
+    private var cycle: [Breathwork.Step] {
+        let steps = Breathwork.steps(kind, settings).filter { $0.seconds != nil && $0.phase != .retention }
+        guard let first = steps.first else { return [] }
+        var out: [Breathwork.Step] = [first]
+        for s in steps.dropFirst() {
+            if s.phase == first.phase { break }
+            out.append(s)
         }
-        .buttonStyle(.plain)
+        return out
     }
 
-    private func lastLine(_ s: Breathwork.Summary) -> String {
-        if s.kind == .alert, let best = s.retentions.max() { return "Última: retención máx. \(LiveView.duration(best))" }
-        if let c = s.stressChange { return "Última: estrés \(c <= 0 ? "▼" : "▲") \(Fmt.dec(abs(c)))" }
-        return "Última: \(Fmt.hmm(Double(s.duration) / 60)) min"
+    var body: some View {
+        let c = cycle
+        VStack(alignment: .leading, spacing: 10) {
+            GeometryReader { g in
+                let total = c.compactMap(\.seconds).reduce(0, +) * 3
+                let pts = points(c, width: g.size.width, height: g.size.height, total: total)
+                ZStack {
+                    Path { p in
+                        guard let f = pts.first else { return }
+                        p.move(to: CGPoint(x: f.x, y: g.size.height))
+                        for q in pts { p.addLine(to: q) }
+                        p.addLine(to: CGPoint(x: pts.last?.x ?? 0, y: g.size.height))
+                    }
+                    .fill(LinearGradient(colors: [color.opacity(0.22), color.opacity(0)], startPoint: .top, endPoint: .bottom))
+                    Path { p in
+                        guard let f = pts.first else { return }
+                        p.move(to: f)
+                        for q in pts.dropFirst() { p.addLine(to: q) }
+                    }
+                    .stroke(color, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                    Rectangle().fill(DS.sep).frame(height: 1).frame(maxHeight: .infinity, alignment: .bottom)
+                }
+            }
+            .frame(height: 110)
+            HStack(spacing: 16) {
+                ForEach(Array(labels(c).enumerated()), id: \.offset) { _, l in
+                    Text(l).dsFont(14, .semibold).foregroundStyle(DS.t1)
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(labels(c).joined(separator: ", "))
+    }
+
+    private func points(_ c: [Breathwork.Step], width: CGFloat, height: CGFloat, total: Double) -> [CGPoint] {
+        guard total > 0 else { return [] }
+        var out: [CGPoint] = []
+        var t = 0.0
+        var level = 0.0
+        for _ in 0..<3 {
+            for s in c {
+                let d = s.seconds ?? 0
+                let target: Double
+                switch s.phase {
+                case .inhale: target = 1
+                case .topUp: target = 1
+                case .exhale: target = 0
+                default: target = level
+                }
+                let n = 24
+                for i in 0...n {
+                    let f = Double(i) / Double(n)
+                    let e = (1 - cos(f * .pi)) / 2
+                    let v = level + (target - level) * e
+                    out.append(CGPoint(x: width * CGFloat((t + d * f) / total), y: 4 + (height - 8) * CGFloat(1 - v)))
+                }
+                t += d
+                level = target
+            }
+        }
+        return out
+    }
+
+    private func labels(_ c: [Breathwork.Step]) -> [String] {
+        func sec(_ v: Double) -> String { v == v.rounded() ? "\(Int(v)) s" : "\(Fmt.dec(v)) s" }
+        return c.compactMap { s in
+            guard let d = s.seconds else { return nil }
+            switch s.phase {
+            case .inhale: return "Inhala \(sec(d))"
+            case .topUp: return "Otra más \(sec(d))"
+            case .exhale: return "Exhala \(sec(d))"
+            case .holdIn, .holdOut: return "Aguanta \(sec(d))"
+            case .retention: return nil
+            }
+        }
     }
 }
 
-// MARK: - Detail with settings
+// MARK: - Detail with settings (20, 21)
 
 struct BreathworkDetailView: View {
     @EnvironmentObject var model: AppModel
-    @Environment(\.dismiss) private var dismiss
     let kind: Breathwork.Kind
+    /// Opens with this wheel showing (21 in the screenshot run).
+    var initialField: Field?
     @State private var settings = Breathwork.Settings()
     @State private var editing: Field?
     @State private var loaded = false
@@ -178,128 +238,122 @@ struct BreathworkDetailView: View {
     var body: some View {
         let info = BreathworkInfo.of(kind)
         let last = model.breathworkRecords.last { $0.summary.kind == kind }
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                Caps(info.goal, size: 11, color: info.color)
-                Text(info.title.uppercased()).scaledFont(26, weight: .heavy, relativeTo: .title1).tracking(1).foregroundStyle(.white)
-                Text(info.about).font(.body).foregroundStyle(.white.opacity(0.85))
-                VStack(spacing: 8) {
-                    if kind == .alert {
-                        row("Repeticiones de respiración", "lungs", "\(settings.breaths)", .breaths)
-                        row("Rondas", "arrow.triangle.2.circlepath", "\(settings.rounds)", .rounds)
-                    } else {
-                        row("Duración", "timer", "\(settings.minutes) min", .minutes)
-                        if kind == .coherence { row("Ritmo", "metronome", "\(Fmt.dec(settings.pace)) resp/min", .pace) }
-                    }
-                }
-                if let last {
-                    NavigationLink { BreathworkResultView(record: last) } label: {
-                        HStack {
-                            Image(systemName: "clock.arrow.circlepath").foregroundStyle(info.color)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Caps("Tu última sesión", size: 10, color: Theme.secondary, weight: .semibold)
-                                Text(info.insight(last.summary)).font(.caption).foregroundStyle(.white).lineLimit(2)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption.bold()).foregroundStyle(Theme.tertiary)
-                        }
-                        .padding(14)
-                        .background(Theme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                }
-                if kind == .sleep {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle(isOn: Binding(get: { model.onsetAfterBreathing }, set: { model.onsetAfterBreathing = $0 })) {
-                            Text("Apuntar cuándo me duermo").font(.subheadline).foregroundStyle(.white)
-                        }
-                        .tint(info.color)
-                        Text("En prueba: al acabar, el pulso en directo sigue hasta 45 min para estimar la hora a la que te duermes. No vibra ni avisa; gasta algo de batería de la pulsera.")
-                            .font(.caption).foregroundStyle(Theme.secondary)
-                    }
-                    .padding(14)
-                    .background(Theme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                Text(info.benefitsTitle).font(.headline).foregroundStyle(.white).padding(.top, 6)
-                Text(info.benefits).font(.body).foregroundStyle(Theme.secondary)
-                NavigationLink { BreathworkPrepView(kind: kind, settings: settings) } label: {
-                    Caps("Iniciar ejercicio", size: 13, color: Theme.link)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .overlay(Capsule().stroke(Theme.link, lineWidth: 2))
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 8)
+        DSScreen("", back: "Actividad") {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(info.goal).dsFont(15, .semibold).foregroundStyle(info.color)
+                Text(info.title).dsFont(28, .bold, relativeTo: .title1).foregroundStyle(DS.t1)
+                    .fixedSize(horizontal: false, vertical: true)
+                BreathPatternView(kind: kind, settings: settings, color: info.color).padding(.top, 14)
+                Text(info.about).dsFont(16).foregroundStyle(DS.t2).padding(.top, 12)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(20)
+            .dsCard(padding: 16)
+
+            DSSectionHeader("Ajustes")
+            DSGroup {
+                if kind == .alert {
+                    settingRow("Repeticiones de respiración", "\(settings.breaths)", .breaths)
+                    settingRow("Rondas", "\(settings.rounds)", .rounds)
+                } else {
+                    settingRow("Duración", "\(settings.minutes) min", .minutes)
+                    if kind == .coherence { settingRow("Ritmo", "\(Fmt.dec(settings.pace)) resp/min", .pace) }
+                }
+            }
+            if let last {
+                RouteLink(.actividad(.respiraResumen(start: last.summary.start))) { lastRow(last.summary, info) }
+            }
+            if kind == .sleep {
+                DSGroup(footer: "En prueba: al acabar, el pulso en directo sigue hasta 45 min para estimar la hora a la que te duermes. No vibra ni avisa; gasta algo de batería de la pulsera.") {
+                    DSToggleRow(label: "Apuntar cuándo me duermo",
+                                isOn: Binding(get: { model.onsetAfterBreathing }, set: { model.onsetAfterBreathing = $0 }))
+                }
+            }
+            DSSectionHeader("Por qué funciona")
+            Text(info.benefits).dsFont(16).foregroundStyle(DS.t2)
+                .fixedSize(horizontal: false, vertical: true)
+                .dsCard(padding: 16)
+            RouteLink(.actividad(.respiraPreparacion(kind))) {
+                Label("Iniciar ejercicio", systemImage: "play.fill")
+                    .dsFont(17, .semibold).foregroundStyle(info.color)
+                    .frame(maxWidth: .infinity, minHeight: 56)
+                    .background(info.color.opacity(DS.tintOpacity), in: Capsule())
+            }
+            .padding(.top, 12)
         }
-        .scrollIndicators(.hidden)
-        .background(PulsoBackground())
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .principal) { Caps("Detalles de la sesión", size: 12) } }
         .onAppear {
             guard !loaded else { return }
             loaded = true
             settings = model.breathworkSettings(kind)
+            if let f = initialField { DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { editing = f } }
         }
         .sheet(item: $editing) { f in
             BreathworkWheel(field: f, settings: $settings) {
                 model.saveBreathworkSettings(settings, for: kind)
                 editing = nil
             }
-            .presentationDetents([.height(320)])
-            .preferredColorScheme(.dark)
+            .dsSheet(detents: [.height(400)])
         }
     }
 
-    private func row(_ title: String, _ icon: String, _ value: String, _ field: Field) -> some View {
+    private func settingRow(_ title: String, _ value: String, _ field: Field) -> some View {
         Button { editing = field } label: {
-            HStack(spacing: 12) {
-                Image(systemName: icon).foregroundStyle(Theme.secondary).frame(width: 22)
-                Caps(title, size: 11)
-                Spacer()
-                Text(value).font(.headline.monospacedDigit()).foregroundStyle(.white)
-            }
-            .padding(14)
-            .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            DSRow(label: title, value: value, chevron: true)
         }
         .buttonStyle(.plain)
     }
+
+    private func lastRow(_ s: Breathwork.Summary, _ info: BreathworkInfo) -> some View {
+        let change: (String, Color)? = {
+            if s.kind == .alert, let best = s.retentions.max() { return ("retención \(LiveView.duration(best))", DS.t2) }
+            guard let c = s.stressChange else { return nil }
+            return ("estrés \(c <= 0 ? "−" : "+")\(Fmt.dec(abs(c)))", c <= 0 ? DSLevel.buena.ink : DSLevel.justa.ink)
+        }()
+        return HStack(spacing: 12) {
+            Image(systemName: info.icon).font(.system(size: 17)).foregroundStyle(info.color).frame(width: 24)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Tu última sesión").dsFont(17, .semibold).foregroundStyle(DS.t1)
+                Text("\(Fmt.dayTitle(DayKey.string(ts: s.start))) · \(Fmt.time(s.start))").dsFont(15).foregroundStyle(DS.t2)
+            }
+            Spacer(minLength: 6)
+            if let change { Text(change.0).dsFont(16, .medium).foregroundStyle(change.1) }
+            DSChevron()
+        }
+        .dsCard(padding: 14)
+    }
 }
 
-/// One setting on a wheel, like the reference: title, wheel, Guardar.
+/// One setting on a wheel: title, wheel, Guardar.
 struct BreathworkWheel: View {
     let field: BreathworkDetailView.Field
     @Binding var settings: Breathwork.Settings
     let save: () -> Void
 
     var body: some View {
-        VStack(spacing: 10) {
-            Caps(title, size: 12).padding(.top, 18)
-            switch field {
-            case .breaths:
-                Picker(title, selection: $settings.breaths) { ForEach(10...50, id: \.self) { Text("\($0)").tag($0) } }.pickerStyle(.wheel)
-            case .rounds:
-                Picker(title, selection: $settings.rounds) { ForEach(1...6, id: \.self) { Text("\($0)").tag($0) } }.pickerStyle(.wheel)
-            case .minutes:
-                Picker(title, selection: $settings.minutes) { ForEach(1...30, id: \.self) { Text("\($0) min").tag($0) } }.pickerStyle(.wheel)
-            case .pace:
-                Picker(title, selection: $settings.pace) {
-                    ForEach([4.5, 5.0, 5.5, 6.0, 6.5, 7.0], id: \.self) { Text("\(Fmt.dec($0)) resp/min").tag($0) }
+        VStack(spacing: 6) {
+            Text(title).dsFont(17, .semibold, relativeTo: .headline).foregroundStyle(DS.t1).padding(.top, 26)
+            Group {
+                switch field {
+                case .breaths:
+                    Picker(title, selection: $settings.breaths) { ForEach(10...50, id: \.self) { Text("\($0)").tag($0) } }
+                case .rounds:
+                    Picker(title, selection: $settings.rounds) { ForEach(1...6, id: \.self) { Text("\($0)").tag($0) } }
+                case .minutes:
+                    Picker(title, selection: $settings.minutes) { ForEach(1...30, id: \.self) { Text("\($0) min").tag($0) } }
+                case .pace:
+                    Picker(title, selection: $settings.pace) {
+                        ForEach([4.5, 5.0, 5.5, 6.0, 6.5, 7.0], id: \.self) { Text("\(Fmt.dec($0)) resp/min").tag($0) }
+                    }
                 }
-                .pickerStyle(.wheel)
             }
-            Button(action: save) {
-                Caps("Guardar", size: 13, color: Theme.green)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .overlay(Capsule().stroke(Theme.green, lineWidth: 1.5))
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 16)
+            .pickerStyle(.wheel)
+            .padding(.horizontal, DS.gutter)
+            Button("Guardar", action: save)
+                .buttonStyle(DSButtonStyle(tint: DSLevel.buena.ink, size: .xl, fullWidth: true))
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
         }
-        .background(PulsoBackground())
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(DS.card.ignoresSafeArea())
     }
 
     private var title: String {
@@ -312,9 +366,36 @@ struct BreathworkWheel: View {
     }
 }
 
-// MARK: - Before starting
+// MARK: - Before starting (22)
+
+/// The breathing circle at rest with the session's length, what to do, the band's state and the disclaimer.
+struct BreathCircle: View {
+    let color: Color
+    var scale: Double = 0.62
+    var label: String
+    var labelSize: CGFloat = 54
+
+    var body: some View {
+        GeometryReader { g in
+            let d = min(g.size.width, g.size.height)
+            ZStack {
+                Circle().stroke(DS.t3.opacity(0.7), style: StrokeStyle(lineWidth: 1, dash: [3, 4])).frame(width: d, height: d)
+                Circle().fill(color.opacity(0.2))
+                    .overlay(Circle().stroke(color, lineWidth: 3))
+                    .frame(width: d * scale, height: d * scale)
+                Circle().stroke(DS.t3.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [3, 4])).frame(width: d * 0.42, height: d * 0.42)
+                Text(label).dsFont(labelSize, .bold, relativeTo: .largeTitle, maxScale: 1.15).foregroundStyle(DS.t1)
+                    .lineLimit(1).minimumScaleFactor(0.5)
+                    .frame(width: d * 0.55)
+            }
+            .frame(width: g.size.width, height: g.size.height)
+        }
+        .accessibilityHidden(true)
+    }
+}
 
 struct BreathworkPrepView: View {
+    @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     let kind: Breathwork.Kind
     let settings: Breathwork.Settings
@@ -323,37 +404,53 @@ struct BreathworkPrepView: View {
 
     var body: some View {
         let info = BreathworkInfo.of(kind)
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                Image(systemName: kind == .sleep ? "bed.double" : "figure.mind.and.body")
-                    .font(.system(size: 150, weight: .ultraLight))
-                    .foregroundStyle(LinearGradient(colors: [Theme.green, info.color], startPoint: .top, endPoint: .bottom))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 30)
-                Text(info.prep).font(.title3.weight(.medium)).foregroundStyle(.white)
-                Caps("Descargo de responsabilidad", size: 11, weight: .semibold).padding(.top, 8)
-                Text(info.disclaimer).font(.subheadline).foregroundStyle(Theme.secondary)
-                Button { running = true } label: {
-                    Caps("Iniciar sesión", size: 13, color: Theme.link)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .overlay(Capsule().stroke(Theme.link, lineWidth: 2))
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 12)
+        let length = kind == .alert ? "\(settings.rounds) × \(settings.breaths)" : LiveView.duration(Double(max(1, settings.minutes) * 60))
+        DSScreen(info.title) {
+            BreathCircle(color: info.color, scale: 0.62, label: length, labelSize: 52)
+                .frame(height: 290)
+                .padding(.vertical, 6)
+            Text(info.prep).dsFont(22, .semibold, relativeTo: .title2).foregroundStyle(DS.t1)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 4)
+            bandRow
+            DSSectionHeader("Antes de empezar")
+            Text(info.disclaimer).dsFont(16).foregroundStyle(DS.t2)
+                .fixedSize(horizontal: false, vertical: true)
+                .dsCard(padding: 16)
+            Button { running = true } label: {
+                Label("Iniciar sesión", systemImage: "play.fill")
+                    .dsFont(17, .semibold).foregroundStyle(info.color)
+                    .frame(maxWidth: .infinity, minHeight: 56)
+                    .background(info.color.opacity(DS.tintOpacity), in: Capsule())
             }
-            .padding(20)
+            .buttonStyle(.plain)
+            .padding(.top, 12)
         }
-        .background(PulsoBackground())
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .principal) { Caps(info.title, size: 12) } }
         .fullScreenCover(isPresented: $running, onDismiss: { if completed { dismiss() } }) {
             BreathworkSessionView(kind: kind, settings: settings, completed: $completed)
+                .environmentObject(model)
         }
+    }
+
+    private var bandRow: some View {
+        let live = model.liveToolBlocker == nil
+        let connected = model.strapState.isConnected || live
+        return HStack(spacing: 12) {
+            Image(systemName: "applewatch").font(.system(size: 16, weight: .semibold)).foregroundStyle(connected ? DS.t2 : DSLevel.justa.ink)
+            Text(connected ? "Pulsera conectada" : "Pulsera desconectada").dsFont(16, .semibold).foregroundStyle(DS.t1)
+            Spacer()
+            if live, let hr = model.liveHR {
+                DSDot(color: DS.cor, size: 8)
+                Text("\(hr) lpm").dsFont(16).foregroundStyle(DS.t2)
+            } else if !connected {
+                Text("sin pulso en directo").dsFont(14).foregroundStyle(DS.t3)
+            }
+        }
+        .dsCard(padding: 14)
     }
 }
 
-// MARK: - The session
+// MARK: - The session (23, 24, 25)
 
 /// The guided session: a breathing circle (orange in, blue out), the count, what to do, and the strap's vibration
 /// on each change. Holds on empty lungs last until you tap.
@@ -379,7 +476,7 @@ struct BreathworkSessionView: View {
     var body: some View {
         let info = BreathworkInfo.of(kind)
         ZStack {
-            PulsoBackground().ignoresSafeArea()
+            DS.bg.ignoresSafeArea()
             if let r = saved {
                 NavigationStack {
                     BreathworkResultView(record: r) {
@@ -389,19 +486,20 @@ struct BreathworkSessionView: View {
                 }
             } else if saving {
                 VStack(spacing: 16) {
-                    ProgressView().tint(.white).scaleEffect(1.4)
-                    Caps("Guardando sesión…", size: 12)
+                    ProgressView().tint(DS.t1).scaleEffect(1.4)
+                    Text("Guardando sesión…").dsFont(15).foregroundStyle(DS.t2)
                 }
             } else {
                 VStack(spacing: 0) {
                     header(info)
-                    Spacer()
+                    Spacer(minLength: 10)
                     TimelineView(.animation) { ctx in circle(at: ctx.date) }
                         .frame(height: 340)
-                    Spacer()
+                        .padding(.horizontal, 40)
+                    Spacer(minLength: 10)
                     footer(info)
                 }
-                .padding(20)
+                .padding(.bottom, 20)
             }
         }
         .preferredColorScheme(.dark)
@@ -423,24 +521,30 @@ struct BreathworkSessionView: View {
     private var step: Breathwork.Step? { index < steps.count ? steps[index] : nil }
 
     private func header(_ info: BreathworkInfo) -> some View {
-        HStack {
-            Button {
-                if Date().timeIntervalSince(sessionStart) > 30 { confirmQuit = true } else { dismiss() }
-            } label: { Image(systemName: "xmark").font(.title2.weight(.semibold)).foregroundStyle(.white) }
-            Spacer()
-            VStack(spacing: 3) {
-                Caps(info.title, size: 12)
+        ZStack {
+            VStack(spacing: 1) {
+                Text(info.title).dsFont(17, .semibold, relativeTo: .headline).foregroundStyle(DS.t1).lineLimit(1).minimumScaleFactor(0.8)
                 if kind == .alert, let s = step {
-                    Caps("Serie \(s.round)/\(settings.rounds)", size: 10, color: Theme.secondary)
+                    Text("Serie \(s.round)/\(settings.rounds)").dsFont(13).foregroundStyle(DS.t2)
                 } else {
                     TimelineView(.periodic(from: .now, by: 1)) { ctx in
-                        Caps(LiveView.duration(max(0, remaining(at: ctx.date))), size: 10, color: Theme.secondary)
+                        Text("\(LiveView.duration(max(0, remaining(at: ctx.date)))) restante").dsFont(13).foregroundStyle(DS.t2)
                     }
                 }
             }
-            Spacer()
-            Image(systemName: "xmark").font(.title2).opacity(0)
+            .padding(.horizontal, 56)
+            HStack {
+                Button {
+                    if Date().timeIntervalSince(sessionStart) > 30 { confirmQuit = true } else { dismiss() }
+                } label: { DSCircleButton(icon: "xmark") }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Terminar")
+                Spacer()
+            }
         }
+        .frame(height: 52)
+        .padding(.top, 4)
+        .padding(.horizontal, DS.gutter)
     }
 
     private func circle(at date: Date) -> some View {
@@ -460,24 +564,15 @@ struct BreathworkSessionView: View {
             }
         }()
         let warm = s.map { [.inhale, .topUp, .holdIn].contains($0.phase) } ?? false
-        let tint = warm ? Theme.stressHigh : Theme.link
+        let tint = warm ? DS.act : DS.recarga
         let label: String = {
             guard let s else { return "" }
             if s.phase == .retention { return LiveView.duration(elapsed) }
             if let c = s.count { return "\(c)" }
             return "\(Int(ceil(max(0, (s.seconds ?? 0) - elapsed))))"
         }()
-        return ZStack {
-            Circle().stroke(Color.white.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
-            Circle()
-                .fill(RadialGradient(colors: [Color.black.opacity(0.6), tint.opacity(0.35)], center: .center, startRadius: 10, endRadius: 170))
-                .overlay(Circle().stroke(AngularGradient(colors: [tint, tint.opacity(0.6), tint], center: .center), lineWidth: 3))
-                .shadow(color: tint.opacity(0.5), radius: 20)
-                .scaleEffect(scale)
-            Circle().stroke(Color.white.opacity(0.15), style: StrokeStyle(lineWidth: 1, dash: [3, 4])).scaleEffect(0.42)
-            Text(label).scaledFont(s?.phase == .retention ? 34 : 54, weight: .bold, relativeTo: .largeTitle).monospacedDigit().foregroundStyle(.white)
-        }
-        .animation(.linear(duration: 0.1), value: scale)
+        return BreathCircle(color: tint, scale: scale * 0.8, label: label, labelSize: s?.phase == .retention ? 46 : 58)
+            .animation(.linear(duration: 0.1), value: scale)
     }
 
     private func footer(_ info: BreathworkInfo) -> some View {
@@ -485,28 +580,30 @@ struct BreathworkSessionView: View {
             if let s = step {
                 let afterRetention = index > 0 && steps[index - 1].phase == .retention
                 ForEach(Array(info.instructions(s, afterRetention: afterRetention).enumerated()), id: \.offset) { _, line in
-                    HStack(alignment: .top, spacing: 12) {
-                        Circle().stroke(line.1, lineWidth: 2).frame(width: 12, height: 12).padding(.top, 6)
-                        Text(line.0).font(.title3.weight(.medium)).foregroundStyle(.white)
+                    HStack(alignment: .top, spacing: 14) {
+                        Circle().stroke(line.1, lineWidth: 2.5).frame(width: 14, height: 14).padding(.top, 7)
+                        Text(line.0).dsFont(22, .medium, relativeTo: .title2).foregroundStyle(DS.t1)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 if s.phase == .retention {
-                    Button { next(Date()) } label: {
-                        Caps(s.round >= settings.rounds ? "Finalizar sesión" : "Iniciar el siguiente ciclo", size: 12, color: Theme.green)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .overlay(Capsule().stroke(Theme.green, lineWidth: 1.5))
+                    let previous = done.filter { $0.phase == .retention }.map(\.seconds)
+                    if !previous.isEmpty {
+                        Text(previous.enumerated().map { "Serie \($0.offset + 1): \(LiveView.duration($0.element))" }.joined(separator: " · "))
+                            .dsFont(14).foregroundStyle(DS.t3).padding(.leading, 28)
                     }
-                    .buttonStyle(.plain)
+                    Button(s.round >= settings.rounds ? "Finalizar sesión" : "Iniciar el siguiente ciclo") { next(Date()) }
+                        .buttonStyle(DSButtonStyle(tint: DSLevel.buena.ink, size: .xl, fullWidth: true))
                 }
             }
-            HStack(spacing: 6) {
-                Image(systemName: "heart.fill").foregroundStyle(Theme.red)
-                Text(model.liveHR.map { "\($0) lpm" } ?? "Sin pulso en directo").font(.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
+            HStack(spacing: 8) {
+                Image(systemName: "heart.fill").font(.system(size: 13)).foregroundStyle(DS.cor)
+                Text(model.liveHR.map { "\($0) lpm" } ?? "Sin pulso en directo").dsFont(16).foregroundStyle(DS.t2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(minHeight: 170, alignment: .top)
+        .frame(minHeight: 190, alignment: .top)
+        .padding(.horizontal, 24)
     }
 
     private func remaining(at date: Date) -> Double {
@@ -565,7 +662,7 @@ struct BreathworkSessionView: View {
     }
 }
 
-// MARK: - What the session did
+// MARK: - What the session did (26)
 
 /// The session in the day's activities: time, stress change, what it did, the stress or pulse curve, the share of
 /// each phase, the numbers against your last 30 days and how it moves your recovery.
@@ -573,170 +670,186 @@ struct BreathworkResultView: View {
     @EnvironmentObject var model: AppModel
     let record: BreathworkRecord
     var onDone: (() -> Void)?
-    @State private var showHR = false
+    @State private var showHR = 0
 
     var body: some View {
         let s = record.summary
         let info = BreathworkInfo.of(s.kind)
         let history = model.breathworkHistory(s.kind, before: s.start)
-        DetailScreen(title: info.title, subtitle: "\(Fmt.dayTitle(DayKey.string(ts: s.start))) de las \(Fmt.time(s.start)) a las \(Fmt.time(s.end))") {
-            HStack(alignment: .top, spacing: 28) {
-                big(LiveView.duration(Double(s.duration)), "Minutos")
-                if let c = s.stressChange {
-                    big("\(c <= 0 ? "▼" : "▲") \(Fmt.dec(abs(c)))", "Cambio de estrés")
+        DSScreen(info.title, subtitle: "\(Fmt.dayTitle(DayKey.string(ts: s.start))) · \(Fmt.time(s.start))–\(Fmt.time(s.end))") {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 0) {
+                    big(LiveView.duration(Double(s.duration)), "Duración", color: DS.t1, arrow: nil)
+                    if let c = s.stressChange {
+                        big(Fmt.dec(abs(c)), "Cambio de estrés", color: c <= 0 ? DSLevel.buena.ink : DSLevel.justa.ink, arrow: c <= 0 ? "arrowtriangle.down.fill" : "arrowtriangle.up.fill")
+                    }
                 }
+                DSDivider()
+                Text(info.insight(s)).dsFont(17).foregroundStyle(DS.t1).fixedSize(horizontal: false, vertical: true)
             }
-            Text(info.insight(s))
-                .font(.body).foregroundStyle(.white)
-                .padding(18)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(LinearGradient(colors: [Theme.hrv, Theme.link], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5))
-            HStack(spacing: 0) {
-                segment("Estrés", selected: !showHR) { showHR = false }
-                segment("Frecuencia cardíaca", selected: showHR) { showHR = true }
+            .dsCard(padding: 16)
+
+            VStack(alignment: .leading, spacing: 12) {
+                DSSegmented(options: [(0, "Estrés"), (1, "Frecuencia cardíaca")], selection: $showHR, height: 34)
+                chart(s).frame(height: 170)
             }
-            .padding(4)
-            .background(Color.black.opacity(0.3), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            chart(s).frame(height: 190)
-            phaseBar("Inhala", s.inhaleSeconds, s, Theme.stressHigh)
-            phaseBar("Exhala", s.exhaleSeconds, s, Theme.link)
-            phaseBar("Retención de la respiración", s.holdSeconds, s, .white)
-            HStack {
-                Caps("Métricas de la sesión", size: 11)
-                Spacer()
-                Caps("vs. tus 30 días", size: 9.5, color: Theme.secondary, weight: .semibold)
-            }
-            .padding(.top, 6)
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+            .dsCard(padding: 14)
+
+            DSSectionHeader("Fases")
+            phases(s)
+
+            DSSectionHeader("Métricas", note: "vs. tus 30 días")
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: DS.stack), GridItem(.flexible())], spacing: DS.stack) {
                 if s.kind == .alert, let best = s.retentions.max() {
                     metric("Retención máxima", LiveView.duration(best), "", history.compactMap { $0.retentions.max() }, format: { LiveView.duration($0) })
                 }
-                metric("FC mínima", Fmt.int(s.hrMin), "lpm", history.compactMap(\.hrMin))
-                metric("FC media", Fmt.int(s.hrAvg), "lpm", history.compactMap(\.hrAvg))
-                metric("FC máxima", Fmt.int(s.hrMax), "lpm", history.compactMap(\.hrMax))
+                if s.hrMin != nil { metric("FC mínima", Fmt.int(s.hrMin), "lpm", history.compactMap(\.hrMin)) }
+                if s.hrAvg != nil { metric("FC media", Fmt.int(s.hrAvg), "lpm", history.compactMap(\.hrAvg)) }
+                if s.hrMax != nil { metric("FC máxima", Fmt.int(s.hrMax), "lpm", history.compactMap(\.hrMax)) }
                 if let a = s.rmssdBefore, let b = s.rmssdAfter {
-                    metric("VFC antes → después", "\(Int(a)) → \(Int(b))", "ms", [])
+                    tile("VFC", "\(Int(a)) → \(Int(b))", "ms", "antes → después")
                 }
             }
             impact
             if let onDone {
-                Button(action: onDone) { Text("Hecho").frame(maxWidth: .infinity) }
-                    .buttonStyle(PrimaryCapsuleStyle())
-                    .padding(.top, 6)
+                Button("Hecho", action: onDone)
+                    .buttonStyle(DSButtonStyle(tint: info.color, size: .xl, fullWidth: true))
+                    .padding(.top, 8)
             }
         }
     }
 
-    private func big(_ v: String, _ k: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(v).scaledFont(40, weight: .bold, relativeTo: .largeTitle).monospacedDigit().foregroundStyle(.white)
-            Caps(k, size: 10.5, color: Theme.secondary, weight: .semibold)
+    private func big(_ v: String, _ k: String, color: Color, arrow: String?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                if let arrow { Image(systemName: arrow).font(.system(size: 18)).foregroundStyle(color) }
+                Text(v).dsFont(48, .semibold, relativeTo: .largeTitle, maxScale: 1.15).foregroundStyle(color)
+            }
+            Text(k).dsFont(15).foregroundStyle(DS.t2)
         }
-    }
-
-    private func segment(_ t: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Caps(t, size: 11, color: selected ? .white : Theme.secondary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(selected ? Theme.cardHighlight : .clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-        }
-        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func chart(_ s: Breathwork.Summary) -> some View {
-        let values = showHR ? s.hrSeries : s.stressSeries
-        let step = showHR ? 5.0 : 15.0
-        let offset = showHR ? 0.0 : 45.0
-        return Chart {
-            ForEach(Array(values.enumerated()), id: \.offset) { i, v in
-                AreaMark(x: .value("s", offset + Double(i) * step), y: .value("v", v))
-                    .foregroundStyle(LinearGradient(colors: [Theme.link.opacity(0.35), .clear], startPoint: .top, endPoint: .bottom))
-                    .interpolationMethod(.monotone)
-                LineMark(x: .value("s", offset + Double(i) * step), y: .value("v", v))
-                    .foregroundStyle(showHR ? Theme.link : Theme.hrv)
-                    .interpolationMethod(.monotone)
+        let hr = showHR == 1
+        let values = hr ? s.hrSeries : s.stressSeries
+        let step = hr ? 5.0 : 15.0
+        let offset = hr ? 0.0 : 45.0
+        let color = hr ? DS.cor : DS.bien
+        return VStack(spacing: 6) {
+            Chart {
+                ForEach(Array(values.enumerated()), id: \.offset) { i, v in
+                    AreaMark(x: .value("s", offset + Double(i) * step), y: .value("v", v))
+                        .foregroundStyle(LinearGradient(colors: [color.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom))
+                        .interpolationMethod(.monotone)
+                    LineMark(x: .value("s", offset + Double(i) * step), y: .value("v", v))
+                        .foregroundStyle(color)
+                        .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
+                        .interpolationMethod(.monotone)
+                }
+                if let last = values.last {
+                    PointMark(x: .value("s", offset + Double(values.count - 1) * step), y: .value("v", last))
+                        .foregroundStyle(color).symbolSize(40)
+                }
             }
-        }
-        .chartYScale(domain: showHR ? .automatic(includesZero: false) : .automatic(includesZero: true))
-        .chartXAxis {
-            AxisMarks(values: [0.0, Double(s.duration)]) { v in
-                AxisValueLabel { Text(Fmt.time(s.start + Int(v.as(Double.self) ?? 0))).font(.caption2).foregroundStyle(Theme.secondary) }
+            .chartYScale(domain: hr ? .automatic(includesZero: false) : .automatic(includesZero: true))
+            .chartXAxis(.hidden)
+            .chartYAxis {
+                AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { _ in
+                    AxisGridLine().foregroundStyle(DS.sep)
+                    AxisValueLabel().foregroundStyle(DS.t3)
+                }
             }
-        }
-        .chartYAxis {
-            AxisMarks(position: .leading) { _ in
-                AxisGridLine().foregroundStyle(Theme.hairline)
-                AxisValueLabel().foregroundStyle(Theme.secondary)
+            .overlay {
+                if values.isEmpty {
+                    Text("Sin pulso en directo durante la sesión").dsFont(14).foregroundStyle(DS.t3)
+                }
             }
-        }
-        .overlay {
-            if values.isEmpty {
-                Text("Sin pulso en directo durante la sesión").font(.caption).foregroundStyle(Theme.secondary)
+            HStack {
+                Text(Fmt.time(s.start)).foregroundStyle(DS.t3)
+                Spacer()
+                Text(Fmt.time(s.end)).fontWeight(.semibold).foregroundStyle(DS.t1)
             }
+            .dsFont(13, relativeTo: .footnote)
+            .padding(.trailing, 28)
         }
     }
 
-    private func phaseBar(_ title: String, _ seconds: Double, _ s: Breathwork.Summary, _ color: Color) -> some View {
-        let total = max(1, s.inhaleSeconds + s.exhaleSeconds + s.holdSeconds)
-        let share = seconds / total
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Caps(title, size: 11)
-                Text("\(Int((share * 100).rounded())) %").font(.subheadline.weight(.bold)).foregroundStyle(color)
-                Spacer()
-                Text(LiveView.duration(seconds)).font(.headline.monospacedDigit()).foregroundStyle(.white)
-            }
+    private func phases(_ s: Breathwork.Summary) -> some View {
+        let parts: [(String, Double, Color)] = [("Inhala", s.inhaleSeconds, DS.act), ("Exhala", s.exhaleSeconds, DS.recarga),
+                                                ("Retención", s.holdSeconds, DS.t2)].filter { $0.1 > 0 }
+        let total = max(1, parts.reduce(0) { $0 + $1.1 })
+        return VStack(spacing: 0) {
             GeometryReader { g in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.08))
-                    Capsule().fill(color).frame(width: max(8, g.size.width * share))
+                let gap: CGFloat = 3
+                let usable = g.size.width - gap * CGFloat(max(0, parts.count - 1))
+                HStack(spacing: gap) {
+                    ForEach(parts.indices, id: \.self) { i in
+                        Capsule().fill(parts[i].2).frame(width: max(4, usable * CGFloat(parts[i].1 / total)))
+                    }
                 }
             }
-            .frame(height: 14)
+            .frame(height: 12)
+            .padding(.bottom, 8)
+            ForEach(parts.indices, id: \.self) { i in
+                if i > 0 { DSDivider() }
+                HStack(spacing: 10) {
+                    RoundedRectangle(cornerRadius: 2).fill(parts[i].2).frame(width: 9, height: 9)
+                    Text(parts[i].0).dsFont(17).foregroundStyle(DS.t1)
+                    Spacer()
+                    Text("\(Int((parts[i].1 / total * 100).rounded())) %").dsFont(17, .semibold).foregroundStyle(DS.t1)
+                    Text(LiveView.duration(parts[i].1)).dsFont(17).foregroundStyle(DS.t2).frame(width: 64, alignment: .trailing)
+                }
+                .frame(minHeight: 46)
+            }
         }
-        .padding(16)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .dsCard(padding: 14)
     }
 
     private func metric(_ title: String, _ value: String, _ unit: String, _ past: [Double], format: (Double) -> String = { Fmt.int($0) }) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Caps(title, size: 9.5, color: Theme.secondary, weight: .semibold).lineLimit(2)
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(value).scaledFont(24, weight: .bold, relativeTo: .title2).monospacedDigit().foregroundStyle(.white)
-                if !unit.isEmpty { Text(unit).font(.caption).foregroundStyle(Theme.secondary) }
-            }
-            Text(past.count >= 2 ? "rango \(format(past.min()!))–\(format(past.max()!))" : "primeras sesiones")
-                .font(.caption2).foregroundStyle(Theme.tertiary)
+        tile(title, value, unit, past.count >= 2 ? "rango \(format(past.min()!))–\(format(past.max()!))" : "primeras sesiones")
+    }
+
+    private func tile(_ title: String, _ value: String, _ unit: String, _ note: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).dsFont(14).foregroundStyle(DS.t2).lineLimit(1)
+            HoyValue(value: value, unit: unit, size: 26)
+            Text(note).dsFont(14).foregroundStyle(DS.t3).lineLimit(1).minimumScaleFactor(0.8)
         }
-        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .dsCard(padding: 14)
     }
 
     /// Days with a session so far towards the 5 that unlock its impact on your recovery.
     private var impact: some View {
         let days = Set(model.breathworkRecords.map { DayKey.string(ts: $0.summary.start) }).count
-        return PCard {
+        return VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Caps("Impacto en la recuperación", size: 11)
+                Text("Impacto en la recuperación").dsFont(17, .semibold).foregroundStyle(DS.t1)
                 Spacer()
-                Text("\(min(days, Behaviors.minEach))/\(Behaviors.minEach)").font(.subheadline.monospacedDigit().bold()).foregroundStyle(.white)
+                Text("\(min(days, Behaviors.minEach))/\(Behaviors.minEach)").dsFont(17, .semibold).foregroundStyle(DS.t1)
+            }
+            HStack(spacing: 10) {
+                ForEach(0..<Behaviors.minEach, id: \.self) { i in
+                    Circle().fill(i < days ? DSLevel.buena.mark : DS.fill).frame(width: 26, height: 26)
+                        .overlay { if i < days { Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundStyle(DS.bg) } }
+                }
             }
             Text(days >= Behaviors.minEach
                  ? "Ya tienes días suficientes con sesión: mira cuánto mueve tu recuperación al día siguiente."
-                 : "Sigue haciendo sesiones: con \(Behaviors.minEach) días con y \(Behaviors.minEach) sin, Pulso te dice cuánto mueven tu recuperación.")
-                .font(.caption).foregroundStyle(Theme.secondary)
-            HStack(spacing: 10) {
-                ForEach(0..<Behaviors.minEach, id: \.self) { i in
-                    Circle().fill(i < days ? Theme.green : Color.white.opacity(0.1)).frame(width: 22, height: 22)
-                        .overlay { if i < days { Image(systemName: "checkmark").font(.caption2.bold()).foregroundStyle(.black) } }
-                }
-            }
+                 : "Con \(Behaviors.minEach) días con sesión y \(Behaviors.minEach) sin, Pulso te dice cuánto mueve tu recuperación.")
+                .dsFont(15).foregroundStyle(DS.t2).fixedSize(horizontal: false, vertical: true)
+            DSDivider()
             NavigationLink { BehaviorsView() } label: {
-                Caps("Ver más impactos", size: 10.5, color: Theme.link)
+                HStack(spacing: 6) {
+                    Text("Ver más impactos").dsFont(17, .semibold).foregroundStyle(DS.t1)
+                    DSChevron()
+                    Spacer()
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
         }
+        .dsCard(padding: 16)
     }
 }
