@@ -12,12 +12,15 @@ extension AppModel {
         objectWillChange.send()
     }
 
-    var planProgress: [WeeklyPlan.Progress] {
+    var planProgress: [WeeklyPlan.Progress] { planProgress(for: planGoals) }
+
+    /// Progress of any list of goals (also the suggestions of an empty plan, for their 4-week mean).
+    func planProgress(for goals: [PlanGoal]) -> [WeeklyPlan.Progress] {
         let start = DayKey.shift(WeeklyPlan.weekStart(currentDayKey), days: -28)
         let workouts = (try? db.workouts(from: Int((DayKey.date(start) ?? Date()).timeIntervalSince1970),
                                          to: Int(Date().timeIntervalSince1970) + 86400)) ?? []
         let journal = ((try? db.allJournal()) ?? []).filter { $0.day >= start }
-        return WeeklyPlan.progress(goals: planGoals, days: days.filter { $0.day >= start }, workouts: workouts, journal: journal,
+        return WeeklyPlan.progress(goals: goals, days: days.filter { $0.day >= start }, workouts: workouts, journal: journal,
                                    today: currentDayKey)
     }
 }
@@ -25,8 +28,8 @@ extension AppModel {
 enum PlanText {
     static func title(_ g: PlanGoal) -> String {
         switch g.kind {
-        case .zonesLight: return "Tiempo en zonas de FC 1-3"
-        case .zonesHard: return "Tiempo en zonas de FC 4-5"
+        case .zonesLight: return "Zonas de FC 1-3"
+        case .zonesHard: return "Zonas de FC 4-5"
         case .strengthDays: return "Días de fuerza"
         case .avgStrain: return "Esfuerzo medio"
         case .sleepHours: return "Horas de sueño (media)"
@@ -41,10 +44,10 @@ enum PlanText {
 
     static func icon(_ k: PlanGoal.Kind) -> String {
         switch k {
-        case .zonesLight, .zonesHard: return "heart.circle"
+        case .zonesLight, .zonesHard: return "heart.fill"
         case .strengthDays: return "dumbbell"
         case .avgStrain: return "flame"
-        case .sleepHours: return "moon.zzz"
+        case .sleepHours: return "moon.fill"
         case .regularity: return "clock.arrow.circlepath"
         case .bedtimeBefore: return "bed.double"
         case .steps: return "shoeprints.fill"
@@ -105,121 +108,231 @@ enum PlanText {
     }
 }
 
-/// "Plan semanal": goals for this week with their progress.
+/// 40 · Plan semanal (42 when there are no goals): the week with today's place in it, and each goal with its value /
+/// target, a bar, today's pace mark (day/7), the 4-week mean and its status. The plan's rules are unchanged: the
+/// status is the plan's level (Por detrás < 50 %, Al límite < 100 %, Al ritmo = met).
 struct WeeklyPlanView: View {
     @EnvironmentObject var model: AppModel
+    /// The empty state even with goals (screenshot run).
+    var forceEmpty = false
     @State private var editing = false
 
     var body: some View {
-        let progress = model.planProgress
-        DetailScreen(title: "Detalles del plan") {
-            Caps("Plan actual", size: 11, color: Theme.secondary, weight: .semibold)
-            Text("Tu semana").scaledFont(28, weight: .bold, relativeTo: .title1).foregroundStyle(.white)
-            Text("Metas de lunes a domingo, comparadas con tu media de las 4 semanas anteriores. Ajústalas para que te supongan un reto razonable.")
-                .font(.subheadline).foregroundStyle(Color(white: 0.82))
-            HStack(spacing: 14) {
-                legend(Theme.worse, "Deficiente")
-                legend(Color(white: 0.7), "Suficiente")
-                legend(Theme.better, "Óptimo")
+        let progress = forceEmpty ? [] : model.planProgress
+        DSScreen("Plan semanal", back: "Actividad") {
+            if !progress.isEmpty {
+                Button("Editar") { editing = true }
+                    .buttonStyle(DSButtonStyle(size: .small, gray: true))
             }
+        } content: {
             if progress.isEmpty {
-                EmptyState(icon: "target", title: "Sin metas todavía", message: "Elige qué quieres mejorar esta semana: esfuerzo, sueño, pasos o hábitos.")
-            }
-            ForEach(["Esfuerzo y zonas", "Sueño", "Pasos y actividad", "Hábitos"], id: \.self) { group in
-                let items = progress.filter { $0.goal.kind.group == group }
-                if !items.isEmpty {
-                    SectionHeading(text: "\(group) (\(items.count))", trailing: "Editar") { editing = true }
-                    ForEach(items, id: \.goal.id) { GoalCard(progress: $0) }
+                empty
+            } else {
+                weekCard
+                ForEach(["Esfuerzo y zonas", "Sueño", "Pasos y actividad", "Hábitos"], id: \.self) { group in
+                    let items = progress.filter { $0.goal.kind.group == group }
+                    if !items.isEmpty {
+                        DSSectionHeader(group, note: "\(items.count)")
+                        VStack(spacing: 0) {
+                            ForEach(Array(items.enumerated()), id: \.element.goal.id) { i, p in
+                                if i > 0 { DSDivider() }
+                                GoalRow(progress: p, pace: Double(dayIndex) / 7)
+                            }
+                        }
+                        .padding(.horizontal, 14)
+                        .background(DS.card, in: RoundedRectangle(cornerRadius: DS.radius, style: .continuous))
+                    }
                 }
             }
-            Button(progress.isEmpty ? "Crear mi plan" : "Editar el plan") { editing = true }
-                .buttonStyle(progress.isEmpty ? AnyButtonStyle(PrimaryCapsuleStyle()) : AnyButtonStyle(SecondaryCapsuleStyle()))
-                .padding(.top, 8)
         }
-        .sheet(isPresented: $editing) { PlanEditor(goals: model.planGoals) }
+        .sheet(isPresented: $editing) { PlanEditor(goals: model.planGoals).dsSheet() }
     }
 
-    private func legend(_ c: Color, _ t: String) -> some View {
-        HStack(spacing: 6) {
-            Capsule().fill(c).frame(width: 14, height: 4)
-            Text(t).font(.caption).foregroundStyle(Theme.secondary)
+    private var weekStart: String { WeeklyPlan.weekStart(model.currentDayKey) }
+
+    /// 1 = Monday … 7 = Sunday.
+    private var dayIndex: Int {
+        guard let a = DayKey.date(weekStart), let b = DayKey.date(model.currentDayKey) else { return 1 }
+        return min(7, max(1, (Calendar.current.dateComponents([.day], from: a, to: b).day ?? 0) + 1))
+    }
+
+    private var weekCard: some View {
+        let end = DayKey.shift(weekStart, days: 6)
+        let letters = ["L", "M", "X", "J", "V", "S", "D"]
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("\(DSFmt.dayMonth(weekStart).split(separator: " ").first ?? "") – \(DSFmt.dayMonth(end))")
+                        .dsFont(20, .semibold).foregroundStyle(DS.t1)
+                    Text("día \(dayIndex) de 7").dsFont(15).foregroundStyle(DS.t2)
+                }
+                Spacer(minLength: 6)
+                HStack(spacing: 5) {
+                    ForEach(0..<7, id: \.self) { i in
+                        Text(letters[i]).dsFont(14, .semibold)
+                            .foregroundStyle(i + 1 == dayIndex ? DS.bg : (i + 1 < dayIndex ? DS.t2 : DS.t3))
+                            .frame(width: 27, height: 34)
+                            .background(i + 1 == dayIndex ? DS.t1 : DS.fill, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    }
+                }
+            }
+            HStack(spacing: 12) {
+                ForEach(0..<3, id: \.self) { l in
+                    HStack(spacing: 5) {
+                        DSDot(color: ActPlan.level(l).mark)
+                        Text(ActPlan.word(l))
+                    }
+                }
+                HStack(spacing: 5) {
+                    Capsule().fill(DS.t1).frame(width: 2.5, height: 13)
+                    Text("ritmo de hoy")
+                }
+            }
+            .dsFont(13).foregroundStyle(DS.t2).lineLimit(1).minimumScaleFactor(0.8)
+        }
+        .dsCard(padding: 14)
+    }
+
+    /// 42: no goals yet, «Crear mi plan» and three starting goals with your own 4-week mean.
+    private var empty: some View {
+        let suggestions = [PlanGoal(kind: .steps, target: PlanGoal.defaultTarget(.steps)),
+                           PlanGoal(kind: .zonesLight, target: PlanGoal.defaultTarget(.zonesLight)),
+                           PlanGoal(kind: .sleepHours, target: PlanGoal.defaultTarget(.sleepHours))]
+        let progress = model.planProgress(for: suggestions)
+        return Group {
+            VStack(spacing: 10) {
+                Image(systemName: "target").font(.system(size: 34, weight: .regular)).foregroundStyle(DS.t2)
+                Text("Sin metas todavía").dsFont(24, .bold, relativeTo: .title2).foregroundStyle(DS.t1)
+                Text("Elige qué mejorar esta semana: esfuerzo, sueño, pasos o hábitos.")
+                    .dsFont(16).foregroundStyle(DS.t2).multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 36)
+            .padding(.bottom, 18)
+            Button { editing = true } label: {
+                Label("Crear mi plan", systemImage: "plus").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(DSButtonStyle(tint: DS.act, size: .xl, fullWidth: true))
+            DSSectionHeader("Para empezar", note: "según tus 4 semanas")
+            VStack(spacing: 0) {
+                ForEach(Array(progress.enumerated()), id: \.offset) { i, p in
+                    if i > 0 { DSDivider(inset: 36) }
+                    HStack(spacing: 12) {
+                        Image(systemName: PlanText.icon(p.goal.kind)).font(.system(size: 15)).foregroundStyle(DS.t2).frame(width: 24)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(PlanText.title(p.goal).replacingOccurrences(of: " (media)", with: "")).dsFont(17, .semibold).foregroundStyle(DS.t1)
+                            if let prev = p.previous {
+                                Text("tu media \(PlanText.value(p.goal.kind, prev))").dsFont(15).foregroundStyle(DS.t2)
+                            }
+                        }
+                        Spacer(minLength: 6)
+                        Text(PlanText.target(p.goal) + (p.goal.kind == .zonesLight ? " / sem." : "")).dsFont(17).foregroundStyle(DS.t2)
+                        Button { model.savePlan(model.planGoals + [p.goal]) } label: {
+                            Image(systemName: "plus").font(.system(size: 14, weight: .bold)).foregroundStyle(DS.t1)
+                                .frame(width: 30, height: 30).background(DSLevel.buena.mark, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Añadir \(PlanText.title(p.goal))")
+                    }
+                    .frame(minHeight: 62)
+                }
+            }
+            .padding(.horizontal, 14)
+            .background(DS.card, in: RoundedRectangle(cornerRadius: DS.radius, style: .continuous))
         }
     }
 }
 
-struct AnyButtonStyle: ButtonStyle {
-    private let make: (Configuration) -> AnyView
-    init<S: ButtonStyle>(_ s: S) { make = { AnyView(s.makeBody(configuration: $0)) } }
-    func makeBody(configuration: Configuration) -> some View { make(configuration) }
-}
-
-struct GoalCard: View {
+/// One goal: icon, name, value / target, the bar with today's pace mark, the 4-week mean and the status word.
+private struct GoalRow: View {
     let progress: WeeklyPlan.Progress
+    let pace: Double
 
     var body: some View {
         let g = progress.goal
-        let color = [Theme.worse, Color(white: 0.7), Theme.better][progress.level]
-        PCard {
-            HStack(spacing: 10) {
-                Image(systemName: PlanText.icon(g.kind)).foregroundStyle(Theme.secondary)
-                Caps(PlanText.title(g), size: 12)
-                Spacer()
-                if progress.met { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.better) }
-            }
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(PlanText.value(g.kind, progress.value)).scaledFont(26, weight: .bold, relativeTo: .title1).monospacedDigit().foregroundStyle(.white)
-                    Caps("Esta semana", size: 9, color: Theme.secondary, weight: .semibold)
-                    if let p = progress.previous {
-                        Text("Media 4 semanas: \(PlanText.value(g.kind, p))").font(.caption).foregroundStyle(Theme.secondary)
-                    }
-                }
-                Spacer()
-                Image(systemName: "chevron.right.2").font(.title3.bold()).foregroundStyle(Theme.secondary)
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(g.kind == .bedtimeBefore ? "5 noches" : PlanText.target(g)).scaledFont(22, weight: .bold, relativeTo: .title1).monospacedDigit().foregroundStyle(.white)
-                    Caps(g.kind == .habitNo ? "Límite semanal" : "Objetivo semanal", size: 9, color: Theme.secondary, weight: .semibold)
-                }
+        let lv = ActPlan.level(progress.level)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Image(systemName: PlanText.icon(g.kind)).font(.system(size: 14)).foregroundStyle(DS.t2).frame(width: 22)
+                Text(PlanText.title(g)).dsFont(17, .semibold).foregroundStyle(DS.t1).lineLimit(1).minimumScaleFactor(0.75)
+                Spacer(minLength: 6)
+                Text(PlanText.value(g.kind, progress.value)).dsFont(20, .semibold).foregroundStyle(DS.t1)
+                Text("/ \(g.kind == .bedtimeBefore ? "5 noches" : PlanText.target(g))").dsFont(15).foregroundStyle(DS.t3)
+                    .lineLimit(1)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.1))
-                    Capsule().fill(color).frame(width: max(6, geo.size.width * progress.fraction))
+                    Capsule().fill(DS.fill)
+                    Capsule().fill(lv.mark).frame(width: progress.fraction > 0 ? max(6, geo.size.width * progress.fraction) : 0)
+                    if g.kind != .habitNo {
+                        Capsule().fill(DS.t1).frame(width: 2.5, height: 16).offset(x: geo.size.width * pace - 1.25)
+                    }
                 }
+                .frame(height: 6)
+                .frame(maxHeight: .infinity)
             }
-            .frame(height: 6)
+            .frame(height: 16)
+            HStack {
+                if let p = progress.previous {
+                    Text("media 4 semanas \(PlanText.value(g.kind, p))").dsFont(15).foregroundStyle(DS.t3)
+                }
+                Spacer()
+                Text(ActPlan.word(progress.level)).dsFont(15, .semibold).foregroundStyle(lv.ink)
+            }
         }
+        .padding(.vertical, 14)
+        .accessibilityElement(children: .combine)
     }
 }
 
+/// 41 · Editar plan (sheet): a stepper per goal, «Añadir meta» with the plan's goal types and the journal habits;
+/// swipe a goal left to remove it.
 struct PlanEditor: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @State var goals: [PlanGoal]
 
     var body: some View {
-        NavigationStack {
-            List {
-                ForEach($goals) { $g in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Label(PlanText.title(g), systemImage: PlanText.icon(g.kind)).font(.subheadline.bold())
-                        Stepper(value: $g.target, in: PlanText.range(g.kind), step: PlanText.step(g.kind)) {
-                            Text(g.kind == .bedtimeBefore ? "Hora: \(PlanText.clock(g.target))" : "Objetivo: \(PlanText.value(g.kind, g.target))")
-                                .font(.subheadline.monospacedDigit())
-                        }
+        VStack(spacing: 0) {
+            ZStack {
+                Text("Editar plan").dsFont(17, .semibold, relativeTo: .headline).foregroundStyle(DS.t1)
+                HStack {
+                    Button("Cancelar") { dismiss() }.foregroundStyle(DS.t1)
+                    Spacer()
+                    Button("Guardar") {
+                        model.savePlan(goals)
+                        dismiss()
                     }
+                    .fontWeight(.semibold).foregroundStyle(DS.act)
                 }
-                .onDelete { goals.remove(atOffsets: $0) }
-                Section("Añadir meta") {
-                    ForEach(PlanGoal.Kind.allCases.filter { $0 != .habitYes && $0 != .habitNo }, id: \.self) { k in
-                        if !goals.contains(where: { $0.kind == k }) {
-                            Button {
-                                goals.append(PlanGoal(kind: k, target: PlanGoal.defaultTarget(k)))
-                            } label: {
-                                Label(PlanText.title(PlanGoal(kind: k, target: PlanGoal.defaultTarget(k))), systemImage: PlanText.icon(k))
-                            }
+                .dsFont(17)
+                .buttonStyle(.plain)
+            }
+            .frame(height: 50)
+            .padding(.top, 14)
+            .padding(.horizontal, DS.gutter)
+            List {
+                Section {
+                    ForEach($goals) { $g in
+                        HStack(spacing: 12) {
+                            Image(systemName: PlanText.icon(g.kind)).font(.system(size: 15)).foregroundStyle(DS.t2).frame(width: 24)
+                            Text(g.kind == .bedtimeBefore ? "Dormido antes de…" : PlanText.title(g)).dsFont(17).foregroundStyle(DS.t1)
+                                .lineLimit(2).minimumScaleFactor(0.85)
+                            Spacer(minLength: 6)
+                            stepper($g)
                         }
+                        .listRowBackground(DS.fill)
+                    }
+                    .onDelete { goals.remove(atOffsets: $0) }
+                } header: {
+                    Text("Tus metas").dsFont(14, .semibold).foregroundStyle(DS.t2).textCase(nil)
+                }
+                Section {
+                    ForEach(PlanGoal.Kind.allCases.filter { $0 != .habitYes && $0 != .habitNo && !goals.map(\.kind).contains($0) }, id: \.self) { k in
+                        Button { goals.append(PlanGoal(kind: k, target: PlanGoal.defaultTarget(k))) } label: {
+                            addLabel(PlanText.title(PlanGoal(kind: k, target: PlanGoal.defaultTarget(k))))
+                        }
+                        .listRowBackground(DS.fill)
                     }
                     Menu {
                         ForEach(JournalCatalog.items) { item in
@@ -227,23 +340,51 @@ struct PlanEditor: View {
                             Button("\(item.label): como mucho N días") { goals.append(PlanGoal(kind: .habitNo, target: 1, habit: item.key)) }
                         }
                     } label: {
-                        Label("Hábito del diario…", systemImage: "book.closed")
+                        addLabel("Hábito del diario…")
                     }
+                    .listRowBackground(DS.fill)
+                } header: {
+                    Text("Añadir meta").dsFont(14, .semibold).foregroundStyle(DS.t2).textCase(nil)
+                } footer: {
+                    Text("Desliza una meta a la izquierda para quitarla.").dsFont(13).foregroundStyle(DS.t3)
                 }
             }
-            .navigationTitle("Editar plan")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar") {
-                        model.savePlan(goals)
-                        dismiss()
-                    }
-                }
-            }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
         }
+        .background(DS.card.ignoresSafeArea())
         .preferredColorScheme(.dark)
+    }
+
+    private func addLabel(_ t: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "plus").font(.system(size: 14, weight: .bold)).foregroundStyle(DS.t1)
+                .frame(width: 26, height: 26).background(DSLevel.buena.mark, in: Circle())
+            Text(t).dsFont(17).foregroundStyle(DS.t1)
+        }
+        .frame(minHeight: 44)
+    }
+
+    private func stepper(_ g: Binding<PlanGoal>) -> some View {
+        let k = g.wrappedValue.kind
+        let r = PlanText.range(k), step = PlanText.step(k)
+        return HStack(spacing: 0) {
+            Button { g.wrappedValue.target = max(r.lowerBound, g.wrappedValue.target - step) } label: {
+                Image(systemName: "minus").frame(width: 40, height: 36).contentShape(Rectangle())
+            }
+            .accessibilityLabel("Menos")
+            Text(k == .bedtimeBefore ? PlanText.clock(g.wrappedValue.target) : PlanText.value(k, g.wrappedValue.target))
+                .dsFont(16, .semibold).frame(minWidth: 58)
+                .lineLimit(1).minimumScaleFactor(0.7)
+            Button { g.wrappedValue.target = min(r.upperBound, g.wrappedValue.target + step) } label: {
+                Image(systemName: "plus").frame(width: 40, height: 36).contentShape(Rectangle())
+            }
+            .accessibilityLabel("Más")
+        }
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundStyle(DS.t1)
+        .buttonStyle(.borderless)
+        .background(DS.bg, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 

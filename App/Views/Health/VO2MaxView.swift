@@ -3,82 +3,109 @@ import Charts
 import PulsoStore
 import PulsoAnalytics
 
-/// VO₂ máx: your level against people of your age and sex, its trend and the age norms.
+/// 50 · VO₂ máx: your estimate against people of your age and sex (five bands, percentile, the age median), its trend
+/// (7 d · 30 d · 6 m with the "en la media" band), the age curves, what the estimate is made of, and what it is.
 struct VO2MaxView: View {
     @EnvironmentObject var model: AppModel
 
-    private var latest: Double? { model.days.last { $0.vo2max != nil }?.vo2max }
+    private var pairs: [(day: String, v: Double)] { model.days.compactMap { d in d.vo2max.map { (d.day, $0) } } }
 
     var body: some View {
         let age = model.profile.age, sex = model.profile.sex
-        DetailScreen(title: "VO₂ máx") {
-            levelCard(age: age, sex: sex)
-            NavigationLink { TrendDetailView(metric: .vo2max) } label: {
-                PCard {
-                    CardHeader(title: "Tu VO₂ máx en el tiempo", chevron: true)
-                    let w = TrendSeries.window(days: model.days, value: { $0.vo2max }, period: .halfYear, today: model.currentDayKey)
-                    MetricChart(metric: .vo2max, points: w.points, period: .halfYear, highlightLast: false, compact: true)
-                        .frame(height: 170)
-                        .allowsHitTesting(false)
-                }
+        let latest = pairs.last
+        DSScreen("VO₂ máx", subtitle: latest.map { "Estimado · \(DSFmt.dayMonth($0.day))" }, back: "Actividad") {
+            if let latest {
+                hero(latest.v, day: latest.day, age: age, sex: sex)
+                DSMetricChartCard(spec: chartSpec(age: age, sex: sex))
+            } else {
+                DSEmptyState(icon: "lungs", title: "Aún no hay estimación",
+                             message: "Necesita unas noches con la pulsera para tu FC en reposo.")
             }
-            .buttonStyle(.plain)
-            normsCard(age: age, sex: sex)
-            ExplainerCard(title: "¿Qué es el VO₂ máx?", text: TrendMetric.vo2max.explainer.text)
-            ExplainerCard(title: "¿Cómo se estima?",
-                          text: "Pulso usa el modelo sin prueba de esfuerzo de Jurca y colaboradores (2005), contrastado con pruebas en cinta en unas 46.000 personas: tu sexo, tu edad, tu IMC (peso y altura del perfil), tu FC en reposo de las noches y cuánto ejercicio aeróbico haces (minutos a la semana en zonas 2-5 de las últimas 4 semanas). Si sales a correr con distancia, 3 o más carreras de 12 minutos en 90 días la sustituyen por la estimación de cada carrera. Es una estimación (±5 ml/kg/min), no una prueba de laboratorio; sube cuando entrenas más, bajas la FC en reposo o el peso.")
+            DSSectionHeader("Por edad")
+            norms(age: age, sex: sex, you: latest?.v)
+            inputs
+            DSSectionHeader("Qué es")
+            DSWhatIs(text: "El oxígeno máximo que tu cuerpo usa en ejercicio: el mejor reflejo de tu salud cardiovascular. Pulso lo estima sin prueba (Jurca 2005) con sexo, edad, IMC, FC en reposo y minutos en zonas 2-5; con 3 carreras en 90 días mandan las carreras.",
+                     footnote: "Estimación, no prueba de laboratorio.")
         }
     }
 
-    private func levelCard(age: Int, sex: Sex) -> some View {
+    private func hero(_ v: Double, day: String, age: Int, sex: Sex) -> some View {
         let bands = VO2Norms.bands(age: age, sex: sex)
-        let colors: [Color] = [Theme.worse, Color(red: 0.9, green: 0.75, blue: 0.2), Color(white: 0.75), Theme.hrv, Theme.better]
+        let band = VO2Norms.band(v, age: age, sex: sex)
+        let i = bands.firstIndex(of: band) ?? 2
         let lo = bands.first!.lower, hi = bands.last!.upper
-        return PCard {
-            CardHeader(title: "Tu nivel de condición cardiovascular")
-            if let v = latest {
-                GeometryReader { geo in
-                    let x = CGFloat(Stats.clamp((v - lo) / (hi - lo), 0, 1)) * geo.size.width
-                    VStack(alignment: .leading, spacing: 4) {
-                        VStack(spacing: 2) {
-                            Text(Fmt.dec(v)).font(.title3.bold().monospacedDigit()).foregroundStyle(.white)
-                            Image(systemName: "arrowtriangle.down.fill").font(.caption).foregroundStyle(.white)
-                        }
-                        .fixedSize()
-                        .offset(x: min(max(0, x - 20), geo.size.width - 40))
-                        HStack(spacing: 2) {
-                            ForEach(0..<bands.count, id: \.self) { i in
-                                Rectangle().fill(colors[i])
-                                    .frame(width: max(2, geo.size.width * (bands[i].upper - bands[i].lower) / (hi - lo) - 2), height: 6)
-                            }
-                        }
-                        HStack {
-                            ForEach(0..<bands.count, id: \.self) { i in
-                                Text("\(Int(bands[i].lower.rounded()))").font(.caption2.monospacedDigit()).foregroundStyle(Theme.secondary)
-                                if i < bands.count - 1 { Spacer() }
-                            }
-                        }
+        let p = { (x: Double) in (x - lo) / max(hi - lo, 1) }
+        let old: (day: String, v: Double)? = pairs.last { $0.day <= DayKey.shift(day, days: -182) }
+            ?? pairs.first.flatMap { $0.day < DayKey.shift(day, days: -60) ? $0 : nil }
+        let who = sex == .female ? "mujeres" : (sex == .male ? "hombres" : "personas")
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(Fmt.dec(v)).dsFont(60, .semibold, relativeTo: .largeTitle, maxScale: 1.15).foregroundStyle(DS.t1)
+                    Text("ml/kg/min").dsFont(15).foregroundStyle(DS.t2)
+                    ActLevelLine(text: band.label, color: ActVO2.colors[i], ink: i == 2 ? DS.t2 : ActVO2.colors[i])
+                    if let old, abs(v - old.v) >= 0.05 {
+                        DSDelta(text: "\(Fmt.dec(abs(v - old.v))) desde \(DSFmt.month(old.day))", up: v > old.v,
+                                color: v > old.v ? DSLevel.buena.ink : DSLevel.justa.ink)
                     }
                 }
-                .frame(height: 78)
-                let band = VO2Norms.band(v, age: age, sex: sex)
-                Text("\(band.label) (\(Int(band.lower.rounded()))-\(Int(band.upper.rounded())) ml/kg/min)")
-                    .font(.headline).foregroundStyle(.white)
-                Text("Tu VO₂ máx está en el percentil \(Int(VO2Norms.percentile(v, age: age, sex: sex).rounded())) de las personas de tu edad y sexo.")
-                    .font(.subheadline).foregroundStyle(Theme.secondary)
-            } else {
-                Text("Aún no hay estimación: necesita unas noches con la pulsera para tu FC en reposo.")
-                    .font(.subheadline).foregroundStyle(Theme.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                DSSideTable(rows: [("Percentil", "\(Int(VO2Norms.percentile(v, age: age, sex: sex).rounded()))"),
+                                   ("Media de tu edad", Fmt.dec(VO2Norms.median(age: age, sex: sex)))], width: 170)
             }
+            DSDivider()
+            Text("Frente a \(who) de tu edad").dsFont(14).foregroundStyle(DS.t2)
+            DSRangeBar(stretches: ActVO2.stretches(bands), marker: min(max(p(v), 0), 1), markerColor: DS.t1,
+                       labels: bands.dropFirst().map { (p($0.lower), Fmt.dec($0.lower)) })
+            HStack(spacing: 0) {
+                ForEach(bands.indices, id: \.self) { j in
+                    Text(["Bajo", "Bajo media", "Media", "Bueno", "Excelente"][j])
+                        .dsFont(12.5, j == i ? .semibold : .regular).foregroundStyle(j == i ? DS.t1 : DS.t3)
+                        .frame(maxWidth: .infinity).lineLimit(1).minimumScaleFactor(0.8)
+                }
+            }
+        }
+        .dsCard(padding: 16)
+    }
+
+    private func chartSpec(age: Int, sex: Sex) -> DSMetricSpec {
+        let bands = VO2Norms.bands(age: age, sex: sex)
+        let end = pairs.last?.day ?? model.currentDayKey
+        func points(_ days: Int) -> [DSPoint] {
+            let start = DayKey.shift(end, days: -(days - 1))
+            return pairs.filter { $0.day >= start }.compactMap { p in DayKey.date(p.day).map { DSPoint(date: $0, value: p.v) } }
+        }
+        var spec = DSMetricSpec(title: "VO₂ máx", value: "")
+        spec.color = DS.act
+        spec.initialPeriod = .halfYear
+        spec.series = [.week: points(7), .month: points(30), .halfYear: weekly(points(182))]
+        spec.normal = bands[2].lower...bands[2].upper
+        spec.format = { Fmt.dec($0) }
+        spec.outWord = "Fuera"
+        return spec
+    }
+
+    private func weekly(_ pts: [DSPoint]) -> [DSPoint] {
+        guard let first = pts.first?.date else { return [] }
+        var weeks: [Int: [Double]] = [:]
+        for p in pts { weeks[Int(p.date.timeIntervalSince(first) / (7 * 86_400)), default: []].append(p.value) }
+        return weeks.keys.sorted().map { w in
+            let v = weeks[w] ?? []
+            return DSPoint(date: first.addingTimeInterval(Double(w * 7 + 3) * 86_400), value: v.reduce(0, +) / Double(max(v.count, 1)))
         }
     }
 
-    private func normsCard(age: Int, sex: Sex) -> some View {
+    private func norms(age: Int, sex: Sex, you: Double?) -> some View {
         let ages = Array(stride(from: 20, through: 80, by: 5))
-        let lines: [(String, Double, Color)] = [("Alto (95.º percentil)", 0.95, Theme.better), ("Medio (50.º percentil)", 0.5, .white),
-                                                ("Bajo (5.º percentil)", 0.05, Theme.worse)]
-        return PCard {
-            CardHeader(title: "VO₂ máx (ml/kg/min) por edad")
+        let lines: [(String, Double, Color)] = [("Alto", 0.95, DS.buena), ("Medio", 0.5, DS.t2), ("Bajo", 0.05, DS.baja)]
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 14) {
+                ForEach(lines, id: \.0) { l in
+                    HStack(spacing: 5) { DSDot(color: l.2); Text(l.0) }
+                }
+            }
+            .dsFont(13).foregroundStyle(DS.t2)
             Chart {
                 ForEach(lines, id: \.0) { l in
                     ForEach(ages, id: \.self) { a in
@@ -87,23 +114,45 @@ struct VO2MaxView: View {
                             .interpolationMethod(.catmullRom)
                     }
                 }
-                if let v = latest {
-                    PointMark(x: .value("Edad", age), y: .value("VO₂", v))
-                        .symbolSize(140)
-                        .foregroundStyle(Theme.link)
-                        .annotation(position: .top) { Text("Tú").font(.caption.bold()).foregroundStyle(Theme.link) }
+                if let you {
+                    PointMark(x: .value("Edad", age), y: .value("VO₂", you))
+                        .symbolSize(90)
+                        .foregroundStyle(DS.act)
+                        .annotation(position: .top) { Text("Tú").dsFont(13, .semibold).foregroundStyle(DS.act) }
                 }
             }
             .chartXScale(domain: 20...80)
-            .chartYAxis { AxisMarks(position: .leading) { _ in AxisGridLine().foregroundStyle(Theme.hairline); AxisValueLabel() } }
-            .frame(height: 220)
-            Caps("Edad (años)", size: 10, color: Theme.secondary, weight: .semibold).frame(maxWidth: .infinity, alignment: .trailing)
-            ForEach(lines, id: \.0) { l in
-                HStack(spacing: 8) {
-                    Rectangle().fill(l.2).frame(width: 14, height: 3)
-                    Text(l.0).font(.subheadline).foregroundStyle(.white)
+            .chartXAxis { AxisMarks(values: [20, 40, 60, 80]) { _ in AxisValueLabel().foregroundStyle(DS.t3) } }
+            .chartYAxis {
+                AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { _ in
+                    AxisGridLine().foregroundStyle(DS.sep)
+                    AxisValueLabel().foregroundStyle(DS.t3)
                 }
             }
+            .frame(height: 170)
+        }
+        .dsCard(padding: 14)
+    }
+
+    /// What the estimate is made of, with your values (no made-up weights: the model's inputs only).
+    @ViewBuilder
+    private var inputs: some View {
+        let p = model.profile
+        let rhr = Stats.median(model.days.suffix(14).compactMap(\.rhr))
+        let recent = model.days.suffix(28)
+        let aerobic = recent.reduce(0.0) { $0 + $1.zoneMinutes.dropFirst().prefix(4).reduce(0, +) } / 4
+        let bmi = p.heightCm > 0 ? p.weightKg / pow(p.heightCm / 100, 2) : nil
+        let since = Int(Date().timeIntervalSince1970) - 90 * 86_400
+        let runs = ((try? model.db.workouts(from: since, to: Int(Date().timeIntervalSince1970))) ?? [])
+            .filter { ($0.distanceMeters ?? 0) > 0 && $0.durationMinutes >= 12 }.count
+        DSSectionHeader("Con qué se calcula")
+        DSGroup {
+            if let rhr { DSRow(icon: "heart.fill", iconColor: DS.cor, label: "FC en reposo", subtitle: "tus noches", value: "\(Int(rhr.rounded())) lpm") }
+            if !recent.isEmpty {
+                DSRow(icon: "flame.fill", iconColor: DS.act, label: "Ejercicio aeróbico", subtitle: "zonas 2-5, por semana", value: DSFmt.duration(aerobic))
+            }
+            if let bmi { DSRow(icon: "gauge.with.dots.needle.50percent", label: "IMC", subtitle: "del perfil", value: Fmt.dec(bmi)) }
+            DSRow(icon: "figure.run", iconColor: DS.act, label: "Carreras", subtitle: "con distancia, 90 días", value: "\(min(runs, 3)) de 3")
         }
     }
 }

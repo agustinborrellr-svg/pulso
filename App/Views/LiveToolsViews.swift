@@ -246,7 +246,123 @@ struct LiveRunBanner: View {
     }
 }
 
-// MARK: - Scan
+// MARK: - Test screen chrome (redesign)
+
+/// A test screen: DS bar and column, the live stream on while it is open.
+private struct TestScreen<Content: View>: View {
+    @EnvironmentObject var model: AppModel
+    let title: String
+    var subtitle: String?
+    var back: String?
+    let client: String
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        DSScreen(title, subtitle: subtitle, back: back) { content }
+            .onAppear { model.setLive(true, client: client) }
+            .onDisappear { model.setLive(false, client: client) }
+    }
+}
+
+/// Start / repeat a test (neutral capsule), disabled with the reason when there are no fresh beats or another test runs.
+private struct DSStartTest: View {
+    @EnvironmentObject var model: AppModel
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        let other = model.liveLab.run
+        Button(title, action: action)
+            .buttonStyle(DSButtonStyle(size: .xl, gray: true, fullWidth: true))
+            .disabled(model.liveToolBlocker != nil || other != nil)
+            .opacity(model.liveToolBlocker != nil || other != nil ? 0.5 : 1)
+            .padding(.top, 6)
+        if let other {
+            Text("Hay otro test en curso: \(other.kind.title). Termínalo o cancélalo primero.").dsFont(13).foregroundStyle(DS.t2)
+        } else if let why = model.liveToolBlocker {
+            Text(why).dsFont(13).foregroundStyle(DS.t2)
+        }
+    }
+}
+
+private func dsCancel(_ model: AppModel) -> some View {
+    Button("Cancelar") { model.cancelLiveTest() }
+        .buttonStyle(DSButtonStyle(tint: DSLevel.baja.ink, size: .xl, fullWidth: true))
+        .padding(.top, 6)
+}
+
+private func dsFailure(_ outcome: LiveOutcome?) -> some View {
+    Group {
+        if case .failed(let why)? = outcome {
+            Label(why, systemImage: "exclamationmark.triangle").dsFont(14).foregroundStyle(DSLevel.justa.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// Countdown card of a running phase: optional step dashes, title, big clock, hint.
+private struct DSRunCard: View {
+    let run: LiveRun
+    let title: String
+    let hint: String
+    var steps: [String] = []
+    var current = 0
+
+    var body: some View {
+        TimelineView(.periodic(from: run.phaseStart, by: 0.5)) { ctx in
+            VStack(spacing: 10) {
+                if !steps.isEmpty {
+                    HStack(spacing: 6) {
+                        ForEach(steps.indices, id: \.self) { i in
+                            Capsule().fill(i < current ? DS.t3 : (i == current ? DS.t1 : DS.fill))
+                                .frame(maxWidth: .infinity).frame(height: 5)
+                        }
+                    }
+                    Text("Paso \(current + 1) de \(steps.count) · \(steps[min(current, steps.count - 1)])")
+                        .dsFont(14).foregroundStyle(DS.t2).frame(maxWidth: .infinity, alignment: .leading)
+                }
+                Text(title).dsFont(22, .semibold, relativeTo: .title2).foregroundStyle(DS.t1).padding(.top, 8)
+                if let left = run.remaining(at: ctx.date) {
+                    Text(LiveView.duration(left.rounded(.up))).dsFont(76, .semibold, relativeTo: .largeTitle, maxScale: 1.15)
+                        .foregroundStyle(DS.t1).contentTransition(.numericText())
+                } else {
+                    Text(LiveView.duration(ctx.date.timeIntervalSince(run.phaseStart))).dsFont(76, .semibold, relativeTo: .largeTitle, maxScale: 1.15)
+                        .foregroundStyle(DS.t1)
+                }
+                Text(hint).dsFont(15).foregroundStyle(DS.t2).multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .dsCard(padding: 16)
+        }
+    }
+}
+
+private func beatsNote(_ run: LiveRun) -> some View {
+    Group {
+        if run.phaseLacksRR {
+            Label("Llega pulso pero sin intervalos R-R en esta fase: no servirá para el cálculo. Ajusta la pulsera.",
+                  systemImage: "exclamationmark.triangle").dsFont(13).foregroundStyle(DSLevel.justa.ink)
+        } else {
+            Text("Latidos con R-R en esta fase: \(run.beatsInPhase())").dsFont(13).foregroundStyle(DS.t3)
+        }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+}
+
+/// Value with a small note under it, right-aligned (side table of a result).
+private func resultRow(_ k: String, _ v: String, _ note: String? = nil) -> some View {
+    HStack(alignment: .center) {
+        Text(k).dsFont(15).foregroundStyle(DS.t2)
+        Spacer(minLength: 6)
+        VStack(alignment: .trailing, spacing: 1) {
+            Text(v).dsFont(17, .semibold).foregroundStyle(DS.t1).lineLimit(1).minimumScaleFactor(0.8)
+            if let note { Text(note).dsFont(12.5).foregroundStyle(DS.t3).lineLimit(1).minimumScaleFactor(0.8) }
+        }
+    }
+    .frame(minHeight: 46)
+}
+
+// MARK: - Scan (30)
 
 struct ScanView: View {
     @EnvironmentObject var model: AppModel
@@ -254,59 +370,65 @@ struct ScanView: View {
     var body: some View {
         let run = model.liveLab.running(.scan)
         let outcome = model.liveLab.outcomes[.scan]
-        ScrollView {
-            VStack(spacing: 18) {
-                if let run {
-                    RunClock(run: run, title: run.extended ? "Faltan latidos: alargando hasta 90 s" : "Escaneando…",
-                             hint: "Quédate sentado, quieto y respirando normal. No hables.")
-                        .padding(.top, 12)
-                    PhaseBeatsNote(run: run)
-                    cancelButton(model)
+        let records = model.liveTests.filter { $0.kind == .scan }
+        TestScreen(title: "Chequeo de 60 s", client: "scan") {
+            if let run {
+                DSRunCard(run: run, title: run.extended ? "Faltan latidos: alargando hasta 90 s" : "Escaneando…",
+                          hint: "Quédate sentado, quieto y respirando normal. No hables.")
+                beatsNote(run)
+                dsCancel(model)
+            } else {
+                if case .scan(let r)? = outcome {
+                    hero(state: r.state, label: r.label, stress: r.stress, rows: [
+                        ("Pulso", "\(Int(r.hr.rounded())) lpm", r.hrDelta.map { "\(ActFmt.signedInt($0)) vs. tu calma" }),
+                        ("VFC", r.rmssd.map { "\(Int($0.rounded())) ms" } ?? "–", r.hrvRatio.map { "\(Int(($0 * 100).rounded())) % de tu normal" }),
+                        ("Respiración", r.respRate.map { "\(Fmt.dec($0)) rpm" } ?? "–", nil),
+                    ], footer: "\(r.beats) latidos analizados · ahora")
+                } else if let last = records.last {
+                    hero(state: Int(last.value), label: last.detail, stress: last.stress, rows: [
+                        ("Pulso", last.hr.map { "\(Int($0.rounded())) lpm" } ?? "–", nil),
+                        ("VFC", last.rmssd.map { "\(Int($0.rounded())) ms" } ?? "–", nil),
+                        ("Respiración", last.resp.map { "\(Fmt.dec($0)) rpm" } ?? "–", nil),
+                    ], footer: "Último chequeo · \(ActHistory.date(last.date))")
                 } else {
-                    if case .scan(let r)? = outcome {
-                        resultCard(r)
-                    } else {
-                        VStack(spacing: 10) {
-                            Image(systemName: "dot.radiowaves.left.and.right").scaledFont(54, relativeTo: .largeTitle, maxScale: 1.3).foregroundStyle(Theme.link)
-                            Text("Siéntate, apoya el brazo y respira normal durante un minuto. Pulso compara tu pulso, tu VFC y tu respiración con tu normal en calma.")
-                                .font(.subheadline).foregroundStyle(Theme.secondary).multilineTextAlignment(.center)
-                        }
-                        .padding(.top, 20)
-                    }
-                    failure(outcome)
-                    StartTestButton(title: outcome == nil ? "Empezar escaneo" : "Repetir") { model.startLiveTest(.scan) }
+                    DSEmptyState(icon: "dot.radiowaves.left.and.right", title: "Un minuto quieto",
+                                 message: "Siéntate, apoya el brazo y respira normal. Pulso compara tu pulso, tu VFC y tu respiración con tu normal en calma.")
                 }
-                history(model.liveTests.filter { $0.kind == .scan }) { r in
-                    "\(Int(r.value)) · \(Fmt.int(r.hr)) lpm · VFC \(Fmt.int(r.rmssd))"
-                }
+                dsFailure(outcome)
+                DSStartTest(title: outcome == nil && records.isEmpty ? "Empezar chequeo" : "Repetir") { model.startLiveTest(.scan) }
             }
-            .liveScreen("Escanear", client: "scan", model: model)
+            ActHistory(rows: ActHistory.rows(records) { r in "\(Int(r.value)) · \(Fmt.int(r.hr)) lpm · VFC \(Fmt.int(r.rmssd))" })
         }
-        .background(PulsoBackground())
     }
 
-    private func resultCard(_ r: LiveMetrics.Scan) -> some View {
-        let color: Color = (r.stress ?? 0) < 1 ? Theme.green : (r.stress ?? 0) < 2 ? Theme.yellow : Theme.red
-        return PCard {
-            HStack(spacing: 18) {
-                LiveRing(value: Double(r.state ?? 0) / 100, text: r.state.map(String.init) ?? "–", color: color)
-                    .frame(width: 120, height: 120)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(r.label).font(.title3.bold()).foregroundStyle(color)
-                    Text("Estado ahora frente a tu calma habitual (100 = como en tus mejores momentos de calma).")
-                        .font(.caption).foregroundStyle(Theme.secondary)
+    private func hero(state: Int?, label: String, stress: Double?, rows: [(String, String, String?)], footer: String) -> some View {
+        let lv = stress.map { DSLevel(stress: $0) } ?? state.map { DSLevel(score: Double($0)) } ?? .justa
+        var all = rows
+        if let s = stress { all.append(("Estrés", "\(Fmt.dec(s)) / 3", s < 1 ? "Bajo" : (s < 2 ? "Medio" : "Alto"))) }
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(spacing: 4) {
+                    ScoreArc(progress: Double(state ?? 0) / 100, color: lv.mark, value: state.map(String.init) ?? "–", size: 118, line: 9)
+                    ActLevelLine(text: label, color: lv.mark, ink: lv.ink).lineLimit(1).minimumScaleFactor(0.7)
+                    Text("frente a tu calma").dsFont(14).foregroundStyle(DS.t2)
                 }
+                .frame(width: 136)
+                VStack(spacing: 0) {
+                    ForEach(all.indices, id: \.self) { i in
+                        if i > 0 { DSDivider() }
+                        resultRow(all[i].0, all[i].1, all[i].2)
+                    }
+                }
+                .padding(.leading, 12)
+                .overlay(alignment: .leading) { Rectangle().fill(DS.sep).frame(width: 0.5) }
             }
-            row("Pulso", "\(Int(r.hr.rounded())) lpm", signed(r.hrDelta, "lpm"))
-            row("VFC (RMSSD)", Fmt.int(r.rmssd) + " ms", r.hrvRatio.map { "\(Int(($0 * 100).rounded())) % de tu normal" })
-            row("Respiración", Fmt.dec(r.respRate) + " rpm")
-            row("Estrés", r.stress.map { "\(Fmt.dec($0)) / 3" } ?? "–")
-            Text("\(r.beats) latidos analizados.").font(.caption2).foregroundStyle(Theme.tertiary)
+            Text(footer).dsFont(13).foregroundStyle(DS.t3)
         }
+        .dsCard(padding: 14)
     }
 }
 
-// MARK: - Poincaré
+// MARK: - Poincaré (34)
 
 struct PoincareView: View {
     @EnvironmentObject var model: AppModel
@@ -316,55 +438,68 @@ struct PoincareView: View {
     @State private var updated: Date?
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                PCard {
-                    CardHeader(title: "Diagrama de Poincaré", subtitle: "Cada punto: un intervalo R-R (eje X) frente al siguiente (eje Y), últimos 5 min")
-                    if let p = plot {
-                        let lo = (p.points.map { min($0.x, $0.y) }.min() ?? 500) - 30
-                        let hi = (p.points.map { max($0.x, $0.y) }.max() ?? 1200) + 30
-                        Chart {
-                            LineMark(x: .value("x", lo), y: .value("y", lo)).foregroundStyle(Theme.tertiary)
-                            LineMark(x: .value("x", hi), y: .value("y", hi)).foregroundStyle(Theme.tertiary)
-                            ForEach(Array(p.points.enumerated()), id: \.offset) { i, q in
-                                PointMark(x: .value("RRn", q.x), y: .value("RRn+1", q.y))
-                                    .symbolSize(18)
-                                    .foregroundStyle(Theme.hrv.opacity(0.25 + 0.75 * Double(i) / Double(max(1, p.points.count))))
-                            }
+        TestScreen(title: "Poincaré", subtitle: updated.map { "actualizado \($0.formatted(.dateTime.hour().minute().second()))" },
+                   back: "Actividad", client: "poincare") {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Cada punto: un latido frente al siguiente · últimos 5 min").dsFont(14).foregroundStyle(DS.t2)
+                if let p = plot {
+                    let lo = (p.points.map { min($0.x, $0.y) }.min() ?? 500) - 30
+                    let hi = (p.points.map { max($0.x, $0.y) }.max() ?? 1200) + 30
+                    Chart {
+                        LineMark(x: .value("x", lo), y: .value("y", lo), series: .value("s", "diag"))
+                            .foregroundStyle(DS.t3).lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                        LineMark(x: .value("x", hi), y: .value("y", hi), series: .value("s", "diag"))
+                            .foregroundStyle(DS.t3).lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                        ForEach(Array(p.points.enumerated()), id: \.offset) { i, q in
+                            PointMark(x: .value("RRn", q.x), y: .value("RRn+1", q.y))
+                                .symbolSize(22)
+                                .foregroundStyle(DS.sueno.opacity(0.35 + 0.65 * Double(i) / Double(max(1, p.points.count))))
                         }
-                        .chartXScale(domain: lo...hi)
-                        .chartYScale(domain: lo...hi)
-                        .chartXAxisLabel("R-R n (ms)")
-                        .chartYAxisLabel("R-R n+1 (ms)")
-                        .aspectRatio(1, contentMode: .fit)
-                        row("SD1 (latido a latido)", "\(Int(p.sd1.rounded())) ms")
-                        row("SD2 (largo plazo)", "\(Int(p.sd2.rounded())) ms")
-                        row("SD1 / SD2", String(format: "%.2f", p.sd1 / max(p.sd2, 1)).replacingOccurrences(of: ".", with: ","))
-                        row("Pares de latidos", "\(p.points.count)")
-                        if let updated {
-                            Text("Actualizado a las \(updated.formatted(.dateTime.hour().minute().second())).").font(.caption2).foregroundStyle(Theme.tertiary)
-                        }
-                        Text("Una nube ancha y redonda (SD1/SD2 alto) = mucha variabilidad latido a latido, típico de calma. Un puro estrecho y alargado (SD1/SD2 bajo) = domina el sistema nervioso acelerado: estrés, esfuerzo o cansancio.")
-                            .font(.caption).foregroundStyle(Theme.secondary)
-                    } else if noRR {
-                        Label("Tu pulsera está enviando pulso sin intervalos R-R: no se puede dibujar.", systemImage: "exclamationmark.triangle")
-                            .font(.footnote).foregroundStyle(Theme.yellow)
-                    } else if let why = model.liveToolBlocker {
-                        Label(why, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(Theme.secondary)
-                    } else {
-                        Text("Juntando latidos: \(pairs) de 10 pares limpios. Quédate quieto.").font(.footnote).foregroundStyle(Theme.secondary)
                     }
+                    .chartXScale(domain: lo...hi)
+                    .chartYScale(domain: lo...hi)
+                    .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { _ in AxisGridLine().foregroundStyle(DS.sep); AxisValueLabel().foregroundStyle(DS.t3) } }
+                    .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { _ in AxisGridLine().foregroundStyle(DS.sep) } }
+                    .chartXAxisLabel(position: .bottomTrailing) { Text("R-R n (ms)").dsFont(13).foregroundStyle(DS.t3) }
+                    .chartYAxisLabel(position: .topLeading) { Text("R-R n+1").dsFont(13).foregroundStyle(DS.t3) }
+                    .aspectRatio(1, contentMode: .fit)
+                    DSDivider()
+                    DSStatStrip(stats: [
+                        DSStat(label: "SD1", value: "\(Int(p.sd1.rounded()))", unit: "ms"),
+                        DSStat(label: "SD2", value: "\(Int(p.sd2.rounded()))", unit: "ms"),
+                        DSStat(label: "SD1/SD2", value: Fmt.dec(p.sd1 / max(p.sd2, 1), 2)),
+                        DSStat(label: "Pares", value: "\(p.points.count)"),
+                    ])
+                } else if noRR {
+                    Label("Tu pulsera está enviando pulso sin intervalos R-R: no se puede dibujar.", systemImage: "exclamationmark.triangle")
+                        .dsFont(14).foregroundStyle(DSLevel.justa.ink)
+                } else if let why = model.liveToolBlocker {
+                    Text(why).dsFont(15).foregroundStyle(DS.t2)
+                } else {
+                    Text("Juntando latidos: \(pairs) de 10 pares limpios. Quédate quieto.").dsFont(15).foregroundStyle(DS.t2)
                 }
             }
-            .liveScreen("Poincaré", client: "poincare", model: model)
+            .dsCard(padding: 14)
+            HStack(alignment: .top, spacing: 16) {
+                legend("Ancha y redonda", "mucha variabilidad: calma")
+                legend("Estrecha y alargada", "estrés, esfuerzo o cansancio")
+            }
+            .dsCard(padding: 14)
         }
-        .background(PulsoBackground())
         .task {
             while !Task.isCancelled {
                 recompute()
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
             }
         }
+    }
+
+    private func legend(_ t: String, _ s: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(t).dsFont(16, .semibold).foregroundStyle(DS.t1)
+            Text(s).dsFont(15).foregroundStyle(DS.t2).fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func recompute() {
@@ -547,7 +682,7 @@ struct BreathingView: View {
 
 typealias CoherenceView = BreathingView
 
-// MARK: - Orthostatic test
+// MARK: - Orthostatic test (31)
 
 struct OrthostaticTestView: View {
     @EnvironmentObject var model: AppModel
@@ -556,37 +691,90 @@ struct OrthostaticTestView: View {
     var body: some View {
         let run = model.liveLab.running(.orthostatic)
         let outcome = model.liveLab.outcomes[.orthostatic]
-        ScrollView {
-            VStack(spacing: 18) {
-                if let run {
-                    PhaseSteps(steps: Self.steps, current: stepIndex(run.phase))
-                    RunClock(run: run, title: title(run.phase), hint: hint(run.phase))
-                    PhaseBeatsNote(run: run)
-                    cancelButton(model)
-                } else {
-                    if let outcome {
-                        if case .orthostatic(let r) = outcome {
-                            PhaseSteps(steps: Self.steps, current: 6)
-                            resultCard(r)
-                        } else {
-                            PhaseSteps(steps: Self.steps, current: 4)
-                        }
-                    } else {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Label("Mejor por la mañana, nada más despertar y antes del café.", systemImage: "sunrise")
-                            Label("15 s para tumbarte, 2 min tumbado y quieto, la pulsera vibra, te levantas y 3 min de pie.", systemImage: "figure.stand")
-                            Label("Mide cómo se adapta tu sistema nervioso al cambio de postura: un indicador clásico de fatiga y sobreentrenamiento.", systemImage: "info.circle")
-                        }
-                        .font(.subheadline).foregroundStyle(Theme.secondary)
+        let records = model.liveTests.filter { $0.kind == .orthostatic }
+        TestScreen(title: "Test ortostático", client: "orthostatic") {
+            if let run {
+                DSRunCard(run: run, title: title(run.phase), hint: hint(run.phase), steps: Self.steps, current: stepIndex(run.phase))
+                pulseCard(run)
+                dsCancel(model)
+            } else {
+                if case .orthostatic(let r)? = outcome {
+                    resultCard(r)
+                } else if let last = records.last {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Último test · \(ActHistory.date(last.date))").dsFont(14).foregroundStyle(DS.t2)
+                        ActBigValue(value: ActFmt.signedInt(last.value), unit: "lpm", size: 60)
+                        Text("Subida al levantarte · \(last.detail)").dsFont(15).foregroundStyle(DS.t2)
                     }
-                    failure(outcome)
-                    StartTestButton(title: outcome == nil ? "Empezar" : "Repetir") { model.startLiveTest(.orthostatic) }
+                    .dsCard(padding: 16)
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("Mejor por la mañana, nada más despertar y antes del café.", systemImage: "sunrise")
+                        Label("15 s para tumbarte, 2 min tumbado y quieto, la pulsera vibra, te levantas y 3 min de pie.", systemImage: "figure.stand")
+                        Label("Mide cómo se adapta tu sistema nervioso al cambio de postura: un indicador clásico de fatiga.", systemImage: "info.circle")
+                    }
+                    .dsFont(15).foregroundStyle(DS.t2)
+                    .dsCard(padding: 16)
                 }
-                history(model.liveTests.filter { $0.kind == .orthostatic }) { r in "+\(Int(r.value)) lpm · \(r.detail)" }
+                dsFailure(outcome)
+                DSStartTest(title: outcome == nil && records.isEmpty ? "Empezar" : "Repetir") { model.startLiveTest(.orthostatic) }
             }
-            .liveScreen("Test ortostático", client: "orthostatic", model: model)
+            ActHistory(rows: ActHistory.rows(records) { r in "\(ActFmt.signedInt(r.value)) lpm · \(r.detail)" })
         }
-        .background(PulsoBackground())
+    }
+
+    private func pulseCard(_ run: LiveRun) -> some View {
+        let start = run.started.timeIntervalSince1970
+        let pts = run.samples.map { ActHRChart.P(t: Date(timeIntervalSince1970: $0.t), v: $0.hr) }
+        let standAt = run.standAt
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "heart.fill").font(.system(size: 14)).foregroundStyle(DS.cor)
+                Text("Pulso").dsFont(16, .semibold).foregroundStyle(DS.t2)
+                Spacer()
+                HoyValue(value: model.liveHR.map(String.init) ?? "--", unit: "lpm", size: 20)
+            }
+            if pts.count >= 2 {
+                let vals = pts.map(\.v)
+                let lo = (vals.min() ?? 50) - 8, hi = (vals.max() ?? 100) + 8
+                Chart {
+                    if let a = pts.first?.t {
+                        RectangleMark(xStart: .value("a", a), xEnd: .value("b", standAt ?? pts.last!.t),
+                                      yStart: .value("lo", lo), yEnd: .value("hi", hi))
+                            .foregroundStyle(DS.recarga.opacity(0.12))
+                            .annotation(position: .overlay, alignment: .topLeading) {
+                                Text("Tumbado").dsFont(12, .semibold, relativeTo: .caption1).foregroundStyle(DS.recarga).padding(4)
+                            }
+                    }
+                    ForEach(pts) { p in
+                        LineMark(x: .value("t", p.t), y: .value("v", p.v)).foregroundStyle(DS.cor)
+                            .lineStyle(StrokeStyle(lineWidth: 2.2, lineCap: .round)).interpolationMethod(.monotone)
+                    }
+                    if let last = pts.last {
+                        PointMark(x: .value("t", last.t), y: .value("v", last.v)).foregroundStyle(DS.cor).symbolSize(50)
+                    }
+                }
+                .chartYScale(domain: lo...hi)
+                .chartXAxis(.hidden)
+                .chartYAxis {
+                    AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { _ in
+                        AxisGridLine().foregroundStyle(DS.sep)
+                        AxisValueLabel().foregroundStyle(DS.t3)
+                    }
+                }
+                .frame(height: 130)
+                HStack {
+                    Text("0:00").foregroundStyle(DS.t3)
+                    Spacer()
+                    Text("Ahora").fontWeight(.semibold).foregroundStyle(DS.t1)
+                    Text(LiveView.duration((pts.last?.t.timeIntervalSince1970 ?? start) - start)).foregroundStyle(DS.t3).padding(.leading, 12)
+                }
+                .dsFont(13, relativeTo: .footnote)
+                .padding(.trailing, 30)
+            }
+            beatsNote(run)
+        }
+        .dsCard(padding: 14)
     }
 
     private func stepIndex(_ p: LiveRun.Phase) -> Int {
@@ -617,24 +805,32 @@ struct OrthostaticTestView: View {
     }
 
     private func resultCard(_ r: LiveMetrics.Orthostatic) -> some View {
-        PCard {
-            CardHeader(title: "Resultado")
-            row("Pulso tumbado", "\(Int(r.lyingHR)) lpm")
-            row("Pico al levantarte", "\(Int(r.peakHR)) lpm")
-            row("Pulso de pie (min 2–3)", "\(Int(r.standingHR)) lpm")
-            row("Subida", "+\(Int(r.rise.rounded())) lpm")
-            row("VFC tumbado → de pie", "\(Fmt.int(r.lyingRMSSD)) → \(Fmt.int(r.standingRMSSD)) ms")
-            if let q = r.ratio3015 { row("Índice 30:15", Fmt.dec(q, 2)) }
-            Text(r.verdict).font(.subheadline).foregroundStyle(.white)
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Subida al levantarte").dsFont(14).foregroundStyle(DS.t2)
+            ActBigValue(value: ActFmt.signedInt(r.rise), unit: "lpm", size: 60)
+            Text(r.verdict).dsFont(15).foregroundStyle(DS.t1).fixedSize(horizontal: false, vertical: true)
+            DSDivider().padding(.vertical, 4)
+            resultRow("Pulso tumbado", "\(Int(r.lyingHR)) lpm")
+            DSDivider()
+            resultRow("Pico al levantarte", "\(Int(r.peakHR)) lpm")
+            DSDivider()
+            resultRow("De pie (min 2–3)", "\(Int(r.standingHR)) lpm")
+            DSDivider()
+            resultRow("VFC tumbado → de pie", "\(Fmt.int(r.lyingRMSSD)) → \(Fmt.int(r.standingRMSSD)) ms")
+            if let q = r.ratio3015 {
+                DSDivider()
+                resultRow("Índice 30:15", Fmt.dec(q, 2))
+            }
             if let prev = model.liveTests.filter({ $0.kind == .orthostatic }).dropLast().last {
                 Text("La vez anterior subiste \(Int(prev.value)) lpm. Una subida mayor de lo habitual por la mañana suele indicar fatiga acumulada.")
-                    .font(.caption).foregroundStyle(Theme.secondary)
+                    .dsFont(13).foregroundStyle(DS.t3).padding(.top, 4)
             }
         }
+        .dsCard(padding: 16)
     }
 }
 
-// MARK: - Heart-rate recovery test
+// MARK: - Heart-rate recovery test (32)
 
 struct RecoveryTestView: View {
     @EnvironmentObject var model: AppModel
@@ -642,52 +838,114 @@ struct RecoveryTestView: View {
     var body: some View {
         let run = model.liveLab.running(.recovery)
         let outcome = model.liveLab.outcomes[.recovery]
-        ScrollView {
-            VStack(spacing: 18) {
-                if let run {
-                    if run.phase == .recovering {
-                        RunClock(run: run, title: "Recuperando", hint: "Quédate quieto (de pie o sentado), respira normal.")
-                        Text("Lecturas de pulso desde que paraste: \(run.samplesInPhase())").font(.caption).foregroundStyle(Theme.tertiary)
-                    } else {
-                        LiveHRReadout()
-                        Text("Haz tu esfuerzo (al menos 3 min intensos). Pulsa «He parado» justo cuando pares.")
-                            .font(.footnote).foregroundStyle(Theme.secondary).multilineTextAlignment(.center)
-                        Button("He parado") { model.markLiveStop() }
-                            .buttonStyle(PrimaryCapsuleStyle())
-                    }
-                    cancelButton(model)
+        let records = model.liveTests.filter { $0.kind == .recovery }
+        TestScreen(title: "Recuperación FC", client: "hrr") {
+            if let run {
+                if run.phase == .recovering {
+                    DSRunCard(run: run, title: "Recuperando", hint: "Quédate quieto (de pie o sentado), respira normal.")
+                    Text("Lecturas de pulso desde que paraste: \(run.samplesInPhase())").dsFont(13).foregroundStyle(DS.t3)
                 } else {
-                    if case .recovery(let r)? = outcome {
-                        PCard {
-                            CardHeader(title: "Bajada en 1 minuto")
-                            HStack(alignment: .firstTextBaseline) {
-                                Text("−\(Int(r.drop60.rounded()))").scaledFont(52, weight: .bold, design: .rounded, relativeTo: .largeTitle, maxScale: 1.3).foregroundStyle(.white)
-                                Text("lpm").foregroundStyle(Theme.secondary)
-                                Spacer()
-                                Text(r.level).font(.title3.bold()).foregroundStyle(r.drop60 >= 20 ? Theme.green : r.drop60 >= 12 ? Theme.yellow : Theme.red)
-                            }
-                            row("Pico al parar", "\(Int(r.peakHR)) lpm")
-                            row("Al minuto", "\(Int(r.hr60)) lpm")
-                            if let d = r.drop120 { row("Bajada en 2 minutos", "−\(Int(d.rounded())) lpm") }
-                            Text("Cuanto más rápido baja el pulso al parar, mejor tu forma aeróbica y tu sistema nervioso. Menos de 12 lpm en el primer minuto es bajo; más de 20, bueno. Compáralo siempre con el mismo esfuerzo.")
-                                .font(.caption).foregroundStyle(Theme.secondary)
-                        }
-                    } else {
-                        Text("Haz un esfuerzo intenso (una subida, un sprint, un intervalo) y, al parar, quédate quieto 2 minutos. Pulso mide cuánto baja tu pulso.")
-                            .font(.subheadline).foregroundStyle(Theme.secondary).multilineTextAlignment(.center)
+                    VStack(spacing: 10) {
+                        ActBigValue(value: model.liveHR.map(String.init) ?? "--", unit: "lpm", size: 76)
+                        Text("Haz tu esfuerzo (al menos 3 min intensos). Pulsa «He parado» justo cuando pares.")
+                            .dsFont(15).foregroundStyle(DS.t2).multilineTextAlignment(.center)
                     }
-                    failure(outcome)
-                    StartTestButton(title: outcome == nil ? "Empezar" : "Repetir") { model.startLiveTest(.recovery) }
+                    .frame(maxWidth: .infinity)
+                    .dsCard(padding: 16)
+                    Button("He parado") { model.markLiveStop() }
+                        .buttonStyle(DSButtonStyle(tint: DS.act, size: .xl, fullWidth: true))
                 }
-                history(model.liveTests.filter { $0.kind == .recovery }) { r in "−\(Int(r.value)) lpm · \(r.detail)" }
+                dsCancel(model)
+            } else {
+                if case .recovery(let r)? = outcome {
+                    resultCard(r)
+                } else if let last = records.last {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Bajada en 1 minuto · \(ActHistory.date(last.date))").dsFont(14).foregroundStyle(DS.t2)
+                        ActBigValue(value: "−\(Int(last.value.rounded()))", unit: "lpm", size: 60)
+                        level(last.value)
+                        if !last.detail.isEmpty { Text(last.detail).dsFont(15).foregroundStyle(DS.t2) }
+                    }
+                    .dsCard(padding: 16)
+                } else {
+                    Text("Haz un esfuerzo intenso (una subida, un sprint, un intervalo) y, al parar, quédate quieto 2 minutos. Pulso mide cuánto baja tu pulso.")
+                        .dsFont(15).foregroundStyle(DS.t2).dsCard(padding: 16)
+                }
+                scale(drop: drop(outcome) ?? records.last?.value)
+                dsFailure(outcome)
+                DSStartTest(title: outcome == nil && records.isEmpty ? "Empezar" : "Repetir") { model.startLiveTest(.recovery) }
             }
-            .liveScreen("Recuperación FC", client: "hrr", model: model)
+            ActHistory(rows: ActHistory.rows(records) { r in "−\(Int(r.value.rounded())) lpm" })
         }
-        .background(PulsoBackground())
+    }
+
+    private func drop(_ o: LiveOutcome?) -> Double? {
+        if case .recovery(let r)? = o { return r.drop60 }
+        return nil
+    }
+
+    private func level(_ drop: Double) -> some View {
+        let lv: DSLevel = drop >= 20 ? .buena : (drop >= 12 ? .justa : .baja)
+        return ActLevelLine(text: lv.word, color: lv.mark, ink: lv.ink)
+    }
+
+    private func resultCard(_ r: LiveMetrics.Recovery) -> some View {
+        var pts: [(Double, Double)] = [(0, r.peakHR), (60, r.hr60)]
+        if let h = r.hr120 { pts.append((120, h)) }
+        let lo = (pts.map(\.1).min() ?? 100) - 10, hi = (pts.map(\.1).max() ?? 160) + 6
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("Bajada en 1 minuto").dsFont(14).foregroundStyle(DS.t2)
+            ActBigValue(value: "−\(Int(r.drop60.rounded()))", unit: "lpm", size: 60)
+            level(r.drop60)
+            Chart {
+                ForEach(pts, id: \.0) { p in
+                    LineMark(x: .value("s", p.0), y: .value("lpm", p.1)).foregroundStyle(DS.cor)
+                        .lineStyle(StrokeStyle(lineWidth: 2.2, lineCap: .round)).interpolationMethod(.monotone)
+                    PointMark(x: .value("s", p.0), y: .value("lpm", p.1))
+                        .symbol { Circle().stroke(DS.cor, lineWidth: 2).background(Circle().fill(DS.card)).frame(width: 12, height: 12) }
+                }
+                RuleMark(x: .value("s", 60)).foregroundStyle(DS.t3.opacity(0.6))
+            }
+            .chartXScale(domain: 0...Double(pts.last?.0 ?? 60))
+            .chartYScale(domain: lo...hi)
+            .chartXAxis(.hidden)
+            .chartYAxis {
+                AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { _ in
+                    AxisGridLine().foregroundStyle(DS.sep)
+                    AxisValueLabel().foregroundStyle(DS.t3)
+                }
+            }
+            .frame(height: 140)
+            DSDivider().padding(.vertical, 4)
+            DSStatStrip(stats: [DSStat(label: "Al parar", value: "\(Int(r.peakHR))", unit: "lpm"),
+                                DSStat(label: "A 60 s", value: "\(Int(r.hr60))", unit: "lpm")]
+                        + (r.hr120.map { [DSStat(label: "A 120 s", value: "\(Int($0))", unit: "lpm")] } ?? []))
+        }
+        .dsCard(padding: 16)
+    }
+
+    /// «Cómo leerlo»: below 12 low, 12–20 fair, above 20 good (the app's thresholds), with your drop on it.
+    @ViewBuilder
+    private func scale(drop: Double?) -> some View {
+        let lo = 0.0, hi = 35.0
+        let p = { (v: Double) in (v - lo) / (hi - lo) }
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Cómo leerlo").dsFont(17, .semibold).foregroundStyle(DS.t1)
+            DSRangeBar(stretches: [.init(to: p(12), color: DS.baja), .init(to: p(20), color: DS.justa), .init(to: 1, color: DS.buena)],
+                       marker: drop.map { min(max(p($0), 0), 1) })
+            HStack {
+                Text("Baja · menos de 12")
+                Spacer()
+                Text("Buena · más de 20")
+            }
+            .dsFont(13).foregroundStyle(DS.t3)
+            Text("Compáralo siempre tras el mismo esfuerzo.").dsFont(15).foregroundStyle(DS.t2)
+        }
+        .dsCard(padding: 16)
     }
 }
 
-// MARK: - Max HR test
+// MARK: - Max HR test (33)
 
 struct MaxHRTestView: View {
     @EnvironmentObject var model: AppModel
@@ -695,55 +953,77 @@ struct MaxHRTestView: View {
     var body: some View {
         let run = model.liveLab.running(.maxHR)
         let outcome = model.liveLab.outcomes[.maxHR]
-        ScrollView {
-            VStack(spacing: 18) {
-                if let run {
+        let records = model.liveTests.filter { $0.kind == .maxHR }
+        let m = model.heartRateModel
+        TestScreen(title: "FC máxima", back: "Actividad", client: "maxhr") {
+            if let run {
+                VStack(spacing: 10) {
                     TimelineView(.periodic(from: run.started, by: 1)) { ctx in
-                        Text(LiveView.duration(ctx.date.timeIntervalSince(run.started))).font(.title3.monospacedDigit()).foregroundStyle(Theme.secondary)
+                        Text(LiveView.duration(ctx.date.timeIntervalSince(run.started))).dsFont(17).foregroundStyle(DS.t2)
                     }
-                    LiveHRReadout()
-                    row("Máximo del test (media de 5 s)", run.peak.map { "\(Int($0.rounded())) lpm" } ?? "–")
-                    row("Tu FC máx actual", "\(Int(model.heartRateModel.maxHR)) lpm")
-                    Text("\(run.samples.count) lecturas de pulso en el test.").font(.caption).foregroundStyle(Theme.tertiary)
-                    Button("Terminar") { model.finishLiveTestNow() }
-                        .buttonStyle(PrimaryCapsuleStyle())
-                    cancelButton(model)
-                } else {
-                    if case .maxHR(let f)? = outcome {
-                        PCard {
-                            CardHeader(title: "Resultado")
-                            HStack(alignment: .firstTextBaseline) {
-                                Text("\(Int(f.rounded()))").scaledFont(52, weight: .bold, design: .rounded, relativeTo: .largeTitle, maxScale: 1.3).foregroundStyle(.white)
-                                Text("lpm").foregroundStyle(Theme.secondary)
-                            }
-                            if f > model.heartRateModel.maxHR - 1 || model.profile.maxHROverride != nil {
-                                Button("Usar \(Int(f.rounded())) lpm como mi FC máxima") { model.setMaxHR(Int(f.rounded())) }
-                                    .buttonStyle(PrimaryCapsuleStyle())
-                                Text("Tus zonas, el esfuerzo y las calorías se calcularán con este valor.").font(.caption).foregroundStyle(Theme.secondary)
-                            } else {
-                                Text("No has superado tu FC máx actual (\(Int(model.heartRateModel.maxHR)) lpm): seguramente no era tu máximo de verdad.")
-                                    .font(.caption).foregroundStyle(Theme.secondary)
-                            }
-                        }
-                    } else {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Label("Solo si estás sano y acostumbrado a entrenar fuerte. Si tienes dudas, consúltalo antes.", systemImage: "exclamationmark.triangle")
-                                .foregroundStyle(Theme.yellow)
-                            Label("10–15 min de calentamiento suave.", systemImage: "1.circle")
-                            Label("3 min fuerte, 2 min suave.", systemImage: "2.circle")
-                            Label("2–3 min a tope, acelerando hasta no poder más (mejor cuesta arriba).", systemImage: "3.circle")
-                            Label("Pulsa Terminar. Pulso se queda con tu mejor media de 5 segundos.", systemImage: "4.circle")
-                        }
-                        .font(.subheadline).foregroundStyle(Theme.secondary)
-                    }
-                    failure(outcome)
-                    StartTestButton(title: outcome == nil ? "Empezar test" : "Repetir") { model.startLiveTest(.maxHR) }
+                    ActBigValue(value: model.liveHR.map(String.init) ?? "--", unit: "lpm", size: 76)
+                    DSDivider()
+                    resultRow("Máximo del test (media de 5 s)", run.peak.map { "\(Int($0.rounded())) lpm" } ?? "–")
+                    DSDivider()
+                    resultRow("Tu FC máx actual", "\(Int(m.maxHR)) lpm")
                 }
-                history(model.liveTests.filter { $0.kind == .maxHR }) { r in "\(Int(r.value)) lpm" }
+                .dsCard(padding: 16)
+                Button("Terminar") { model.finishLiveTestNow() }
+                    .buttonStyle(DSButtonStyle(tint: DS.act, size: .xl, fullWidth: true))
+                dsCancel(model)
+            } else {
+                if case .maxHR(let f)? = outcome {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Pico del test").dsFont(14).foregroundStyle(DS.t2)
+                        ActBigValue(value: "\(Int(f.rounded()))", unit: "lpm", size: 60)
+                        if Int(f.rounded()) == model.profile.maxHROverride {
+                            Text("Tus zonas, el esfuerzo y las calorías usan ya este valor.").dsFont(15).foregroundStyle(DS.t1)
+                        } else if f > m.maxHR - 1 || model.profile.maxHROverride != nil {
+                            DSDelta(text: "antes \(Int(m.maxHR)) lpm", up: f > m.maxHR)
+                            Button("Usar \(Int(f.rounded())) lpm como mi FC máxima") { model.setMaxHR(Int(f.rounded())) }
+                                .buttonStyle(DSButtonStyle(tint: DS.act, size: .large, fullWidth: true))
+                            Text("Tus zonas, el esfuerzo y las calorías se calcularán con este valor.").dsFont(13).foregroundStyle(DS.t3)
+                        } else {
+                            Text("No has superado tu FC máx actual (\(Int(m.maxHR)) lpm): seguramente no era tu máximo de verdad.")
+                                .dsFont(15).foregroundStyle(DS.t2)
+                        }
+                    }
+                    .dsCard(padding: 16)
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(model.profile.maxHROverride != nil ? "Tu FC máxima (medida)" : "Tu FC máxima (estimada)").dsFont(14).foregroundStyle(DS.t2)
+                        ActBigValue(value: "\(Int(m.maxHR.rounded()))", unit: "lpm", size: 60)
+                        if let last = records.last {
+                            Text("Último test: \(Int(last.value)) lpm · \(ActHistory.date(last.date))").dsFont(14).foregroundStyle(DS.t2)
+                        }
+                    }
+                    .dsCard(padding: 16)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("Solo si estás sano y acostumbrado a entrenar fuerte. Si tienes dudas, consúltalo antes.", systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(DSLevel.justa.ink)
+                        Label("10–15 min de calentamiento suave.", systemImage: "1.circle")
+                        Label("3 min fuerte, 2 min suave.", systemImage: "2.circle")
+                        Label("2–3 min a tope, acelerando hasta no poder más (mejor cuesta arriba).", systemImage: "3.circle")
+                        Label("Pulsa Terminar. Pulso se queda con tu mejor media de 5 segundos.", systemImage: "4.circle")
+                    }
+                    .dsFont(15).foregroundStyle(DS.t2)
+                    .dsCard(padding: 16)
+                }
+                DSSectionHeader("Tus zonas")
+                VStack(spacing: 0) {
+                    ForEach(1...5, id: \.self) { z in
+                        if z > 1 { DSDivider(inset: 24) }
+                        ActZoneRow(zone: z, range: "\(ActZones.text(z, m)) lpm")
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4)
+                .background(DS.card, in: RoundedRectangle(cornerRadius: DS.radius, style: .continuous))
+                dsFailure(outcome)
+                DSStartTest(title: outcome == nil && records.isEmpty ? "Empezar test" : "Repetir") { model.startLiveTest(.maxHR) }
             }
-            .liveScreen("FC máxima", client: "maxhr", model: model)
+            ActHistory(rows: ActHistory.rows(records) { r in "\(Int(r.value)) lpm" })
         }
-        .background(PulsoBackground())
     }
 }
 
