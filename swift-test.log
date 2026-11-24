@@ -1,0 +1,400 @@
+[19/22] Compiling PulsoStore BackupPolicy.swift
+[20/24] Compiling PulsoIntegrations HeartRateBroadcast.swift
+/Users/runner/work/pulso/pulso/Packages/PulsoKit/Sources/PulsoIntegrations/Strava.swift:256:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+254 | 
+255 |     private func sharedRefresh(_ t: StravaTokens) async throws -> StravaTokens {
+256 |         lock.lock()
+    |              `- warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+257 |         if let running = refreshTask {
+258 |             lock.unlock()
+
+Foundation.NSLock.lock:2:11: note: 'lock()' declared here
+1 | class NSLock {
+2 | open func lock()}
+  |           `- note: 'lock()' declared here
+3 | 
+
+/Users/runner/work/pulso/pulso/Packages/PulsoKit/Sources/PulsoIntegrations/Strava.swift:258:18: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+256 |         lock.lock()
+257 |         if let running = refreshTask {
+258 |             lock.unlock()
+    |                  `- warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+259 |             return try await running.value
+260 |         }
+
+Foundation.NSLock.unlock:2:11: note: 'unlock()' declared here
+1 | class NSLock {
+2 | open func unlock()}
+  |           `- note: 'unlock()' declared here
+3 | 
+
+/Users/runner/work/pulso/pulso/Packages/PulsoKit/Sources/PulsoIntegrations/Strava.swift:265:14: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+263 |         }
+264 |         refreshTask = task
+265 |         lock.unlock()
+    |              `- warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+266 |         defer {
+267 |             lock.lock()
+
+Foundation.NSLock.unlock:2:11: note: 'unlock()' declared here
+1 | class NSLock {
+2 | open func unlock()}
+  |           `- note: 'unlock()' declared here
+3 | 
+
+/Users/runner/work/pulso/pulso/Packages/PulsoKit/Sources/PulsoIntegrations/Strava.swift:267:18: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+265 |         lock.unlock()
+266 |         defer {
+267 |             lock.lock()
+    |                  `- warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+268 |             refreshTask = nil
+269 |             lock.unlock()
+
+Foundation.NSLock.lock:2:11: note: 'lock()' declared here
+1 | class NSLock {
+2 | open func lock()}
+  |           `- note: 'lock()' declared here
+3 | 
+
+/Users/runner/work/pulso/pulso/Packages/PulsoKit/Sources/PulsoIntegrations/Strava.swift:269:18: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+267 |             lock.lock()
+268 |             refreshTask = nil
+269 |             lock.unlock()
+    |                  `- warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+270 |         }
+271 |         do {
+
+Foundation.NSLock.unlock:2:11: note: 'unlock()' declared here
+1 | class NSLock {
+2 | open func unlock()}
+  |           `- note: 'unlock()' declared here
+3 | 
+[21/25] Compiling PulsoStoreTests BackupArchiveTests.swift
+[22/25] Compiling WhoopProtocolTests ProtocolTests.swift
+[23/27] Compiling PulsoIntegrationsTests IntegrationsTests.swift
+/Users/runner/work/pulso/pulso/Packages/PulsoKit/Tests/PulsoIntegrationsTests/IntegrationsTests.swift:21:14: warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 19 | 
+ 20 |     func send(_ request: URLRequest) async throws -> (Data, Int) {
+ 21 |         lock.lock(); defer { lock.unlock() }
+    |              `- warning: instance method 'lock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 22 |         requests.append(request)
+ 23 |         guard !responses.isEmpty else { return (Data(), 500) }
+
+Foundation.NSLock.lock:2:11: note: 'lock()' declared here
+1 | class NSLock {
+2 | open func lock()}
+  |           `- note: 'lock()' declared here
+3 | 
+
+/Users/runner/work/pulso/pulso/Packages/PulsoKit/Tests/PulsoIntegrationsTests/IntegrationsTests.swift:21:35: warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 19 | 
+ 20 |     func send(_ request: URLRequest) async throws -> (Data, Int) {
+ 21 |         lock.lock(); defer { lock.unlock() }
+    |                                   `- warning: instance method 'unlock' is unavailable from asynchronous contexts; Use async-safe scoped locking instead; this is an error in the Swift 6 language mode
+ 22 |         requests.append(request)
+ 23 |         guard !responses.isEmpty else { return (Data(), 500) }
+
+Foundation.NSLock.unlock:2:11: note: 'unlock()' declared here
+1 | class NSLock {
+2 | open func unlock()}
+  |           `- note: 'unlock()' declared here
+3 | 
+[24/27] Compiling PulsoECG ECGAnalysis.swift
+[25/28] Compiling PulsoECGTests ECGTests.swift
+[26/28] Compiling PulsoAnalytics Activity.swift
+[27/31] Compiling PulsoFeatures Alarms.swift
+[28/32] Compiling PulsoFeaturesTests BatteryLogTests.swift
+[29/32] Compiling PulsoIntelligence Behaviors.swift
+[30/33] Compiling PulsoAnalyticsTests AnalysisToolsTests.swift
+/Users/runner/work/pulso/pulso/Packages/PulsoKit/Tests/PulsoAnalyticsTests/RealDataReplayTests.swift:37:97: warning: left side of nil coalescing operator '??' has non-optional type 'Double', so the right side is never used
+35 |         }
+36 |         for w in try db.workouts(from: bounds.first, to: bounds.last + 60) {
+37 |             print("WORKOUT \(t(w.start))–\(t(w.end)) \(w.sport) \(w.source) strain \(w.strain ?? -1)")
+   |                                                                                               `- warning: left side of nil coalescing operator '??' has non-optional type 'Double', so the right side is never used
+38 |         }
+39 |         let merged = HistoryMerge.days(measured: days, imported: try db.importedDays(), profile: db.profile)
+[31/33] Compiling PulsoIntelligenceTests AnalysisHonestyTests.swift
+[32/34] Compiling PulsoKitPackageTests runner.swift
+[32/34] Write Objects.LinkFileList
+[33/34] Linking PulsoKitPackageTests
+Build complete! (96.78s)
+[1/276] Testing PulsoIntelligenceTests.AnalysisHonestyTests/testCoherenceExplainsItselfHonestly
+[2/276] Testing PulsoIntelligenceTests.AnalysisHonestyTests/testCardiacCostComparesCompleteDaysOnly
+[3/276] Testing PulsoIntelligenceTests.AnalysisHonestyTests/testCeilingKeepsDaysThatNeverRecover
+[4/276] Testing PulsoIntelligenceTests.AnalysisHonestyTests/testFisherInterval
+[5/276] Testing PulsoIntelligenceTests.AnalysisHonestyTests/testCoherenceSaysWhichSignalLastNightLacks
+[6/276] Testing PulsoIntelligenceTests.AnalysisHonestyTests/testEveryMetricHasItsGuide
+[7/276] Testing PulsoIntelligenceTests.AnalysisHonestyTests/testImportedJournalPairsWithTheFollowingRecovery
+[8/276] Testing PulsoIntelligenceTests.AnalysisHonestyTests/testHabitsCompareOnlyDaysTheQuestionWasAsked
+[9/276] Testing PulsoIntelligenceTests.AnalysisHonestyTests/testMultipleComparisonsGuard
+[10/276] Testing PulsoAnalyticsTests.AnalysisToolsTests/testMonthlyReport
+[11/276] Testing PulsoIntelligenceTests.AnalysisHonestyTests/testOverloadIsCensoredNotDropped
+[12/276] Testing PulsoIntelligenceTests.AnalysisHonestyTests/testRareHabitStaysOutOfTheSimulator
+[13/276] Testing PulsoAnalyticsTests.AnalysisToolsTests/testStreaksAndRecords
+[14/276] Testing PulsoAnalyticsTests.AnalysisToolsTests/testRelation
+[15/276] Testing PulsoAnalyticsTests.AnalysisToolsTests/testWaterfallAddsUpToTheScore
+[16/276] Testing PulsoAnalyticsTests.AnalyticsTests/testHRVMath
+[17/276] Testing PulsoAnalyticsTests.AnalyticsTests/testInsights
+[18/276] Testing PulsoAnalyticsTests.AnalyticsTests/testRealWhoopExportIfAvailable
+[19/276] Testing PulsoAnalyticsTests.AnalyticsTests/testJournalLabelHidesImportPrefix
+[20/276] Testing PulsoAnalyticsTests.AnalyticsTests/testRecoveryRespondsToHRV
+[21/276] Testing PulsoAnalyticsTests.AnalyticsTests/testRespiratoryRateFromRSA
+[22/276] Testing PulsoAnalyticsTests.AnalyticsTests/testRRRunsBreakOnMissedBeatButNotOnEmptySeconds
+[23/276] Testing PulsoAnalyticsTests.AnalyticsTests/testStrainScale
+[24/276] Testing PulsoAnalyticsTests.AnalyticsTests/testWhoopCSVImport
+[25/276] Testing PulsoAnalyticsTests.AnalyticsTests/testWhoopExportAllFilesTogether
+[26/276] Testing PulsoAnalyticsTests.AnalyticsTests/testWhoopExportAnySubsetWorks
+[27/276] Testing PulsoAnalyticsTests.AnalyticsTests/testWhoopExportRecognisesSpanishFiles
+[28/276] Testing PulsoAnalyticsTests.AnalyticsTests/testWhoopTimeZones
+[29/276] Testing PulsoAnalyticsTests.AnalyticsTests/testWhoopImportTwiceChangesNothing
+[30/276] Testing PulsoAnalyticsTests.ArousalTests/testAPulseRiseKeepsTheWake
+[31/276] Testing PulsoAnalyticsTests.ArousalTests/testMovementKeepsTheWake
+[32/276] Testing PulsoAnalyticsTests.ArousalTests/testNoDeepSleepRightAfterFallingAsleep
+[33/276] Testing PulsoAnalyticsTests.ArousalTests/testStillWakeWithoutAPulseRiseIsLightSleep
+[34/276] Testing PulsoAnalyticsTests.ArousalTests/testWakeAtTheEdgesIsLeftAlone
+[35/276] Testing PulsoStoreTests.BackupArchiveTests/testArchiveIsRewrittenWhenItsMonthGetsMoreSecondsAndNeverShrinks
+[36/276] Testing PulsoStoreTests.BackupArchiveTests/testDamagedArchiveIsSetAsideNotDeleted
+[37/276] Testing PulsoStoreTests.BackupArchiveTests/testMonthArchiveHoldsOnlyThatMonthAndPassesIntegrity
+[38/276] Testing PulsoStoreTests.BackupArchiveTests/testEraseTwiceNeverLosesCurrentMonthSeconds
+[39/276] Testing PulsoStoreTests.BackupArchiveTests/testMonthBoundariesFollowTheLocalCalendarAcrossDaylightSaving
+[40/276] Testing PulsoStoreTests.BackupArchiveTests/testPolicyParsesNewAndOldNames
+[41/276] Testing PulsoStoreTests.BackupArchiveTests/testRetentionNeverPrunesSecondsOfAMonthWithoutItsArchive
+[42/276] Testing PulsoStoreTests.BackupArchiveTests/testRestoreMergeBringsBackSecondsFromArchivesAndTheReplacedDatabase
+[43/276] Testing PulsoStoreTests.BackupArchiveTests/testRotationKeepsFullSafetyCopiesByCountAndNeverDeletesArchives
+[44/276] Testing PulsoStoreTests.BackupArchiveTests/testWeeklyCopyHoldsCurrentMonthSecondsAndEverythingElse
+[45/276] Testing PulsoFeaturesTests.BatteryLogTests/testAppendSkipsRepeatsAndOldReadings
+[46/276] Testing PulsoFeaturesTests.BatteryLogTests/testDrainFindsAChargeSeenInSmallSteps
+[47/276] Testing PulsoFeaturesTests.BatteryLogTests/testDrainNeedsEnoughTime
+[48/276] Testing PulsoFeaturesTests.BatteryLogTests/testDrainSinceLastChargeSplitsLiveAndIdle
+[49/276] Testing PulsoFeaturesTests.BatteryLogTests/testSmallWobblesAreNotCharges
+[50/276] Testing PulsoIntelligenceTests.BehaviorsTests/testAutomaticAndJournalBehaviours
+[51/276] Testing PulsoIntelligenceTests.BehaviorsTests/testWorkoutTiming
+[52/276] Testing PulsoAnalyticsTests.BreathworkTests/testActivityNamesAreTheBreathingActivities
+[53/276] Testing PulsoAnalyticsTests.BreathworkTests/testAlertRoundsCountDownAndEndInAHold
+[54/276] Testing PulsoAnalyticsTests.BreathworkTests/testStressAlertFromDownloadedMinutes
+[55/276] Testing PulsoAnalyticsTests.BreathworkTests/testStressAlertNeedsFiveStillHighMinutesAndAQuietHour
+[56/276] Testing PulsoAnalyticsTests.BreathworkTests/testSummaryOfASession
+[57/276] Testing PulsoAnalyticsTests.BreathworkTests/testTimedSessionsLastTheChosenMinutes
+[58/276] Testing PulsoAnalyticsTests.CoachingTests/testBedtimePlan
+[59/276] Testing PulsoAnalyticsTests.CoachingTests/testCoachTargets
+[60/276] Testing PulsoAnalyticsTests.CoachingTests/testCycleTrackerFindsBiphasicShift
+[61/276] Testing PulsoAnalyticsTests.CoachingTests/testImportedDaysWithoutZonesStillCount
+[62/276] Testing PulsoAnalyticsTests.CoachingTests/testIllnessAlertNeedsSeveralSignals
+[63/276] Testing PulsoAnalyticsTests.CoachingTests/testSleepGoalWaitsForNeed
+[64/276] Testing PulsoAnalyticsTests.CoachingTests/testSmartWakeWaitsInDeepSleepAndWakesOnMovement
+[65/276] Testing PulsoAnalyticsTests.CoachingTests/testStrainLoadInverse
+[66/276] Testing PulsoAnalyticsTests.CoachingTests/testTrainingLoadStatus
+[67/276] Testing PulsoAnalyticsTests.CoachingTests/testWeeklySummary
+[68/276] Testing PulsoAnalyticsTests.CoachingTests/testTrends
+[69/276] Testing PulsoAnalyticsTests.CoachingTests/testWorkoutMerge
+[70/276] Testing PulsoAnalyticsTests.CycleAndPressureTests/testBloodPressure
+[71/276] Testing PulsoAnalyticsTests.CycleAndPressureTests/testCyclePhases
+[72/276] Testing PulsoAnalyticsTests.CycleAndPressureTests/testPeriodAverages
+[73/276] Testing PulsoAnalyticsTests.AnalyticsTests/testFullPipelineOnSyntheticWeek
+[74/276] Testing PulsoFeaturesTests.DoubleTapTests/testOldSettingsStillDecode
+[75/276] Testing PulsoFeaturesTests.DoubleTapTests/testRoutingNewActions
+[76/276] Testing PulsoFeaturesTests.DoubleTapTests/testWebhookRequest
+[77/276] Testing PulsoECGTests.ECGTests/testAtrialFibrillationLooksIrregular
+[78/276] Testing PulsoECGTests.ECGTests/testBradyAndTachy
+[79/276] Testing PulsoECGTests.ECGTests/testMGDecoderIsInertUntilConfigured
+[80/276] Testing PulsoECGTests.ECGTests/testNoiseAndFlatlineAreInconclusive
+[81/276] Testing PulsoECGTests.ECGTests/testPDFReportIsValid
+[82/276] Testing PulsoECGTests.ECGTests/testRPeaksLandOnTheRWave
+[83/276] Testing PulsoECGTests.ECGTests/testSessionBuilder
+[84/276] Testing PulsoECGTests.ECGTests/testSinusRhythmDetected
+[85/276] Testing PulsoFeaturesTests.FeaturesTests/testAlarmDecodingIsTolerant
+[86/276] Testing PulsoFeaturesTests.FeaturesTests/testAlarmDecodingSurvivesUnknownEnumCases
+[87/276] Testing PulsoFeaturesTests.FeaturesTests/testAlertPreferencesCodable
+[88/276] Testing PulsoFeaturesTests.FeaturesTests/testBedtimeScheduledAndQuietHoursDeferral
+[89/276] Testing PulsoFeaturesTests.FeaturesTests/testCustomHapticFrameMatchesKnownBuzz
+[90/276] Testing PulsoFeaturesTests.FeaturesTests/testDaysText
+[91/276] Testing PulsoFeaturesTests.FeaturesTests/testDSTDayKeepsLocalAlarmTime
+[92/276] Testing PulsoFeaturesTests.FeaturesTests/testFixedSessionRingsAtTimeAndBuzzesOnSchedule
+[93/276] Testing PulsoFeaturesTests.FeaturesTests/testGestureRouting
+[94/276] Testing PulsoFeaturesTests.FeaturesTests/testHapticPlans
+[95/276] Testing PulsoFeaturesTests.FeaturesTests/testIntervalRunnerCues
+[96/276] Testing PulsoFeaturesTests.FeaturesTests/testMissedAlarmNeverRingsLate
+[97/276] Testing PulsoFeaturesTests.FeaturesTests/testMorningReportAndIllness
+[98/276] Testing PulsoFeaturesTests.FeaturesTests/testNextOccurrenceRespectsWeekdaysAndSkip
+[99/276] Testing PulsoFeaturesTests.FeaturesTests/testPerDayTimes
+[100/276] Testing PulsoFeaturesTests.FeaturesTests/testRingingWithoutAnswerAutoSnoozesThenHandsOverToPhone
+[101/276] Testing PulsoFeaturesTests.FeaturesTests/testSmartSessionMonitorsSyncsAndWakesEarly
+[102/276] Testing PulsoFeaturesTests.FeaturesTests/testSnoozeAndStopFlow
+[103/276] Testing PulsoFeaturesTests.FeaturesTests/testStrainTargetAndOffWristAndInactivity
+[104/276] Testing PulsoFeaturesTests.FeaturesTests/testUpcomingAndEarliestAmongMany
+[105/276] Testing PulsoAnalyticsTests.FitnessFormulaTests/testCaloriesCurveAgainstTheOriginalStrapsWorkouts
+[106/276] Testing PulsoAnalyticsTests.FitnessFormulaTests/testKeytelWithVO2max
+[107/276] Testing PulsoAnalyticsTests.FitnessFormulaTests/testPassiveVO2MatchesTheOriginalBandNotUth
+[108/276] Testing PulsoAnalyticsTests.FitnessFormulaTests/testPeakIsTheHighestThreeSecondMedian
+[109/276] Testing PulsoAnalyticsTests.FitnessFormulaTests/testRunningVO2ReplacesRestingEstimate
+[110/276] Testing PulsoAnalyticsTests.FitnessFormulaTests/testVO2maxFromRun
+[111/276] Testing PulsoAnalyticsTests.HRVTrendTests/testRollingAverageAgainstSmallestWorthwhileChange
+[112/276] Testing PulsoAnalyticsTests.HealthReportTests/testAerobicMinutesComeFromTheWorkoutZones
+[113/276] Testing PulsoAnalyticsTests.HealthReportTests/testAMonthNeedsAWeekOfData
+[114/276] Testing PulsoAnalyticsTests.HealthReportTests/testThirtyDaysInsideASixMonthWindow
+[115/276] Testing PulsoIntelligenceTests.ImportedHistoryTests/testImportedHistoryFeedsIntelligenceAndVO2
+[116/276] Testing PulsoIntelligenceTests.ImportedHistoryTests/testImportedNightKeepsStagesAndVitals
+[117/276] Testing PulsoIntegrationsTests.IntegrationsTests/testAuthorizationStateGuardsTheCallback
+[118/276] Testing PulsoIntegrationsTests.IntegrationsTests/testAuthorizeURLAndCallback
+[119/276] Testing PulsoIntegrationsTests.IntegrationsTests/testDuplicateUploadAndErrors
+[120/276] Testing PulsoIntegrationsTests.IntegrationsTests/testExpiredTokenRefreshesOnceForParallelCalls
+[121/276] Testing PulsoIntegrationsTests.IntegrationsTests/testFirstImportPagesThroughEverything
+[122/276] Testing PulsoIntegrationsTests.IntegrationsTests/testFITCRCProperty
+[123/276] Testing PulsoIntegrationsTests.IntegrationsTests/testFITStructure
+[124/276] Testing PulsoIntegrationsTests.IntegrationsTests/testFITWritesFileForPythonCheck
+[125/276] Testing PulsoIntegrationsTests.IntegrationsTests/testHeartRateBroadcastRoundTrip
+[126/276] Testing PulsoIntegrationsTests.IntegrationsTests/testRateLimitPausesFurtherRequests
+[127/276] Testing PulsoIntegrationsTests.IntegrationsTests/testSportMapping
+[128/276] Testing PulsoIntegrationsTests.IntegrationsTests/testTCXIsWellFormed
+[129/276] Testing PulsoIntegrationsTests.IntegrationsTests/testTokenExchangeRefreshAndActivities
+[130/276] Testing PulsoIntegrationsTests.IntegrationsTests/testTrackFromSamplesPrefersStoredSeconds
+[131/276] Testing PulsoIntegrationsTests.IntegrationsTests/testUnauthorizedRefreshesAndRetriesThenDisconnectsCleanly
+[132/276] Testing PulsoIntegrationsTests.IntegrationsTests/testUploadPollsUntilActivity
+[133/276] Testing PulsoIntelligenceTests.IntelligenceTests/testDebtAccumulatesAndDecays
+[134/276] Testing PulsoIntelligenceTests.IntelligenceTests/testDeviationFlagsIllnessAndUnusualCombinations
+[135/276] Testing PulsoIntelligenceTests.IntelligenceTests/testHabitImpactWithInterval
+[136/276] Testing PulsoIntelligenceTests.IntelligenceTests/testImportedNightsCountForTimingButNotForAwakenings
+[137/276] Testing PulsoIntelligenceTests.IntelligenceTests/testLoadResponseMeasuresRecovery
+[138/276] Testing PulsoIntelligenceTests.IntelligenceTests/testPredictorBeatsReferenceAndScenariosMoveTheRightWay
+[139/276] Testing PulsoAnalyticsTests.DemoDataTests/testDemoNumbersArePlausible
+[140/276] Testing PulsoIntelligenceTests.IntelligenceTests/testSleepEffectsRecoversAwakeningCost
+[141/276] Testing PulsoIntelligenceTests.IntelligenceTests/testSleepRegularityIndex
+[142/276] Testing PulsoIntelligenceTests.IntelligenceTests/testStatisticsToolkit
+[143/276] Testing PulsoIntelligenceTests.IntelligenceTests/testWorkoutRecoveryCurveAndDrift
+[144/276] Testing PulsoAnalyticsTests.LiveMetricsTests/testCoherenceHighWhenBreathingSlowly
+[145/276] Testing PulsoAnalyticsTests.LiveMetricsTests/testLapsAndStrainInverse
+[146/276] Testing PulsoAnalyticsTests.LiveMetricsTests/testOrthostaticRiseAndRatio
+[147/276] Testing PulsoAnalyticsTests.LiveMetricsTests/testPoincareSD1MatchesRMSSD
+[148/276] Testing PulsoAnalyticsTests.LiveMetricsTests/testRecoveryAndPeak
+[149/276] Testing PulsoAnalyticsTests.LiveMetricsTests/testScanAgainstBaseline
+[150/276] Testing PulsoAnalyticsTests.LiveMetricsTests/testZoneGuard
+[151/276] Testing PulsoAnalyticsTests.LiveSessionTests/testBreathingSessionSummary
+[152/276] Testing PulsoAnalyticsTests.LiveSessionTests/testEmptyAndSparsePeriods
+[153/276] Testing PulsoAnalyticsTests.LiveSessionTests/testHistoryBinsKeepGapsAndStats
+[154/276] Testing PulsoAnalyticsTests.LiveSessionTests/testMergePrefersFullerSourceAndRebinAlignsToLocalTime
+[155/276] Testing PulsoAnalyticsTests.LiveSessionTests/testOrthostaticCoverageNamesThePhaseWithoutRR
+[156/276] Testing PulsoAnalyticsTests.LiveSessionTests/testRecoveryProblemSaysWhatWasMissing
+[157/276] Testing PulsoAnalyticsTests.MaxHRAnchorTests/testOneSpuriousPeakDoesNotSetTheMax
+[158/276] Testing PulsoAnalyticsTests.DemoDataTests/testDemoFillsEveryScreen
+[159/276] Testing PulsoAnalyticsTests.NightStatusTests/testMorningCoveredButNoSleepIsNotDetected
+[160/276] Testing PulsoAnalyticsTests.NightStatusTests/testMorningWithoutDownloadedNightIsAwaitingData
+[161/276] Testing PulsoAnalyticsTests.NightStatusTests/testStillAwakeAfterMidnightIsYesterdaysCycle
+[162/276] Testing PulsoAnalyticsTests.NightStatusTests/testTodaysCycleIsAlwaysOK
+[163/276] Testing PulsoAnalyticsTests.NightStatusTests/testUsesTheUsualWakeTime
+[164/276] Testing PulsoECGTests.PhysioNetValidationTests/testAtrialFibrillationDetectionOnRealECGs
+[165/276] Testing PulsoAnalyticsTests.PlanAndNormsTests/testNormalHelpers
+[166/276] Testing PulsoAnalyticsTests.PlanAndNormsTests/testPlanProgress
+[167/276] Testing PulsoAnalyticsTests.PlanAndNormsTests/testVO2Norms
+[168/276] Testing PulsoAnalyticsTests.PlanAndNormsTests/testWeekStartsOnMonday
+[169/276] Testing WhoopProtocolTests.ProtocolTests/testChecksumStandardVectors
+[170/276] Testing WhoopProtocolTests.ProtocolTests/testClientHelloIsByteIdentical
+[171/276] Testing WhoopProtocolTests.ProtocolTests/testClockPayloadLayout
+[172/276] Testing WhoopProtocolTests.ProtocolTests/testCorruptFrameIsIgnoredByOffload
+[173/276] Testing WhoopProtocolTests.ProtocolTests/testDeframerReassemblesFragmentsAndSkipsGarbage
+[174/276] Testing WhoopProtocolTests.ProtocolTests/testForbiddenOpcodesCannotBeBuilt
+[175/276] Testing WhoopProtocolTests.ProtocolTests/testGen5CommandsArePaddedToFourBytes
+[176/276] Testing WhoopProtocolTests.ProtocolTests/testGetDataRangeCarriesExplicitRequestByte
+[177/276] Testing WhoopProtocolTests.ProtocolTests/testHapticRepeatByteCountsPulsesAfterTheFirst
+[178/276] Testing WhoopProtocolTests.ProtocolTests/testHelloDecode
+[179/276] Testing WhoopProtocolTests.ProtocolTests/testNegativeSkinTemperatureIsNotMisreadAsHot
+[180/276] Testing WhoopProtocolTests.ProtocolTests/testOffloadSessionChunksAndCompletes
+[181/276] Testing WhoopProtocolTests.ProtocolTests/testPublishedReferenceFrameValidates
+[182/276] Testing WhoopProtocolTests.ProtocolTests/testRealHistoryEndGivesTokenAndAck
+[183/276] Testing WhoopProtocolTests.ProtocolTests/testRealtimeDecode
+[184/276] Testing WhoopProtocolTests.ProtocolTests/testRealV18RecordDecodes
+[185/276] Testing WhoopProtocolTests.ProtocolTests/testRecordWithResetClockIsKeptRawNotDecoded
+[186/276] Testing WhoopProtocolTests.ProtocolTests/testSendHistoricalDataCarriesExplicitRequestByte
+[187/276] Testing WhoopProtocolTests.ProtocolTests/testStandardHeartRateMeasurement
+[188/276] Testing WhoopProtocolTests.ProtocolTests/testUndecodedHistoryRecordsTravelWithTheirChunk
+[189/276] Testing PulsoAnalyticsTests.PublishedFormulasTests/testBaselineWeighsRecentNights
+[190/276] Testing PulsoAnalyticsTests.PublishedFormulasTests/testConsistencyIsStateMatchingAtClockTime
+[191/276] Testing PulsoAnalyticsTests.PublishedFormulasTests/testDebtAndSleepScoreFits
+[192/276] Testing PulsoAnalyticsTests.PublishedFormulasTests/testPlannerGoals
+[193/276] Testing PulsoAnalyticsTests.PublishedFormulasTests/testRecoveryFollowsTheFittedModel
+[194/276] Testing PulsoAnalyticsTests.PublishedFormulasTests/testStrainSleepNeedMatchesTheAPIExample
+[195/276] Testing PulsoAnalyticsTests.PublishedFormulasTests/testWeightedMedianAndRegression
+[196/276] Testing PulsoAnalyticsTests.PublishedFormulasTests/testZonesFollowTheWhitePaper
+[197/276] Testing PulsoAnalyticsTests.PulsoAgeTests/testAHabitMeasuredOnlyLatelyStillCounts
+[198/276] Testing PulsoAnalyticsTests.PulsoAgeTests/testHealthyHabitsMakeYouYounger
+[199/276] Testing PulsoAnalyticsTests.PulsoAgeTests/testImportedDaysUseWorkouts
+[200/276] Testing PulsoAnalyticsTests.PulsoAgeTests/testRecentMonthSetsThePace
+[201/276] Testing PulsoAnalyticsTests.PulsoAgeTests/testTheOriginalAppsBreakdown
+[202/276] Testing PulsoAnalyticsTests.PulsoAgeTests/testTooLittleDataGivesNoAge
+[203/276] Testing PulsoAnalyticsTests.PulsoAgeTests/testWhitePaperMedianMembers
+[204/276] Testing PulsoAnalyticsTests.PulsoAgeTests/testYearsFollowTheWhitePaper
+[205/276] Testing PulsoAnalyticsTests.RRCorrectionTests/testCleanRhythmIsUntouched
+[206/276] Testing PulsoAnalyticsTests.RRCorrectionTests/testEctopicMissedAndExtraBeatsAreCorrected
+[207/276] Testing PulsoAnalyticsTests.RealDataReplayTests/testReplayRealBackup
+[208/276] Testing PulsoAnalyticsTests.RejectedWorkoutTests/testADeletedAutoWorkoutStaysDeleted
+[209/276] Testing PulsoAnalyticsTests.RejectedWorkoutTests/testLowMotionWithHighHRIsNotCalledCycling
+[210/276] Testing PulsoAnalyticsTests.RelationByDateTests/testNextDayPairsByDateAcrossGaps
+[211/276] Testing PulsoIntelligenceTests.IntelligenceTests/testReportOnDemoData
+[212/276] Testing PulsoAnalyticsTests.SleepConfidenceNapTests/testDecisionsMatchByOverlap
+[213/276] Testing PulsoAnalyticsTests.SleepConfidenceNapTests/testAnEditedNapIsNeverDuplicatedByDetection
+[214/276] Testing PulsoAnalyticsTests.MetricsTruthTests/testMetricsMatchTheKnownPhysiology
+[215/276] Testing PulsoAnalyticsTests.SleepConfidenceNapTests/testNoDormiSuppressesTheDetectionForGood
+[216/276] Testing PulsoAnalyticsTests.SleepConfidenceNapTests/testLongDaytimeSleepCountsAsSleep
+[217/276] Testing PulsoAnalyticsTests.SleepConfidenceNapTests/testNightHasConfidenceWithReasons
+[218/276] Testing PulsoAnalyticsTests.SleepConfidenceNapTests/testSittingStillOnTheSofaIsNotANap
+[219/276] Testing PulsoAnalyticsTests.SleepConfidenceNapTests/testShortDaytimeSleepIsANapAndLowersTomorrowsNeed
+[220/276] Testing PulsoAnalyticsTests.SleepConfidenceNapTests/testWithoutNightDataADaytimeRestNeverBecomesLastNight
+[221/276] Testing PulsoAnalyticsTests.SleepFactorsTests/testLevels
+[222/276] Testing PulsoAnalyticsTests.SleepOnsetWatchTests/testAGapInTheBeatsRestartsTheCount
+[223/276] Testing PulsoAnalyticsTests.SleepOnsetWatchTests/testALateFinishIsCappedAtWhenItShouldHaveEnded
+[224/276] Testing PulsoAnalyticsTests.SleepOnsetWatchTests/testATurnInBedBreaksTheRun
+[225/276] Testing PulsoAnalyticsTests.SleepOnsetWatchTests/testDownloadedOnsetIsTheFirstAsleepMinuteOfTheMatchingSleep
+[226/276] Testing PulsoAnalyticsTests.SleepOnsetWatchTests/testNoOnsetUntilItHasLastedFiveMinutes
+[227/276] Testing PulsoAnalyticsTests.SleepOnsetWatchTests/testOnsetIsTheStartOfFiveMinutesWithThePulseDown
+[228/276] Testing PulsoAnalyticsTests.SleepOnsetWatchTests/testStaysAwakeWithASteadyPulse
+[229/276] Testing PulsoAnalyticsTests.SleepOnsetWatchTests/testWhenToLetGoOfTheLiveStream
+[230/276] Testing PulsoAnalyticsTests.StepsTests/testACounterResetIsNotSteps
+[231/276] Testing PulsoAnalyticsTests.StepsTests/testStepsAcrossADataGapAreKept
+[232/276] Testing PulsoAnalyticsTests.SleepConfidenceNapTests/testTwoNapsTheSameDayBothCount
+[233/276] Testing PulsoAnalyticsTests.StorageAndCycleTests/testOldDatabaseIsMigratedWithoutLosingData
+[234/276] Testing PulsoAnalyticsTests.StorageAndCycleTests/testRowsFromOlderVersionsStillDecode
+[235/276] Testing PulsoStoreTests.StoreExtrasTests/testBackupIsAValidCopy
+[236/276] Testing PulsoStoreTests.StoreExtrasTests/testBackupRotation
+[237/276] Testing PulsoStoreTests.StoreExtrasTests/testECGRoundTripAndListWithoutSamples
+[238/276] Testing PulsoStoreTests.StoreExtrasTests/testLightBackupKeepsEverythingButSeconds
+[239/276] Testing PulsoStoreTests.StoreExtrasTests/testOldWorkoutJSONStillDecodes
+[240/276] Testing PulsoStoreTests.StoreExtrasTests/testProfileFromOlderVersionKeepsValues
+[241/276] Testing PulsoStoreTests.StoreExtrasTests/testReDownloadNeverErasesStoredValues
+[242/276] Testing PulsoStoreTests.StoreExtrasTests/testWorkoutExternalIDsAndLookup
+[243/276] Testing PulsoStoreTests.StoreTests/testDaysSleepsWorkoutsJournalKV
+[244/276] Testing PulsoStoreTests.StoreTests/testSamplesRoundTripAndDedup
+[245/276] Testing PulsoAnalyticsTests.StressSummaryTests/testDailyHourlyFollowsTheLocalClock
+[246/276] Testing PulsoAnalyticsTests.StressSummaryTests/testDailyLeavesOutWorkoutsTheirRecoveryAndSleep
+[247/276] Testing PulsoAnalyticsTests.StressSummaryTests/testDailyWithoutReadings
+[248/276] Testing PulsoAnalyticsTests.StressSummaryTests/testHighMinutesSplitByWhatWasGoingOn
+[249/276] Testing PulsoAnalyticsTests.StressSummaryTests/testNightBeforeWakingCountsAsSleep
+[250/276] Testing PulsoAnalyticsTests.StressSummaryTests/testUsualSleepWindowAcrossMidnight
+[251/276] Testing PulsoAnalyticsTests.StressTests/testAnOrdinaryDayReadsLowNotPermanentlyStressed
+[252/276] Testing PulsoAnalyticsTests.StressTests/testAnOrdinaryWalkIsNotStress
+[253/276] Testing PulsoAnalyticsTests.StressTests/testAOneMinuteSpikeDoesNotJumpTheLine
+[254/276] Testing PulsoAnalyticsTests.StressTests/testARacingPulseWhileSittingIsStress
+[255/276] Testing PulsoAnalyticsTests.StressTests/testEveryWornMinuteGetsAReading
+[256/276] Testing PulsoAnalyticsTests.StressTests/testSleepReadsLowAndAWorkoutReadsAsEffort
+[257/276] Testing PulsoStoreTests.TransactionTests/testANestedTransactionIsASavepoint
+[258/276] Testing PulsoAnalyticsTests.TrendExplorerTests/testImportedDaysDoNotCountAsWorn
+[259/276] Testing PulsoAnalyticsTests.TrendExplorerTests/testMissingDaysStayMissing
+[260/276] Testing PulsoAnalyticsTests.TrendExplorerTests/testMonthSummarySeparatesImportedAndMissing
+[261/276] Testing PulsoAnalyticsTests.TrendExplorerTests/testRangesAndYearBuckets
+[262/276] Testing PulsoAnalyticsTests.TrendExplorerTests/testRecentChangeFlagsOnlyBeyondNormalSwing
+[263/276] Testing PulsoAnalyticsTests.TrendExplorerTests/testStandardized
+[264/276] Testing PulsoAnalyticsTests.TrendExplorerTests/testVO2RecordIsLabelledEstimated
+[265/276] Testing PulsoAnalyticsTests.TrendSeriesTests/testEmptyHistory
+[266/276] Testing PulsoAnalyticsTests.TrendSeriesTests/testHalfYearIsWeekly
+[267/276] Testing PulsoAnalyticsTests.TrendSeriesTests/testTotalsAreWeekly
+[268/276] Testing PulsoAnalyticsTests.TrendSeriesTests/testWeekWindowAverageAndPrevious
+[269/276] Testing PulsoAnalyticsTests.WalkStepsTests/testAnArmMovementIsNotAWalk
+[270/276] Testing PulsoAnalyticsTests.WalkStepsTests/testAWalkCountsFromItsFirstStep
+[271/276] Testing PulsoAnalyticsTests.WalkStepsTests/testShortPausesKeepTheWalkTogether
+[272/276] Testing PulsoAnalyticsTests.WalkStepsTests/testStepsAcrossAGapStillCount
+[273/276] Testing PulsoAnalyticsTests.ZipWriterTests/testCompressionThatDoesNotHelpIsStored
+[274/276] Testing PulsoAnalyticsTests.ZipWriterTests/testLayoutOfAStoredAndADeflatedEntry
+[275/276] Testing PulsoAnalyticsTests.StorageAndCycleTests/testHoursAfterMidnightBelongToYesterdayUntilYouSleep
+[276/276] Testing PulsoAnalyticsTests.SleepConfidenceNapTests/testTheUsersAnswerWins
+◇ Test run started.
+↳ Testing Library Version: 1501
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.
