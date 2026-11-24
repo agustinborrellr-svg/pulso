@@ -16,7 +16,7 @@ struct HoyHeader: View {
                     .hoyFont(15, .semibold, relativeTo: .subheadline).foregroundStyle(Hoy.t2)
                     .lineLimit(1).minimumScaleFactor(0.8)
                 Spacer()
-                NavigationLink { DeviceView() } label: {
+                RouteLink(.metric(.bateria)) {
                     HStack(spacing: 5) {
                         Image(systemName: "applewatch").font(.system(size: 14, weight: .semibold))
                         if let b = model.battery {
@@ -27,7 +27,6 @@ struct HoyHeader: View {
                     .frame(minHeight: 44)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
                 .accessibilityLabel(model.battery.map { "Pulsera, batería \(Int($0)) %" } ?? "Pulsera")
             }
             HStack(spacing: 0) {
@@ -164,17 +163,16 @@ struct HoyScoresCard: View {
         let prev = day.flatMap { model.day(DayKey.shift($0.day, days: -1)) }
         VStack(spacing: 0) {
             HStack(alignment: .top, spacing: 4) {
-                NavigationLink { RecoveryDetailView() } label: { recarga(prev) }
-                NavigationLink { SleepDetailView() } label: { sueno(prev) }
-                NavigationLink { StrainDetailView() } label: { esfuerzo(prev) }
+                RouteLink(.metric(.recarga)) { recarga(prev) }
+                RouteLink(.sueno(.noche(day: nil))) { sueno(prev) }
+                RouteLink(.metric(.esfuerzo)) { esfuerzo(prev) }
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 8)
             .padding(.top, 16)
             .padding(.bottom, 14)
             Rectangle().fill(Hoy.sep).frame(height: 1)
-            NavigationLink { HealthMonitorView() } label: { HoyMonitor(day: day) }
-                .buttonStyle(.plain)
+            RouteLink(.hoy(.monitor)) { HoyMonitor(day: day) }
         }
         .background(Hoy.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
@@ -218,6 +216,9 @@ struct HoyScoresCard: View {
 struct HoyMonitor: View {
     @EnvironmentObject var model: AppModel
     let day: DaySummary?
+    var title = "Monitor de salud"
+    var chevron = true
+    var showStress = true
 
     static let order = ["hrv", "rhr", "resp", "spo2", "temp"]
     static let icons = ["hrv": "waveform.path.ecg", "rhr": "heart.fill", "resp": "lungs.fill", "spo2": "drop.fill",
@@ -229,9 +230,9 @@ struct HoyMonitor: View {
         let off = readings.filter { $0.level == .orange || $0.level == .red }
         let stress = day?.stressPoints.last?.v
         let st = status(readings, off: off)
-        DSSegmentMonitor(title: "Monitor de salud", status: st.0, statusColor: st.1,
+        DSSegmentMonitor(title: title, status: st.0, statusColor: st.1, chevron: chevron,
                          segments: readings.map(segment),
-                         extra: stress.map(stressSegment),
+                         extra: showStress ? stress.map(stressSegment) : nil,
                          note: off.max(by: { $0.level < $1.level }).map(reason))
             .accessibilityElement(children: .combine)
             .accessibilityHint("Abre el monitor de salud")

@@ -9,7 +9,7 @@ struct HomeDayPicker: View {
     @State private var month = ""
     @State private var forward = true
 
-    private static let weekdays = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+    private static let weekdays = ["L", "M", "X", "J", "V", "S", "D"]
 
     private var currentMonth: String { String(model.currentDayKey.prefix(7)) }
     private var firstMonth: String { model.days.map(\.day).min().map { String($0.prefix(7)) } ?? currentMonth }
@@ -17,17 +17,22 @@ struct HomeDayPicker: View {
     private var canGoForward: Bool { month < currentMonth }
 
     var body: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 14) {
+            HoyHeader().padding(.horizontal, 4)
             header
             weekdayRow
             grid
+            DSDivider()
             legend
+            Capsule().fill(DS.fill2).frame(width: 40, height: 5).padding(.top, 2)
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 10)
-        .padding(.bottom, 16)
+        .padding(.horizontal, DS.gutter)
+        .padding(.bottom, 10)
         .frame(maxWidth: .infinity)
-        .background(Theme.card.ignoresSafeArea(edges: .top))
+        .background(
+            UnevenRoundedRectangle(bottomLeadingRadius: DS.sheetRadius, bottomTrailingRadius: DS.sheetRadius, style: .continuous)
+                .fill(DS.card).ignoresSafeArea(edges: .top)
+        )
         .contentShape(Rectangle())
         .gesture(
             DragGesture(minimumDistance: 24).onEnded { g in
@@ -58,39 +63,41 @@ struct HomeDayPicker: View {
         guard let d = f.date(from: m) else { return m }
         // The year only when it isn't this one.
         f.dateFormat = m.prefix(4) == currentMonth.prefix(4) ? "LLLL" : "LLLL yyyy"
-        return f.string(from: d).uppercased()
+        let t = f.string(from: d)
+        return t.prefix(1).uppercased() + t.dropFirst()
     }
 
     private var header: some View {
         HStack {
-            Button { go(-1) } label: {
-                Image(systemName: "chevron.left").font(.title2.weight(.medium)).frame(width: 44, height: 44).contentShape(Rectangle())
-            }
-            .disabled(!canGoBack)
-            .opacity(canGoBack ? 1 : 0.3)
-            .accessibilityLabel("Mes anterior")
+            monthButton("chevron.left", enabled: canGoBack, label: "Mes anterior") { go(-1) }
             Spacer()
-            Caps(title(month), size: 14, color: .white, weight: .bold)
+            Text(title(month)).dsFont(22, .semibold, relativeTo: .title2).foregroundStyle(DS.t1)
                 .id(month)
                 .transition(.opacity)
                 .accessibilityAddTraits(.isHeader)
             Spacer()
-            Button { go(1) } label: {
-                Image(systemName: "chevron.right").font(.title2.weight(.medium)).frame(width: 44, height: 44).contentShape(Rectangle())
-            }
-            .disabled(!canGoForward)
-            .opacity(canGoForward ? 1 : 0.3)
-            .accessibilityLabel("Mes siguiente")
+            monthButton("chevron.right", enabled: canGoForward, label: "Mes siguiente") { go(1) }
+        }
+    }
+
+    private func monthButton(_ icon: String, enabled: Bool, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon).font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(enabled ? DS.t1 : DS.t3)
+                .frame(width: 40, height: 40)
+                .background(DS.fill, in: Circle())
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.white)
+        .disabled(!enabled)
+        .accessibilityLabel(label)
     }
 
     private var weekdayRow: some View {
         HStack(spacing: 0) {
             ForEach(Self.weekdays, id: \.self) { d in
-                Text(d).scaledFont(12, weight: .semibold, relativeTo: .caption2)
-                    .foregroundStyle(Theme.secondary)
+                Text(d).dsFont(13, .medium, relativeTo: .caption1)
+                    .foregroundStyle(DS.t2)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -104,7 +111,7 @@ struct HomeDayPicker: View {
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 6) {
             ForEach(0..<(layout.leading + keys.count), id: \.self) { i in
                 if i < layout.leading {
-                    Color.clear.frame(height: 46).accessibilityHidden(true)
+                    Color.clear.frame(height: 52).accessibilityHidden(true)
                 } else {
                     cell(keys[i - layout.leading], byDay)
                 }
@@ -116,56 +123,51 @@ struct HomeDayPicker: View {
         .clipped()
     }
 
-    static func color(_ recovery: Double) -> Color {
-        recovery >= 67 ? Theme.green : (recovery >= 34 ? Theme.yellow : Theme.red)
-    }
-
     private func cell(_ key: String, _ byDay: [String: DaySummary]) -> some View {
         let recovery = byDay[key].flatMap { TrendMetric.recovery.value($0) }
         let future = key > model.currentDayKey
         let selected = key == model.selectedDay
-        let hasDay = byDay[key] != nil
-        let color: Color = recovery.map(Self.color) ?? (future ? Theme.tertiary.opacity(0.6) : (hasDay ? .white : Theme.tertiary))
+        let level = recovery.map(DSLevel.init(score:))
+        let color: Color = level?.ink ?? (future ? DS.t3.opacity(0.6) : DS.t3)
         return Button {
             model.selectDay(key)
             close()
         } label: {
-            Text("\(Int(key.suffix(2)) ?? 0)")
-                .scaledFont(17, weight: .bold, relativeTo: .body)
-                .monospacedDigit()
-                .foregroundStyle(color)
-                .frame(width: 40, height: 40)
-                .background {
-                    if selected {
-                        Circle().fill(Color.black.opacity(0.35))
-                            .overlay(Circle().strokeBorder(Color.black.opacity(0.9), lineWidth: 2))
-                    }
+            VStack(spacing: 3) {
+                Text("\(Int(key.suffix(2)) ?? 0)")
+                    .dsFont(20, .semibold, relativeTo: .body)
+                    .foregroundStyle(color)
+                Circle().fill(level?.mark ?? .clear).frame(width: 5, height: 5)
+            }
+            .frame(width: 44, height: 46)
+            .background {
+                if selected {
+                    Circle().strokeBorder(level?.mark ?? DS.t2, lineWidth: 2).frame(width: 42, height: 42).offset(y: -3)
                 }
-                .frame(maxWidth: .infinity, minHeight: 46)
-                .contentShape(Rectangle())
+            }
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(future)
         .accessibilityLabel(Fmt.dayTitle(key) + (key == model.currentDayKey ? ", hoy" : ""))
-        .accessibilityValue(future ? "futuro" : (recovery.map { "Recuperación \(Int($0.rounded())) %" } ?? "sin recuperación"))
+        .accessibilityValue(future ? "futuro" : (recovery.map { "Recarga \(Int($0.rounded())), \(DSLevel(score: $0).word)" } ?? "sin Recarga"))
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private var legend: some View {
-        HStack(spacing: 10) {
-            Spacer()
-            item("<34 %", Theme.red)
-            item("34 % - 66 %", Theme.yellow)
-            item(">66 %", Theme.green)
+        HStack(spacing: 12) {
+            Text("Recarga").foregroundStyle(DS.t2)
+            ForEach(DSLevel.allCases, id: \.self) { l in
+                HStack(spacing: 5) {
+                    Circle().fill(l.mark).frame(width: 7, height: 7)
+                    Text(l.word).foregroundStyle(DS.t1)
+                }
+            }
         }
+        .dsFont(14, .medium, relativeTo: .footnote)
+        .lineLimit(1).minimumScaleFactor(0.7)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Recuperación: rojo menos de 34 %, amarillo de 34 a 66 %, verde más de 66 %")
-    }
-
-    private func item(_ text: String, _ color: Color) -> some View {
-        HStack(spacing: 5) {
-            Circle().fill(color).frame(width: 6, height: 6)
-            Text(text).scaledFont(14, weight: .semibold, relativeTo: .footnote).foregroundStyle(color)
-        }
+        .accessibilityLabel("Recarga por colores: baja, justa, buena y excelente")
     }
 }

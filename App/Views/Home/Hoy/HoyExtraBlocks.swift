@@ -297,7 +297,7 @@ struct HoyVitalsBlock: View {
         let all = model.vitalReadings()
         let rows = HoyMonitor.order.compactMap { id in all.first { $0.id == id } }
         VStack(alignment: .leading, spacing: 10) {
-            NavigationLink { VitalsView() } label: { HoySectionTitle("Constantes vitales", chevron: true) }.buttonStyle(.plain)
+            RouteLink(.hoy(.monitor)) { HoySectionTitle("Constantes vitales", chevron: true) }
             VStack(spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.element.id) { i, r in
                     if i > 0 { Rectangle().fill(Hoy.sep).frame(height: 1) }

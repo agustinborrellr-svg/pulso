@@ -2,7 +2,7 @@ import SwiftUI
 import PulsoStore
 import PulsoIntegrations
 
-/// "+ AGREGAR ACTIVIDAD": something the strap didn't detect (or you want named): pick it, say when, and where you wore
+/// 15 Agregar actividad: something the strap didn't detect (or you want named): pick it, say when, and where you wore
 /// the strap. Strain, heart rate and zones are then computed from the strap's own data for that window; a nap or a
 /// sleep is saved as sleep.
 struct AddActivitySheet: View {
@@ -20,88 +20,89 @@ struct AddActivitySheet: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: "sparkles").foregroundStyle(Theme.link)
-                        Text("Si llevabas la pulsera, Pulso calcula el esfuerzo, el pulso y las zonas con lo que midió en ese rato.")
-                            .font(.footnote).foregroundStyle(Theme.link)
-                    }
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Theme.link.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                    NavigationLink { ActivityPickerView(selection: $activity) } label: {
-                        HStack(spacing: 14) {
-                            Image(systemName: activity.map(ActivityPickerView.symbol) ?? "figure.arms.open")
-                                .font(.title3).foregroundStyle(activity == nil ? Theme.secondary : .white).frame(width: 26)
-                            Caps(activity ?? "Seleccionar actividad", size: 13)
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.headline).foregroundStyle(.white)
+            VStack(spacing: 0) {
+                DSSheetHeader("Agregar actividad")
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Pulso calcula el esfuerzo, el pulso y las zonas con lo que midió la pulsera en ese rato.")
+                            .dsFont(15).foregroundStyle(DS.t2).fixedSize(horizontal: false, vertical: true)
+                        HoySheetLabel("Actividad")
+                        NavigationLink { ActivityPickerView(selection: $activity) } label: {
+                            HoySheetGroup {
+                                HStack(spacing: 14) {
+                                    Image(systemName: activity.map(ActivityPickerView.symbol) ?? "figure.mixed.cardio")
+                                        .font(.system(size: 18)).foregroundStyle(activity == nil ? DS.t3 : DS.act).frame(width: 26)
+                                    Text(activity ?? "Elige una actividad").dsFont(19, .semibold)
+                                        .foregroundStyle(activity == nil ? DS.t2 : DS.t1).lineLimit(1)
+                                    Spacer(minLength: 6)
+                                    Text(activity == nil ? "Elegir" : "Cambiar").dsFont(16).foregroundStyle(DS.t2)
+                                    DSChevron()
+                                }
+                                .padding(.horizontal, 16)
+                                .frame(minHeight: 58)
+                                .contentShape(Rectangle())
+                            }
                         }
-                        .padding(16)
-                        .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-
-                    section("Tiempo") {
-                        timeRow("Hora de inicio", $start)
-                        timeRow("Hora de finalización", $end)
+                        .buttonStyle(.plain)
+                        HoySheetLabel("Tiempo")
+                        HoySheetGroup {
+                            timeRow("Inicio", $start)
+                            DSDivider(inset: 14)
+                            timeRow("Fin", $end)
+                        }
                         if end <= start {
-                            Label("La hora de finalización tiene que ser después del inicio.", systemImage: "exclamationmark.triangle")
-                                .font(.caption).foregroundStyle(Theme.yellow)
+                            Text("El fin tiene que ser después del inicio.").dsFont(13).foregroundStyle(DSLevel.justa.ink).padding(.leading, 4)
                         }
-                    }
-
-                    section("Ubicación") {
-                        Text("¿Dónde llevabas puesta la pulsera?").font(.subheadline).foregroundStyle(.white)
-                        Picker("Ubicación", selection: $placement) {
-                            ForEach(Self.placements, id: \.self) { Text($0.uppercased()).tag($0) }
+                        HoySheetLabel("Ubicación")
+                        HoySheetGroup {
+                            Menu {
+                                Picker("Dónde llevabas la pulsera", selection: $placement) {
+                                    ForEach(Self.placements, id: \.self) { Text($0 == "—" ? "Sin indicar" : $0).tag($0) }
+                                }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Text("Dónde llevabas la pulsera").dsFont(16, .medium).foregroundStyle(DS.t1).lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                    Spacer(minLength: 6)
+                                    Text(placement == "—" ? "Sin indicar" : placement).dsFont(16).foregroundStyle(DS.t2).lineLimit(1)
+                                    DSChevron()
+                                }
+                                .padding(.horizontal, 16)
+                                .frame(minHeight: 52)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .pickerStyle(.wheel)
-                        .frame(height: 140)
+                        Button("Guardar", action: save)
+                            .buttonStyle(DSButtonStyle(tint: DS.act, size: .xl, fullWidth: true))
+                            .disabled(!valid)
+                            .opacity(valid ? 1 : 0.5)
+                            .padding(.top, 22)
                     }
-
-                    Button("Guardar", action: save)
-                        .buttonStyle(PrimaryCapsuleStyle())
-                        .disabled(!valid)
+                    .padding(.horizontal, DS.gutter)
+                    .padding(.bottom, 30)
                 }
-                .padding(16)
+                .scrollIndicators(.hidden)
             }
-            .scrollIndicators(.hidden)
-            .background(PulsoBackground())
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) { Caps("Agregar actividad", size: 13) }
-                ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark").foregroundStyle(.white) }
-                        .accessibilityLabel("Cerrar")
-                }
-            }
+            .background(DS.card.ignoresSafeArea())
+            .toolbar(.hidden, for: .navigationBar)
             .onChange(of: start) { _, s in
                 if end <= s { end = min(s.addingTimeInterval(3600), Date()) }
             }
         }
-        .preferredColorScheme(.dark)
-    }
-
-    private func section<C: View>(_ title: String, @ViewBuilder content: () -> C) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Caps(title, size: 10, color: Theme.secondary, weight: .semibold)
-                Rectangle().fill(Theme.hairline).frame(height: 1)
-            }
-            content()
-        }
+        .dsSheet()
     }
 
     private func timeRow(_ title: String, _ date: Binding<Date>) -> some View {
         HStack {
-            Text(title).font(.subheadline).foregroundStyle(.white)
+            Text(title).dsFont(16, .medium).foregroundStyle(DS.t1)
             Spacer()
             DatePicker(title, selection: date, in: ...Date(), displayedComponents: [.date, .hourAndMinute])
                 .labelsHidden()
+                .environment(\.locale, Locale(identifier: "es_ES"))
         }
+        .padding(.horizontal, 16)
+        .frame(minHeight: 56)
     }
 
     private func save() {
@@ -117,11 +118,13 @@ struct AddActivitySheet: View {
     }
 }
 
-/// "SELECCIONAR ACTIVIDAD": search, Todo / Esfuerzo / Recuperación / Sueño, your recent ones, then A to Z.
+/// 16 Elegir actividad: search, Todo / Esfuerzo / Recuperación / Sueño, your recent ones, then A to Z.
 struct ActivityPickerView: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @Binding var selection: String?
+    /// Only sports (starting an activity live: no sleep).
+    var sportsOnly = false
     @State private var query = ""
     @State private var tab = Tab.all
 
@@ -141,6 +144,8 @@ struct ActivityPickerView: View {
         query.isEmpty || name.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
     }
 
+    private var tabs: [Tab] { sportsOnly ? [.all, .effort, .recovery] : Tab.allCases }
+
     private var list: [String] {
         let sports = SportCatalog.all.filter { s in
             switch tab {
@@ -150,53 +155,63 @@ struct ActivityPickerView: View {
             case .sleep: return false
             }
         }.map(\.name)
-        let sleeps = tab == .all || tab == .sleep ? Self.sleepKinds : []
+        let sleeps = !sportsOnly && (tab == .all || tab == .sleep) ? Self.sleepKinds : []
         return (sports + sleeps).filter(matches).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }
 
     var body: some View {
         let recent = tab == .all && query.isEmpty ? model.recentActivityNames() : []
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 8, pinnedViews: []) {
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass").foregroundStyle(Theme.secondary)
-                    TextField("Buscar actividades", text: $query)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+        VStack(spacing: 0) {
+            DSSheetHeader("Elegir actividad") {
+                Button { dismiss() } label: {
+                    Image(systemName: "chevron.left").font(.system(size: 14, weight: .bold)).foregroundStyle(DS.t2)
+                        .frame(width: 32, height: 32).background(DS.fill, in: Circle())
                 }
-                .padding(12)
-                .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                HStack(spacing: 18) {
-                    ForEach(Tab.allCases, id: \.self) { t in
-                        Button { tab = t } label: {
-                            VStack(spacing: 6) {
-                                Caps(t.rawValue, size: 10, color: tab == t ? .white : Theme.secondary, weight: .semibold)
-                                Rectangle().fill(tab == t ? Color.white : .clear).frame(height: 2)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Atrás")
+            }
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(DS.t3)
+                        TextField("Buscar actividades", text: $query)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .dsFont(16)
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(height: 40)
+                    .background(DS.fill.opacity(0.7), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    DSSegmented(options: tabs.map { ($0, $0.rawValue) }, selection: $tab)
+                        .padding(.vertical, 4)
+                    if !recent.isEmpty {
+                        HoySheetLabel("Recientes")
+                        HoySheetGroup {
+                            ForEach(recent.indices, id: \.self) { i in
+                                if i > 0 { DSDivider(inset: 50) }
+                                row(recent[i])
                             }
-                            .fixedSize()
                         }
-                        .buttonStyle(.plain)
+                        HoySheetLabel("De la A a la Z")
+                    }
+                    HoySheetGroup {
+                        ForEach(list.indices, id: \.self) { i in
+                            if i > 0 { DSDivider(inset: 50) }
+                            row(list[i])
+                        }
+                    }
+                    if list.isEmpty {
+                        Text("Ninguna actividad con «\(query)».").dsFont(15).foregroundStyle(DS.t2).padding(.top, 20)
                     }
                 }
-                .padding(.vertical, 6)
-                if !recent.isEmpty {
-                    Caps("Más recientes", size: 9.5, color: Theme.secondary, weight: .semibold).padding(.top, 6)
-                    // Own ids: the same name shows again in the A–Z list, and a lazy stack drops repeated ids.
-                    ForEach(recent.map { "recent:" + $0 }, id: \.self) { row(String($0.dropFirst(7))) }
-                    Caps("Todo de la A a la Z", size: 9.5, color: Theme.secondary, weight: .semibold).padding(.top, 10)
-                }
-                ForEach(list, id: \.self) { row($0) }
-                if list.isEmpty {
-                    Text("Ninguna actividad con «\(query)».").font(.subheadline).foregroundStyle(Theme.secondary).padding(.top, 20)
-                }
+                .padding(.horizontal, DS.gutter)
+                .padding(.bottom, 30)
             }
-            .padding(16)
+            .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.immediately)
         }
-        .scrollIndicators(.hidden)
-        .scrollDismissesKeyboard(.immediately)
-        .background(PulsoBackground())
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .principal) { Caps("Seleccionar actividad", size: 13) } }
+        .background(DS.card.ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     private func row(_ name: String) -> some View {
@@ -205,14 +220,14 @@ struct ActivityPickerView: View {
             dismiss()
         } label: {
             HStack(spacing: 14) {
-                Image(systemName: Self.symbol(name)).font(.body).foregroundStyle(Theme.secondary).frame(width: 24)
-                Caps(name, size: 12)
+                Image(systemName: Self.symbol(name)).font(.system(size: 16)).foregroundStyle(DS.t2).frame(width: 22)
+                Text(name).dsFont(16, .medium).foregroundStyle(DS.t1).lineLimit(1)
                 Spacer()
-                if selection == name { Image(systemName: "checkmark").font(.footnote.bold()).foregroundStyle(.white) }
+                if selection == name { Image(systemName: "checkmark").font(.system(size: 14, weight: .bold)).foregroundStyle(DS.act) }
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 14)
-            .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .frame(minHeight: 48)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

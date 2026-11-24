@@ -13,7 +13,7 @@ struct HoyAnocheBlock: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            NavigationLink { SleepDetailView() } label: { HoySectionTitle("Anoche", chevron: true) }.buttonStyle(.plain)
+            RouteLink(.sueno(.noche(day: nil))) { HoySectionTitle("Anoche", chevron: true) }
             if let s = model.sleep(for: day), !s.stages.isEmpty {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(alignment: .top, spacing: 10) {
@@ -254,7 +254,7 @@ struct HoyStressBlock: View {
         let now = Int(Date().timeIntervalSince1970)
         let nowX = now > w.start && now < w.end ? (now - w.start) / 60 : nil
         VStack(alignment: .leading, spacing: 10) {
-            NavigationLink { StressMonitorView() } label: { HoySectionTitle("Estrés del día", chevron: true) }.buttonStyle(.plain)
+            RouteLink(.metric(.estres)) { HoySectionTitle("Estrés del día", chevron: true) }
             VStack(alignment: .leading, spacing: 14) {
                 chart(pts, w: w, nowX: nowX).frame(height: 150)
                 Rectangle().fill(Hoy.sep).frame(height: 1)
@@ -429,7 +429,7 @@ struct HoyTrendsBlock: View {
         let all = model.vitalReadings()
         let tabs = Self.tabs.filter { t in all.contains { $0.id == t.id } }
         VStack(alignment: .leading, spacing: 10) {
-            HoySectionTitle("Tendencias de tu cuerpo")
+            RouteLink(.hoy(.tendencias)) { HoySectionTitle("Tendencias de tu cuerpo", chevron: true) }
             if let r = all.first(where: { $0.id == metric }) ?? all.first(where: { $0.id == tabs.first?.id }) {
                 VStack(alignment: .leading, spacing: 14) {
                     segmented(tabs, current: r.id)
@@ -604,8 +604,8 @@ struct HoyAgeBlock: View {
     var body: some View {
         if let r = model.pulsoAge, let age = r.pulsoAge {
             VStack(alignment: .leading, spacing: 10) {
-                NavigationLink { PulsoAgeDetailView() } label: { HoySectionTitle("Edad Pulso", chevron: true) }.buttonStyle(.plain)
-                NavigationLink { PulsoAgeDetailView() } label: {
+                RouteLink(.metric(.edadPulso)) { HoySectionTitle("Edad Pulso", chevron: true) }
+                RouteLink(.metric(.edadPulso)) {
                     HStack(alignment: .center, spacing: 14) {
                         VStack(alignment: .leading, spacing: 6) {
                             HoyValue(value: Fmt.dec(age), unit: "años", size: 28)

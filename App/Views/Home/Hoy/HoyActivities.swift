@@ -7,33 +7,36 @@ import PulsoIntegrations
 /// strip and the two ways to add more.
 struct HoyActivitiesBlock: View {
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject var router: Router
     let day: DaySummary
-    @State private var adding = false
-    @State private var starting = false
+    /// Off inside «Actividades del día», where the totals sit above.
+    var showHeader = true
 
     var body: some View {
         let items = model.activities(on: day)
         VStack(alignment: .leading, spacing: 0) {
-            header.padding(.bottom, 6)
+            if showHeader {
+                RouteLink(.hoy(.actividadesDia(day: day.day))) { header.contentShape(Rectangle()) }
+                    .padding(.bottom, 6)
+            }
             if items.isEmpty {
                 Text("El sueño y los entrenos aparecen solos.")
                     .hoyFont(15).foregroundStyle(Hoy.t2).padding(.vertical, 10)
             }
             ForEach(Array(items.enumerated()), id: \.element.id) { i, a in
                 if i > 0 { Rectangle().fill(Hoy.sep).frame(height: 1) }
-                NavigationLink { DayActivityDestination(activity: a) } label: { HoyActivityRow(activity: a, model: model) }
-                    .buttonStyle(.plain)
+                RouteLink(a.route) { HoyActivityRow(activity: a, model: model).contentShape(Rectangle()) }
             }
             DayStrip(day: day, items: items).padding(.top, 14)
             HStack(spacing: 10) {
-                Button { adding = true } label: {
+                Button { router.open(.hoy(.anadirActividad)) } label: {
                     Label("Agregar actividad", systemImage: "plus")
                         .hoyFont(15, .semibold).foregroundStyle(Hoy.t1)
                         .lineLimit(1).minimumScaleFactor(0.75)
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .background(Hoy.fill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
-                Button { starting = true } label: {
+                Button { router.open(.hoy(.iniciarActividad)) } label: {
                     Label("Iniciar actividad", systemImage: "timer")
                         .hoyFont(15, .semibold).foregroundStyle(Hoy.act)
                         .lineLimit(1).minimumScaleFactor(0.75)
@@ -45,14 +48,13 @@ struct HoyActivitiesBlock: View {
             .padding(.top, 14)
         }
         .hoyCard(padding: 16)
-        .sheet(isPresented: $adding) { AddActivitySheet() }
-        .sheet(isPresented: $starting) { StartActivitySheet(isPresented: $starting) }
     }
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text("Actividades").hoyFont(20, .semibold, relativeTo: .title3).foregroundStyle(Hoy.t1)
                 .accessibilityAddTraits(.isHeader)
+            Image(systemName: "chevron.right").font(.system(size: 14, weight: .bold)).foregroundStyle(Hoy.t3)
             Spacer(minLength: 6)
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 if let steps = day.steps, steps > 0 {
