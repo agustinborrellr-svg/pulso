@@ -228,50 +228,24 @@ struct HoyMonitor: View {
         let readings = Self.order.compactMap { id in all.first { $0.id == id } }
         let off = readings.filter { $0.level == .orange || $0.level == .red }
         let stress = day?.stressPoints.last?.v
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "heart.fill").font(.system(size: 14)).foregroundStyle(Hoy.cor)
-                Text("Monitor de salud").hoyFont(16, .medium, relativeTo: .subheadline).foregroundStyle(Hoy.t2)
-                Spacer(minLength: 6)
-                status(readings, off: off)
-                Image(systemName: "chevron.right").font(.system(size: 13, weight: .bold)).foregroundStyle(Hoy.t3)
-            }
-            if !readings.isEmpty {
-                HStack(alignment: .top, spacing: 8) {
-                    ForEach(readings) { r in segment(r) }
-                    if let stress {
-                        Rectangle().fill(Hoy.sep).frame(width: 1, height: 30).padding(.horizontal, 2)
-                        stressSegment(stress)
-                    }
-                }
-                if let r = off.max(by: { $0.level < $1.level }) {
-                    Text(reason(r)).hoyFont(13, relativeTo: .footnote).foregroundStyle(Hoy.t2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-        .accessibilityHint("Abre el monitor de salud")
+        let st = status(readings, off: off)
+        DSSegmentMonitor(title: "Monitor de salud", status: st.0, statusColor: st.1,
+                         segments: readings.map(segment),
+                         extra: stress.map(stressSegment),
+                         note: off.max(by: { $0.level < $1.level }).map(reason))
+            .accessibilityElement(children: .combine)
+            .accessibilityHint("Abre el monitor de salud")
     }
 
-    @ViewBuilder
-    private func status(_ readings: [VitalReading], off: [VitalReading]) -> some View {
-        if readings.isEmpty {
-            Text("Tras tu primera noche").hoyFont(15, .medium).foregroundStyle(Hoy.t3)
-        } else if readings.allSatisfy({ $0.level == .none }) {
-            Text("Calibrando").hoyFont(15, .semibold).foregroundStyle(Hoy.t3)
-        } else if off.isEmpty {
-            Text("Todo en rango").hoyFont(15, .semibold).foregroundStyle(HoyLevel.buena.ink)
-        } else if off.count == 1, let r = off.first {
-            Text("\(r.short) \(high(r) ? "alta" : "baja")").hoyFont(15, .semibold)
-                .foregroundStyle((HoyLevel(r.level) ?? .justa).ink).lineLimit(1).minimumScaleFactor(0.8)
-        } else {
-            let worst = off.map(\.level).max() ?? .orange
-            Text("\(off.count) fuera de rango").hoyFont(15, .semibold).foregroundStyle((HoyLevel(worst) ?? .justa).ink)
+    private func status(_ readings: [VitalReading], off: [VitalReading]) -> (String, Color) {
+        if readings.isEmpty { return ("Tras tu primera noche", Hoy.t3) }
+        if readings.allSatisfy({ $0.level == .none }) { return ("Calibrando", Hoy.t3) }
+        if off.isEmpty { return ("Todo en rango", HoyLevel.buena.ink) }
+        if off.count == 1, let r = off.first {
+            return ("\(r.short) \(high(r) ? "alta" : "baja")", (HoyLevel(r.level) ?? .justa).ink)
         }
+        let worst = off.map(\.level).max() ?? .orange
+        return ("\(off.count) fuera de rango", (HoyLevel(worst) ?? .justa).ink)
     }
 
     private func high(_ r: VitalReading) -> Bool {
@@ -284,42 +258,21 @@ struct HoyMonitor: View {
         return r.personal ? "\(r.short) \(side) de tu normal de 30 noches." : "\(r.short) \(side) del rango saludable."
     }
 
-    private func segment(_ r: VitalReading) -> some View {
+    private func segment(_ r: VitalReading) -> DSMonitorSegment {
         let lv = HoyLevel(r.level)
         let bad = r.level == .orange || r.level == .red
-        return VStack(spacing: 7) {
-            Capsule().fill(lv?.mark ?? Hoy.fill2).frame(height: 6)
-            Image(systemName: Self.icons[r.id] ?? r.icon).font(.system(size: 12))
-                .foregroundStyle(bad ? (lv?.ink ?? Hoy.t3) : Hoy.t3)
-                .frame(height: 14)
-            if bad {
-                Text(r.asDeviation ? "\(r.monitorValue)°" : "\(r.value)\(r.unit == "%" ? " %" : "")")
-                    .hoyFont(12, .semibold, relativeTo: .caption1).foregroundStyle(lv?.ink ?? Hoy.t2)
-                    .lineLimit(1).minimumScaleFactor(0.6)
-                    .padding(.top, -3)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(r.short)
-        .accessibilityValue(r.level == .none ? "calibrando" : r.chip)
+        return DSMonitorSegment(id: r.id, icon: Self.icons[r.id] ?? r.icon, color: lv?.mark ?? Hoy.fill2,
+                                iconColor: bad ? (lv?.ink ?? Hoy.t3) : Hoy.t3,
+                                value: bad ? (r.asDeviation ? "\(r.monitorValue)°" : "\(r.value)\(r.unit == "%" ? " %" : "")") : nil,
+                                valueColor: lv?.ink ?? Hoy.t2,
+                                accessibilityLabel: r.short,
+                                accessibilityValue: r.level == .none ? "calibrando" : r.chip)
     }
 
-    private func stressSegment(_ v: Double) -> some View {
+    private func stressSegment(_ v: Double) -> DSMonitorSegment {
         let lv = HoyLevel(stress: v)
-        return VStack(spacing: 7) {
-            Capsule().fill(lv.mark).frame(height: 6)
-            HStack(spacing: 4) {
-                Image(systemName: "wind").font(.system(size: 12)).foregroundStyle(Hoy.t3)
-                Text(Fmt.dec(v)).hoyFont(12.5, .semibold, relativeTo: .caption1).foregroundStyle(lv.ink)
-                    .fixedSize()
-            }
-            .frame(height: 14)
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Estrés")
-        .accessibilityValue(Fmt.dec(v))
+        return DSMonitorSegment(id: "stress", icon: "wind", color: lv.mark, value: Fmt.dec(v), valueColor: lv.ink,
+                                accessibilityLabel: "Estrés", accessibilityValue: Fmt.dec(v))
     }
 }
 
@@ -343,28 +296,8 @@ struct HoyAhora: View {
                     HoySectionTitle(title: "Ahora") {
                         if let synced { Text("sync \(Fmt.time(synced))").hoyFont(15).foregroundStyle(Hoy.t3) }
                     }
-                    HStack(spacing: 12) {
-                        PulsingDot(active: live)
-                        HoyValue(value: "\(hr)", unit: "lpm", size: 26)
-                        if points.count >= 3 {
-                            Sparkline(points: points.map { $0.1 }, color: Hoy.cor)
-                                .frame(width: state == nil ? nil : 84, height: 24)
-                                .frame(maxWidth: state == nil ? .infinity : nil)
-                        }
-                        if let state {
-                            Rectangle().fill(Hoy.sep).frame(width: 1, height: 26)
-                            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                Text(state.title).hoyFont(17, .semibold).foregroundStyle(Hoy.t1)
-                                Text("desde \(Fmt.time(state.since))").hoyFont(15).foregroundStyle(Hoy.t2)
-                            }
-                            .lineLimit(1).minimumScaleFactor(0.7)
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, 16)
-                    .frame(minHeight: 56)
-                    .background(Hoy.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .accessibilityElement(children: .combine)
+                    DSNowCard(hr: hr, live: live, points: points.map { $0.1 }, state: state?.title,
+                              since: state.map { Fmt.time($0.since) })
                 }
             }
         }
@@ -387,72 +320,6 @@ struct HoyAhora: View {
         return nil
     }
 
-}
-
-/// Small pink line of the last minutes, ending in a dot.
-struct Sparkline: View {
-    let points: [Double]
-    var color: Color = Hoy.cor
-
-    var body: some View {
-        GeometryReader { g in
-            let lo = (points.min() ?? 0) - 1, hi = (points.max() ?? 1) + 1
-            let pts = points.enumerated().map { i, v in
-                CGPoint(x: 3 + (g.size.width - 8) * CGFloat(i) / CGFloat(max(points.count - 1, 1)),
-                        y: g.size.height - 2 - (g.size.height - 4) * CGFloat((v - lo) / max(hi - lo, 0.001)))
-            }
-            ZStack {
-                SmoothPath(points: pts)
-                    .stroke(color, style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
-                if let last = pts.last {
-                    Circle().fill(color.opacity(0.22)).frame(width: 10, height: 10).position(last)
-                    Circle().fill(color).frame(width: 5, height: 5).position(last)
-                }
-            }
-        }
-        .accessibilityHidden(true)
-    }
-}
-
-/// Catmull-Rom curve through points (smooth, passes through every point).
-struct SmoothPath: Shape {
-    let points: [CGPoint]
-
-    func path(in rect: CGRect) -> Path {
-        var p = Path()
-        guard let first = points.first else { return p }
-        p.move(to: first)
-        guard points.count > 1 else { return p }
-        for i in 0..<(points.count - 1) {
-            let p0 = points[max(i - 1, 0)], p1 = points[i], p2 = points[i + 1], p3 = points[min(i + 2, points.count - 1)]
-            let c1 = CGPoint(x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6)
-            let c2 = CGPoint(x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6)
-            p.addCurve(to: p2, control1: c1, control2: c2)
-        }
-        return p
-    }
-}
-
-/// Pink dot that breathes while the pulse is live.
-struct PulsingDot: View {
-    let active: Bool
-    @State private var on = false
-
-    var body: some View {
-        ZStack {
-            if active {
-                Circle().fill(Hoy.cor.opacity(0.28)).frame(width: 16, height: 16)
-                    .scaleEffect(on ? 1.15 : 0.6).opacity(on ? 0 : 1)
-            }
-            Circle().fill(active ? Hoy.cor : Hoy.cor.opacity(0.55)).frame(width: 8, height: 8)
-        }
-        .frame(width: 16, height: 16)
-        .onAppear {
-            guard active else { return }
-            withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) { on = true }
-        }
-        .accessibilityHidden(true)
-    }
 }
 
 extension AppModel {

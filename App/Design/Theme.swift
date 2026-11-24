@@ -3,14 +3,15 @@ import PulsoStore
 import PulsoAnalytics
 
 enum Theme {
-    // Values live in `PulsoPalette` (shared with the widgets); these names are the app's vocabulary.
-    static let background = PulsoPalette.background
-    static let backgroundTop = PulsoPalette.backgroundTop
-    static let card = PulsoPalette.card
-    static let cardHighlight = PulsoPalette.cardHighlight
-    static let hairline = Color.white.opacity(0.06)
-    static let secondary = PulsoPalette.secondary
-    static let tertiary = PulsoPalette.tertiary
+    // Surfaces and text come from the design system (`DS`, graphite #111113) so every old screen takes the new look;
+    // the accent colours still live in `PulsoPalette` (shared with the widgets).
+    static let background = DS.bg
+    static let backgroundTop = DS.bg
+    static let card = DS.card
+    static let cardHighlight = DS.fill
+    static let hairline = DS.hair
+    static let secondary = DS.t2
+    static let tertiary = DS.t3
 
     static let green = PulsoPalette.recoveryHigh
     static let yellow = PulsoPalette.recoveryMid

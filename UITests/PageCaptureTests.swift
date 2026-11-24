@@ -3,8 +3,10 @@ import XCTest
 /// Captures every screen of the app from top to bottom, one screenshot per scroll step, into SHOTS_DIR
 /// (passed by CI as TEST_RUNNER_SHOTS_DIR). The frames of each screen are stitched into one long page afterwards.
 final class PageCaptureTests: XCTestCase {
-    /// Every screen the app can open in screenshot mode (`-PulsoScreen`), tabs first.
+    /// Screens captured by default (`-PulsoScreen`), tabs first. Any other name works through SHOTS_ONLY, including
+    /// the routes of the redesign (`r.<area>.<name>`, e.g. `r.hoy.monitor`, `r.metric.hrv`: see `Route.named`).
     static let screens = [
+        "tab.hoy", "tab.sueno", "tab.actividad", "tab.salud", "tab.tu",
         "today", "health", "trends", "trendsList", "live", "liveIdle", "more",
         "vitals", "vitalDetail", "startActivity", "intelToday", "intelLoad", "intelSleep", "intelHabits", "intelMore",
         "recovery", "sleep", "strain", "stress", "trendRecovery", "trendStrain", "trendHRV", "trendHRV6M",

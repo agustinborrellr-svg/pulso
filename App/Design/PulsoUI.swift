@@ -3,12 +3,10 @@ import PulsoStore
 
 // MARK: - Surfaces
 
-/// Screen background: slate gradient, lighter at the top.
+/// Screen background: the design system's flat graphite.
 struct PulsoBackground: View {
     var body: some View {
-        LinearGradient(colors: [Theme.backgroundTop, Theme.background, Theme.background],
-                       startPoint: .top, endPoint: .bottom)
-            .ignoresSafeArea()
+        DS.bg.ignoresSafeArea()
     }
 }
 
@@ -382,9 +380,9 @@ extension ScreenHeader where Trailing == EmptyView {
     }
 }
 
-/// Detail screen scaffold: gradient, caps header with back, scrolling content.
+/// Detail screen scaffold of the older screens, now in the design system's look: DS nav bar (back chevron only when
+/// there is somewhere to go back to), scrolling content on graphite.
 struct DetailScreen<Content: View, Trailing: View>: View {
-    @Environment(\.dismiss) private var dismiss
     let title: String
     var subtitle: String?
     @ViewBuilder var trailing: Trailing
@@ -392,7 +390,7 @@ struct DetailScreen<Content: View, Trailing: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ScreenHeader(title: title, subtitle: subtitle, back: { dismiss() }) { trailing }
+            DSNavBar(title.prefix(1).uppercased() + title.dropFirst(), subtitle: subtitle) { trailing }
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) { content }
                     .padding(.horizontal, 16)

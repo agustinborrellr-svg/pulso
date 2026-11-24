@@ -9,7 +9,7 @@ struct HealthView: View {
 
     var body: some View {
         let result = model.pulsoAge ?? PulsoAge.compute(days: [], profile: model.profile, today: AppModel.weekStart(model.currentDayKey))
-        NavigationStack {
+        Group { // the tab (or the screen that pushes it) owns the NavigationStack
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Caps("Salud", size: 15).frame(maxWidth: .infinity).padding(.top, 8)

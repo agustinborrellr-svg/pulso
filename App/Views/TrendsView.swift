@@ -21,7 +21,7 @@ struct TrendsView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        Group { // the tab (or the screen that pushes it) owns the NavigationStack
             ScrollView {
                 VStack(spacing: 16) {
                     HStack(spacing: 28) {

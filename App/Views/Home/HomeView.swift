@@ -20,7 +20,7 @@ struct HomeView: View {
     private var blocks: [HoyBlock] { shotBlocks ?? HoyLayout.decode(blocksRaw) }
 
     var body: some View {
-        NavigationStack {
+        Group { // the tab (or the screen that pushes it) owns the NavigationStack
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     HoyHeader()

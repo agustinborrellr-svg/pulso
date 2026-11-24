@@ -2,9 +2,14 @@ import SwiftUI
 import UIKit
 import PulsoStore
 
-/// FINAL palette (graphite, dark) used by the Hoy screen. Kept apart from `Theme` so the other screens keep their
-/// look until they are redesigned too. Values come from the design tokens (`FINAL/tokens.py`, dark theme).
-enum Hoy {
+/// Pulso design system (DS): the FINAL graphite palette, approved for the whole app (studio `FINAL/tokens.py`, dark
+/// theme). `Hoy` and `HoyLevel` are the names Hoy was built with; they stay as aliases. Old screens still use `Theme`,
+/// whose surfaces now point here too.
+typealias Hoy = DS
+typealias HoyLevel = DSLevel
+typealias HoyFmt = DSFmt
+
+enum DS {
     // Surfaces and text.
     static let bg = Color(hex: 0x111113)
     static let card = Color(hex: 0x1E1E21)
@@ -43,14 +48,37 @@ enum Hoy {
     /// Band label / tint opacity of the "tu normal" motif.
     static let bandOpacity = 0.13
     static let edgeOpacity = 0.45
+    /// Area under a chart line.
+    static let areaOpacity = 0.14
+    /// Identity-tinted capsule buttons and chips (`color-mix(... 22%)`).
+    static let tintOpacity = 0.22
+
+    // Chrome.
+    static let hair = Color.white.opacity(0.055)
+    static let glass = Color(hex: 0x242428, opacity: 0.72)
+    static let glassLine = Color.white.opacity(0.08)
+    static let tabSelected = Color.white.opacity(0.10)
+
+    // Heart-rate zones Z1…Z5 (light to dark orange).
+    static let zones = [Color(hex: 0xF6CFB2), Color(hex: 0xF3AE7E), Color(hex: 0xF18D4D), Color(hex: 0xE06A2A), Color(hex: 0xC24E17)]
+    static func zone(_ z: Int) -> Color { zones[min(max(z, 1), 5) - 1] }
+
+    // Geometry.
+    static let radius: CGFloat = 18
+    static let sheetRadius: CGFloat = 34
+    /// Side margin of cards / of section titles.
+    static let gutter: CGFloat = 16
+    static let titleInset: CGFloat = 20
+    /// Space between cards in a column.
+    static let stack: CGFloat = 10
 }
 
 /// The four-step status scale (Baja < 40 · Justa 40–59 · Buena 60–79 · Excelente ≥ 80): a dot/mark colour and a
 /// lighter word colour for text, so the word passes contrast on the card.
-enum HoyLevel: Int, Comparable {
+enum DSLevel: Int, Comparable, CaseIterable {
     case baja = 1, justa, buena, excelente
 
-    static func < (a: HoyLevel, b: HoyLevel) -> Bool { a.rawValue < b.rawValue }
+    static func < (a: DSLevel, b: DSLevel) -> Bool { a.rawValue < b.rawValue }
 
     init(score: Double) {
         switch score {
@@ -115,20 +143,33 @@ extension Color {
 
 extension View {
     /// SF Pro at a design size with tabular digits (Dynamic Type capped like the rest of the app).
-    func hoyFont(_ size: CGFloat, _ weight: Font.Weight = .regular, relativeTo: UIFont.TextStyle = .body,
-                 maxScale: CGFloat = 1.35) -> some View {
+    func dsFont(_ size: CGFloat, _ weight: Font.Weight = .regular, relativeTo: UIFont.TextStyle = .body,
+                maxScale: CGFloat = 1.35) -> some View {
         scaledFont(size, weight: weight, relativeTo: relativeTo, maxScale: maxScale).monospacedDigit()
     }
 
-    /// Hoy card: graphite surface, radius 18, no border, no shadow.
-    func hoyCard(padding: CGFloat = 14) -> some View {
+    /// Same as `dsFont` (the name Hoy was written with).
+    func hoyFont(_ size: CGFloat, _ weight: Font.Weight = .regular, relativeTo: UIFont.TextStyle = .body,
+                 maxScale: CGFloat = 1.35) -> some View {
+        dsFont(size, weight, relativeTo: relativeTo, maxScale: maxScale)
+    }
+
+    /// DS card: graphite surface, radius 18, a 0.5 pt hairline, no shadow.
+    func dsCard(padding: CGFloat = 14) -> some View {
         self.padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Hoy.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(DS.card, in: RoundedRectangle(cornerRadius: DS.radius, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: DS.radius, style: .continuous).strokeBorder(DS.hair, lineWidth: 0.5))
     }
+
+    /// Same as `dsCard` (the name Hoy was written with).
+    func hoyCard(padding: CGFloat = 14) -> some View { dsCard(padding: padding) }
+
+    /// Screen background of every DS screen.
+    func dsBackground() -> some View { background(DS.bg.ignoresSafeArea()) }
 }
 
-/// Section title of Hoy: 20 pt semibold, with a chevron when it opens a detail.
+/// Section title: 20 pt semibold, with a chevron when it opens a detail, and an optional trailing note.
 struct HoySectionTitle<Trailing: View>: View {
     let title: String
     var chevron = false
@@ -157,6 +198,9 @@ extension HoySectionTitle where Trailing == EmptyView {
         self.trailing = EmptyView()
     }
 }
+
+typealias DSValue = HoyValue
+typealias DSDot = HoyDot
 
 /// Value with its unit on the same baseline: "1 h 31", "27,5 años".
 struct HoyValue: View {
@@ -187,7 +231,7 @@ struct HoyDot: View {
 
 // MARK: - Formatting
 
-enum HoyFmt {
+enum DSFmt {
     /// "8 900": thousands with a narrow no-break space, also for four digits (as in the design).
     static func thousands(_ v: Double?) -> String {
         guard let v, v.isFinite else { return "–" }

@@ -19,7 +19,7 @@ struct MoreView: View {
     @State private var versionTaps = 0
 
     var body: some View {
-        NavigationStack {
+        Group { // the tab (or the screen that pushes it) owns the NavigationStack
             List {
             Group {
                 strapSection

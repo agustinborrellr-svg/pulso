@@ -95,30 +95,8 @@ struct HoyActivityRow: View {
     let model: AppModel
 
     var body: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 7) {
-                Image(systemName: icon).font(.system(size: 13, weight: .semibold)).foregroundStyle(activity.hoyColor)
-                Text(Fmt.hmm(Double(activity.end - activity.start) / 60))
-                    .hoyFont(17, .semibold).foregroundStyle(Hoy.t1).lineLimit(1).minimumScaleFactor(0.7)
-            }
-            .frame(width: 76, height: 34)
-            .background(activity.hoyColor.opacity(0.22), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).hoyFont(17, .semibold).foregroundStyle(Hoy.t1).lineLimit(1).minimumScaleFactor(0.8)
-                if let subtitle {
-                    Text(subtitle).hoyFont(15).foregroundStyle(Hoy.t2).lineLimit(1).minimumScaleFactor(0.8)
-                }
-            }
-            Spacer(minLength: 6)
-            VStack(alignment: .trailing, spacing: 1) {
-                Text(Fmt.time(activity.start))
-                Text(Fmt.time(activity.end))
-            }
-            .hoyFont(15).foregroundStyle(Hoy.t2)
-        }
-        .padding(.vertical, 10)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
+        DSActivityRow(icon: icon, color: activity.hoyColor, duration: Fmt.hmm(Double(activity.end - activity.start) / 60),
+                      title: title, subtitle: subtitle, start: Fmt.time(activity.start), end: Fmt.time(activity.end))
     }
 
     private var icon: String {
@@ -177,64 +155,10 @@ struct DayStrip: View {
 
     var body: some View {
         let w = window
-        let now = Int(Date().timeIntervalSince1970)
-        let showNow = now > w.start && now < w.end
-        VStack(spacing: 6) {
-            GeometryReader { g in
-                let x = { (t: Int) -> CGFloat in g.size.width * CGFloat(t - w.start) / CGFloat(w.end - w.start) }
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Hoy.fill)
-                    if showNow {
-                        // The hours still to come are darker.
-                        Rectangle().fill(Color.black.opacity(0.45))
-                            .frame(width: max(0, g.size.width - x(now))).offset(x: x(now))
-                    }
-                    ForEach(segments(w), id: \.id) { s in
-                        RoundedRectangle(cornerRadius: s.thin ? 3 : 1.5, style: .continuous).fill(s.color)
-                            .frame(width: max(s.thin ? 6 : 1.5, x(s.end) - x(s.start)), height: s.thin ? 14 : 18)
-                            .offset(x: x(s.start))
-                    }
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .overlay(alignment: .leading) {
-                    if showNow {
-                        Capsule().fill(Hoy.t1).frame(width: 2, height: 28).offset(x: x(now) - 1)
-                    }
-                }
-            }
-            .frame(height: 22)
-            GeometryReader { g in
-                let x = { (t: Int) -> CGFloat in g.size.width * CGFloat(t - w.start) / CGFloat(w.end - w.start) }
-                ZStack(alignment: .leading) {
-                    ForEach([0, 6, 12, 24], id: \.self) { h in
-                        let t = w.start + h * 3600
-                        let near = showNow && abs(t - now) < 2 * 3600
-                        if !near {
-                            Text(HoyFmt.hour(t)).hoyFont(12, .medium, relativeTo: .caption1).foregroundStyle(Hoy.t3)
-                                .fixedSize()
-                                .position(x: min(max(x(t), 8), g.size.width - 8), y: 7)
-                        }
-                    }
-                    if showNow {
-                        Text(Fmt.time(now)).hoyFont(12, .bold, relativeTo: .caption1).foregroundStyle(Hoy.t1)
-                            .fixedSize()
-                            .position(x: min(max(x(now), 16), g.size.width - 16), y: 7)
-                    }
-                }
-            }
-            .frame(height: 14)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Franja de las últimas 24 horas")
+        DSDayStrip(start: w.start, end: w.end, segments: segments(w))
     }
 
-    private struct Segment {
-        let id: String
-        let start: Int
-        let end: Int
-        let color: Color
-        var thin = false
-    }
+    private typealias Segment = DSDayStrip.Segment
 
     private func segments(_ w: (start: Int, end: Int)) -> [Segment] {
         var out: [Segment] = []

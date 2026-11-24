@@ -18,7 +18,7 @@ struct LiveView: View {
     @AppStorage(AppModel.stressAlertKey) private var stressAlertOn = true
 
     var body: some View {
-        NavigationStack {
+        Group { // the tab (or the screen that pushes it) owns the NavigationStack
             ScrollView {
                 VStack(spacing: 16) {
                     LiveRunBanner()

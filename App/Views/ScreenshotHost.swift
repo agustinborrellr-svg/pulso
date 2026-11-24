@@ -4,7 +4,9 @@ import PulsoAnalytics
 import PulsoFeatures
 import PulsoIntelligence
 
-/// Screens the CI screenshot run can open with `-PulsoScreen <name>`.
+/// Older screens the CI screenshot run can open with `-PulsoScreen <name>`. New screens don't go here: add a case to
+/// the area's route enum (`App/Navigation/Routes+….swift`) and list it in its `shots`; it is then captured as
+/// `r.<area>.<name>` (see `Route.named`). Tab roots: `tab.hoy`, `tab.sueno`, `tab.actividad`, `tab.salud`, `tab.tu`.
 enum ShotScreen: String, Identifiable {
     case today, health, sleep, trends, live, more
     case alarms, alarmEditor, notifications, integrations, ecg, ecgDetail, bedtime, lab, workout, onboarding, whatif, intelDetail
@@ -19,13 +21,13 @@ enum ShotScreen: String, Identifiable {
 
     var id: String { rawValue }
 
-    var tab: Int? {
+    /// Older names that open a tab root (Salud shows Análisis for `trends`).
+    var tab: AppTab? {
         switch self {
-        case .today, .todayScrolled, .todayEdit, .todayMin, .dayPicker: return 0
-        case .health: return 1
-        case .trends: return 2
-        case .live, .liveIdle: return 3
-        case .more: return 4
+        case .today, .todayScrolled, .todayEdit, .todayMin, .dayPicker: return .hoy
+        case .health, .trends: return .salud
+        case .live, .liveIdle: return .actividad
+        case .more: return .tu
         default: return nil
         }
     }

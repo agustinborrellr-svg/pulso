@@ -68,30 +68,15 @@ struct PulsoApp: App {
 
 struct RootView: View {
     @EnvironmentObject var model: AppModel
-    @State private var tab = 0
+    @StateObject private var router = Router()
     @State private var showOnboarding = false
     @State private var showGuide = false
     @State private var shot: ShotScreen?
 
     var body: some View {
-        TabView(selection: $tab) {
-            HomeView()
-                .tabItem { Label("Inicio", systemImage: "house") }
-                .tag(0)
-            HealthView()
-                .tabItem { Label("Salud", systemImage: "heart.circle") }
-                .tag(1)
-            TrendsView()
-                .tabItem { Label("Análisis", systemImage: "brain.head.profile") }
-                .tag(2)
-            LiveView()
-                .tabItem { Label("Live", systemImage: "heart.text.square") }
-                .tag(3)
-            MoreView()
-                .tabItem { Label("Más", systemImage: "line.3.horizontal") }
-                .tag(4)
-        }
-        .tint(.white)
+        AppTabs()
+            .environmentObject(router)
+            .tint(.white)
         .onAppear {
             if AppMode.screenshots {
                 startScreenshots()
@@ -129,12 +114,25 @@ struct RootView: View {
         }
     }
 
-    /// CI screenshot run: demo data, then open the requested screen.
+    /// CI screenshot run: demo data, then open the requested screen: a tab root (`tab.<name>`), a route
+    /// (`r.<area>.<name>`, see `Route.named`) or one of the older named screens (`ShotScreen`).
     private func startScreenshots() {
-        let screen = AppMode.screen.flatMap(ShotScreen.init(rawValue:)) ?? .today
+        let name = AppMode.screen ?? "today"
+        if let t = name.hasPrefix("tab.") ? AppTab(rawValue: String(name.dropFirst(4))) : nil {
+            model.prepareScreenshots { router.tab = t }
+            return
+        }
+        if let route = Route.named(name) {
+            model.prepareScreenshots {
+                // A moment for the tab's stack to appear before pushing / presenting.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { router.openInItsTab(route) }
+            }
+            return
+        }
+        let screen = ShotScreen(rawValue: name) ?? .today
         model.prepareScreenshots {
             if let t = screen.tab {
-                tab = t
+                router.tab = t
             } else {
                 shot = screen
             }

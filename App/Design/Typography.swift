@@ -3,7 +3,7 @@ import UIKit
 
 /// Shared metrics so every surface agrees on shape.
 enum Metrics {
-    static let cardRadius: CGFloat = 14
+    static let cardRadius: CGFloat = 18
     static let rowRadius: CGFloat = 10
     static let cardPadding: CGFloat = 16
     /// Smallest text size allowed at the default Dynamic Type setting.
@@ -47,7 +47,7 @@ extension View {
         background(
             RoundedRectangle(cornerRadius: radius, style: .continuous)
                 .fill(Theme.card)
-                .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(Theme.hairline, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 0.5))
         )
     }
 }
