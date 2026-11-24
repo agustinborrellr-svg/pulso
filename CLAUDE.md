@@ -373,7 +373,7 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
 - Inicio = «Hoy» con el diseño aprobado (studio HOY-FINAL): cabecera fecha / ‹ Hoy › / batería, tarjeta Recarga-Sueño-Esfuerzo
   (arcos abiertos, 4 niveles Baja/Justa/Buena/Excelente, «ayer», objetivo del coach como rango) con el monitor de salud plegado
   (5 segmentos + estrés), «Ahora» (directo o últimos 15 min descargados) y bloques personalizables. Código en `App/Views/Home/Hoy/`,
-  paleta FINAL solo para Hoy en `App/Design/HoyStyle.swift` (`Hoy`, `HoyLevel`, `hoyFont`, `hoyCard`); el resto de pantallas sigue con `Theme`.
+  paleta FINAL en `App/Design/DS/DSTokens.swift` (antes `HoyStyle.swift`; `Hoy`/`HoyLevel` son alias de `DS`/`DSLevel`).
 - Bloques (`HoyBlock`, kv/AppStorage `pulso.hoy.blocks`, lista JSON de ids; vacío = por defecto): Actividades, Anoche, Estrés del día,
   Tendencias de tu cuerpo, Edad Pulso, Esta noche + extra Tu semana, Carga de la semana, Pasos y movimiento, Racha, Me voy a dormir,
   Constantes vitales. Un bloque sin datos reales no se pinta ni se ofrece en «Añadir a Hoy» (`AppModel.hoyHasData`).
@@ -412,3 +412,28 @@ Límite: el plan gratuito da unos 200 minutos de Mac al mes en repos privados. N
   `vitalReadings`/`tonightPlan`/coach en cada redibujado (memorizar por versión de `days`); bloques sin datos ocultos sin aviso;
   ignorar errores de escrituras anteriores a un reset de bond; backoff en `didFailToConnect`; `countedSteps` tras huecos ≥ 3 s;
   progreso de la primera descarga en Hoy; importar historial / Apple Salud en la bienvenida; marcar «en ajuste» ritmo y pasos.
+
+## Estado (2026-11-24, rediseño: base)
+
+- Rama de integración `rediseno-app` (worktree `C:\Users\agust\Pulso-rd`); áreas en `rediseno-<área>`. Maquetas: studio `APP/<A-hoy|B-sueno|C-actividad|D-salud|E-tu>`.
+- **Sistema de diseño** (`App/Design/DS/`), por defecto en toda la app: `Theme` y `PulsoBackground` apuntan al grafito `#111113`.
+  - `DSTokens`: `DS` (colores, `radius` 18, `gutter` 16, `zone(n)`), `DSLevel` (Baja/Justa/Buena/Excelente, `mark`/`ink`), `dsFont` (cifras tabulares), `dsCard()`, `DSFmt`.
+  - `DSComponents`: `DSSectionHeader(_:chevron:note:)`, `DSGroupLabel`, `DSLargeTitle`, `DSLevelWord(level:text:meter:)`, `DSMeter`, `DSDelta`,
+    `DSSegmented(options:selection:)`, `DSSideTable(rows:)`, `DSStatStrip(stats:)`, `DSRangeBar`, `DSButtonStyle(tint:size:gray:)`, `DSCard`, `DSDivider`, `DSChevron`.
+  - `DSNavBar(_:subtitle:back:)` (píldora «‹ Padre», se oculta en la raíz), `DSScreen` (detalle con barra y columna), `DSTabScreen` (raíz de pestaña).
+  - `DSMetricDetail(spec: DSMetricSpec) { extra }`: héroe + nivel + «Tu normal/Ayer» + límites, gráfica `DSLineChart` 7 d/30 d/6 m con banda, media,
+    píldora y `ChartScrub`, tira Más alta/Más baja/En tu normal, `DSFactorList` («Qué lo mueve») y `DSWhatIs`. Solo pinta lo que recibe.
+    `DSTrendMetricDetail(metric:title:back:color:score:night:)` la rellena con datos reales de un `TrendMetric` (normal = media ± 1 DE de los 30 días previos).
+  - `DSSegmentMonitor` (+ `DSMonitorSegment`), `DSActivityChip`/`DSActivityRow`/`DSDayStrip`, `DSNowCard` («Ahora»), `DSGroup`/`DSRow`/`DSToggleRow`/`DSButtonRow`,
+    `DSSheet`/`DSSheetHeader`/`.dsSheet()`, `DSEmptyState`, `DSTabBar` + `AppTab`. Hoy ya usa el monitor, la fila de actividad, la franja y «Ahora» del DS.
+- **Pestañas** (`App/Views/Tabs/`): `AppTabs` (TabView sin barra del sistema + barra flotante, un NavigationStack por pestaña con la ruta en `Router`).
+  Hoy = `HomeView`; `SleepTab`, `ActivityTab` (Live · Esfuerzo), `HealthTab` (Salud · Análisis), `YouTab` (Más) son envoltorios provisionales: cada área
+  reescribe el suyo. `HomeView`, `HealthView`, `TrendsView`, `LiveView`, `MoreView` ya no tienen NavigationStack propio.
+- **Rutas** (`App/Navigation/`): `Route` = `.hoy(HoyRoute)` · `.sueno(SuenoRoute)` · `.actividad(ActividadRoute)` · `.salud(SaludRoute)` · `.tu(TuRoute)` ·
+  `.metric(MetricKind)`. Cada área tiene SU archivo `Routes+<Área>.swift` con su enum (casos, `presentation` push/sheet/cover, `shots`), su
+  `<Área>Destination` y su `<Área>MetricDestination`. Abrir: `NavigationLink(value: Route…)`, `RouteLink(route) { … }` o `router.open(route)`.
+  Las hojas traen su propio NavigationStack. Para añadir una pantalla: caso en tu enum + vista en tu Destination + línea en `shots`. No toques
+  `Route.swift` salvo para un `MetricKind` nuevo.
+- **Capturas**: `-PulsoScreen tab.<hoy|sueno|actividad|salud|tu>` abre una pestaña; `r.<área>.<nombre>` (p. ej. `r.hoy.monitor`, `r.metric.hrv`) abre la
+  ruta en su pestaña, con la barra y la píldora atrás. CI: `gh workflow run ios.yml --ref <rama> -f pantallas="tab.sueno r.sueno.alarmas"` o
+  `-f paginas="r.metric.hrv"`. Los nombres antiguos de `ShotScreen` siguen valiendo.

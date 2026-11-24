@@ -1,5 +1,7 @@
 import SwiftUI
 import PulsoStore
+import PulsoFeatures
+import PulsoAnalytics
 
 // E · Tú (studio APP/E-tu, mapa.md). Owned by the Tú area: add cases here, map them in `TuDestination`, list them
 // in `shots` (`-PulsoScreen r.tu.<name>`). The battery metric goes in `TuMetricDestination`.

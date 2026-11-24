@@ -1,5 +1,7 @@
 import SwiftUI
 import PulsoStore
+import PulsoFeatures
+import PulsoAnalytics
 
 // A · Hoy drill-downs (studio APP/A-hoy, mapa.md). Owned by the Hoy area: add cases here, map them in
 // `HoyDestination`, list them in `shots` for the screenshot run (`-PulsoScreen r.hoy.<name>`).

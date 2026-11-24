@@ -1,5 +1,6 @@
 import SwiftUI
 import PulsoStore
+import PulsoFeatures
 import PulsoAnalytics
 
 // C · Actividad (studio APP/C-actividad, mapa.md). Owned by the Actividad area: add cases here, map them in

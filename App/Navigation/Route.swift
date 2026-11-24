@@ -1,5 +1,7 @@
 import SwiftUI
 import PulsoStore
+import PulsoFeatures
+import PulsoAnalytics
 
 // Navigation registry of the redesign.
 //
@@ -55,12 +57,12 @@ enum Route: Hashable, Identifiable {
         guard parts.count == 3, parts[0] == "r" else { return nil }
         let key = parts[2]
         switch parts[1] {
-        case "hoy": return HoyRoute.shots.first { $0.0 == key }.map { .hoy($0.1) }
-        case "sueno": return SuenoRoute.shots.first { $0.0 == key }.map { .sueno($0.1) }
-        case "actividad": return ActividadRoute.shots.first { $0.0 == key }.map { .actividad($0.1) }
-        case "salud": return SaludRoute.shots.first { $0.0 == key }.map { .salud($0.1) }
-        case "tu": return TuRoute.shots.first { $0.0 == key }.map { .tu($0.1) }
-        case "metric": return MetricKind.shots.first { $0.0 == key }.map { .metric($0.1) }
+        case "hoy": return HoyRoute.shots.first { $0.0 == key }.map { Route.hoy($0.1) }
+        case "sueno": return SuenoRoute.shots.first { $0.0 == key }.map { Route.sueno($0.1) }
+        case "actividad": return ActividadRoute.shots.first { $0.0 == key }.map { Route.actividad($0.1) }
+        case "salud": return SaludRoute.shots.first { $0.0 == key }.map { Route.salud($0.1) }
+        case "tu": return TuRoute.shots.first { $0.0 == key }.map { Route.tu($0.1) }
+        case "metric": return MetricKind.shots.first { $0.0 == key }.map { Route.metric($0.1) }
         default: return nil
         }
     }

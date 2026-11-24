@@ -1,5 +1,7 @@
 import SwiftUI
 import PulsoStore
+import PulsoFeatures
+import PulsoAnalytics
 import PulsoIntelligence
 
 // D · Salud + Análisis (studio APP/D-salud, mapa.md). Owned by the Salud area: add cases here, map them in
