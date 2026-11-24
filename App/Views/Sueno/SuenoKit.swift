@@ -470,7 +470,7 @@ struct SuenoNightBars: View {
                 if let m = b.minutes {
                     BarMark(x: .value("Noche", b.day), yStart: .value("Base", lo), yEnd: .value("Horas", m), width: .ratio(bars.count > 10 ? 0.6 : 0.5))
                         .foregroundStyle(b.day == highlight ? DS.sueno : DS.fill2)
-                        .clipShape(RoundedRectangle(cornerRadius: bars.count > 10 ? 2 : 5, style: .continuous))
+                        .cornerRadius(bars.count > 10 ? 2 : 5)
                 }
                 if showMarks, let k = b.mark {
                     PointMark(x: .value("Noche", b.day), y: .value("Necesitabas", k))

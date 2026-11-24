@@ -520,7 +520,7 @@ struct SleepTab: View {
 
     private var emptyScore: some View {
         HStack(spacing: 18) {
-            ScoreArc(progress: 0, color: DS.sueno, value: "", size: 96, line: 8)
+            ScoreArc(progress: 0, color: DS.fill2, value: "", size: 96, line: 8)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Sin calificación").dsFont(20, .semibold).foregroundStyle(DS.t2)
                 Text("Se calcula al tener tu noche").dsFont(14).foregroundStyle(DS.t3)
