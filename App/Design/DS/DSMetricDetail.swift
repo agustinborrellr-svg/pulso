@@ -315,6 +315,10 @@ struct DSLineChart: View {
                               yStart: .value("Bajo", max(n.lowerBound, dom.lowerBound)),
                               yEnd: .value("Alto", min(n.upperBound, dom.upperBound)))
                     .foregroundStyle(color.opacity(DS.bandOpacity + 0.05))
+                    .annotation(position: .overlay, alignment: .topTrailing, spacing: 0) {
+                        Text("tu normal").dsFont(11, .semibold, relativeTo: .caption2).foregroundStyle(color)
+                            .padding(.trailing, 4).padding(.top, -15)
+                    }
             }
             if let mean {
                 RuleMark(y: .value("Media", mean))
@@ -332,7 +336,7 @@ struct DSLineChart: View {
                     .foregroundStyle(color)
             }
             if let n = normal, points.count <= 60 {
-                ForEach(points.filter { !n.contains($0.value) }) { p in
+                ForEach(points.dropLast().filter { !n.contains($0.value) }) { p in
                     PointMark(x: .value("Día", p.date), y: .value("Valor", p.value))
                         .symbol {
                             Circle().strokeBorder(p.value < n.lowerBound && p.value < (n.lowerBound - (n.upperBound - n.lowerBound) * 0.5)
@@ -374,7 +378,7 @@ struct DSLineChart: View {
             }
         }
         .chartScrub($selection)
-        .padding(.top, 34)
+        .padding(.top, 28)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Gráfica")
         .accessibilityValue(points.last.map { "Último valor \(format($0.value))" } ?? "")

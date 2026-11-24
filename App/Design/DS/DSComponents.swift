@@ -347,6 +347,14 @@ struct DSDivider: View {
     }
 }
 
+/// The app's switches: green when on, as in the mocks (the app tint is white, which hid the knob). Set app-wide on
+/// the tabs and on presented screens.
+struct DSSwitchStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Toggle(configuration).toggleStyle(.switch).tint(DSLevel.buena.mark)
+    }
+}
+
 /// Chevron used at the end of tappable rows.
 struct DSChevron: View {
     var body: some View {

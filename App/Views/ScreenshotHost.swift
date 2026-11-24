@@ -268,6 +268,7 @@ struct ShotDestination: View {
                 }
             }
         }
+        .toggleStyle(DSSwitchStyle())
         .preferredColorScheme(.dark)
     }
 }

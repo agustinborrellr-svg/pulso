@@ -77,6 +77,7 @@ struct RootView: View {
         AppTabs()
             .environmentObject(router)
             .tint(.white)
+            .toggleStyle(DSSwitchStyle())
         .onAppear {
             if AppMode.screenshots {
                 startScreenshots()

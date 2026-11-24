@@ -231,6 +231,7 @@ struct PresentedRoute: View {
 
     var body: some View {
         RouteView(route: route)
+            .toggleStyle(DSSwitchStyle())
             .preferredColorScheme(.dark)
     }
 }
